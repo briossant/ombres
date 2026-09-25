@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-server/
+.vite/
+*.log
+.direnv/
+result
+tools/tts/.venv/
+tools/**/out/
+shots/

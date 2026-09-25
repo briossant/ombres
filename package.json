@@ -1,0 +1,50 @@
+{
+  "name": "ombres",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ombres — party game local : oiseaux géants, ombres qui peignent le désert, soleil couchant.",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false --ignore 'src/**' --ignore 'vite.config.ts.timestamp-*' server/index.ts",
+    "build": "vite build && node tools/build-server.mjs",
+    "start": "NODE_ENV=production node dist-server/server.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "check:boundaries": "node tools/check-boundaries.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.1",
+    "@react-three/postprocessing": "3.1.2",
+    "postprocessing": "6.39.5",
+    "qrcode": "1.5.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "three": "0.186.1",
+    "ws": "8.21.3",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-react": "6.1.1",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.63.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.1",
+    "vitest": "5.0.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
