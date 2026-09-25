@@ -1,0 +1,7 @@
+# OPTIONNEL — moteur "chatterbox" (Resemble AI, MIT) pour cloner une voix de référence sous licence libre.
+# Venv SÉPARÉ (chatterbox épingle torch 2.6) — commandes exactes dans README.md, section "Chatterbox".
+chatterbox-tts==0.1.7
+setuptools<81   # resemble-perth importe pkg_resources ; sans lui PerthImplicitWatermarker=None -> crash au chargement
+soundfile>=0.13
+# Puis, pour le modèle multilingue v3 (absent de la 0.1.7 PyPI) :
+#   uv pip install --python .venv-chatterbox/bin/python --no-deps "git+https://github.com/resemble-ai/chatterbox@master"

@@ -1,0 +1,11 @@
+{
+  "name": "ombres-npr-prototype",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway NPR prototype (reference for docs/research/npr-techniques.md). Plain three + postprocessing via importmap.",
+  "dependencies": {
+    "three": "0.186.1",
+    "postprocessing": "6.39.5",
+    "playwright-core": "1.63.0"
+  }
+}

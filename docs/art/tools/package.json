@@ -1,0 +1,7 @@
+{
+  "name": "ombres-art-tools",
+  "private": true,
+  "type": "module",
+  "description": "Palette + validation tools for docs/ART_BIBLE.md. node export.mjs (JSON), node final.mjs (metrics), node gen_sheets.mjs + node shoot.mjs (sheets), node highkey.mjs <png...> (R20 QA).",
+  "dependencies": { "culori": "4.0.2", "playwright-core": "1.63.0" }
+}

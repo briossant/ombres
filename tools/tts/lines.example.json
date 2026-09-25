@@ -1,0 +1,12 @@
+[
+  {"id": "lead_coral", "lang": "fr", "text": "Le Corail prend la tête !", "keywords": ["Corail"]},
+  {"id": "lead_coral", "lang": "en", "text": "Coral takes the lead!", "keywords": ["Coral"]},
+  {"id": "sun_horizon", "lang": "fr", "text": "Le soleil touche l'horizon."},
+  {"id": "sun_horizon", "lang": "en", "text": "The sun is touching the horizon."},
+  {"id": "last_ten", "lang": "fr", "text": "Dix secondes. Tout peut encore basculer."},
+  {"id": "last_ten", "lang": "en", "text": "Ten seconds. Everything can still change."},
+  {"id": "steal_indigo_ochre", "lang": "fr", "text": "L'Indigo vient d'avaler la moitié du désert de l'Ocre.", "keywords": ["Indigo", "Ocre"]},
+  {"id": "steal_indigo_ochre", "lang": "en", "text": "Indigo just swallowed half of Ochre's desert.", "keywords": ["Indigo", "Ochre"]},
+  {"id": "round_intro", "lang": "fr", "text": "Le vent se lève sur les dunes. Que les ombres s'allongent, et que le désert choisisse son maître."},
+  {"id": "round_intro", "lang": "en", "text": "The wind rises over the dunes. Let the shadows grow long, and let the desert choose its master."}
+]

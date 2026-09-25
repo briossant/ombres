@@ -8,3 +8,10 @@ result
 tools/tts/.venv/
 tools/**/out/
 shots/
+# Matière première téléchargée (reproductible via assets-staging/LICENSES.md) : on ne versionne que les notes et scripts
+assets-staging/**
+!assets-staging/**/
+!assets-staging/**/*.md
+!assets-staging/**/*.py
+!assets-staging/**/*.js
+!assets-staging/**/*.html

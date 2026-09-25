@@ -1,0 +1,93 @@
+{
+  "_doc": "Presets de voix (voir README). Une ligne d'entrée choisit un preset via \"voice\" (défaut \"narrator\"). Modifier un preset change le hash : les lignes concernées sont régénérées au prochain lancement. tempo = ralenti ffmpeg atempo (0.92 = -8 %, sans perte UTMOS mesurée).",
+  "presets": {
+    "narrator": {
+      "fr": {
+        "engine": "pocket",
+        "model": "french",
+        "voice": "bill_boerst",
+        "temperature": 0.3,
+        "seed": 1234,
+        "tempo": 0.92
+      },
+      "en": {
+        "engine": "pocket",
+        "model": "english",
+        "voice": "bill_boerst",
+        "temperature": 0.3,
+        "seed": 1234,
+        "tempo": 0.92
+      }
+    },
+    "narrator_deep": {
+      "fr": {
+        "engine": "pocket",
+        "model": "french",
+        "voice": "peter_yearsley",
+        "temperature": 0.3,
+        "seed": 1234,
+        "tempo": 0.95
+      },
+      "en": {
+        "engine": "pocket",
+        "model": "english",
+        "voice": "peter_yearsley",
+        "temperature": 0.3,
+        "seed": 1234,
+        "tempo": 0.95
+      }
+    },
+    "narrator_bright": {
+      "fr": {
+        "engine": "pocket",
+        "model": "french",
+        "voice": "george",
+        "temperature": 0.3,
+        "seed": 1234,
+        "tempo": 0.9
+      },
+      "en": {
+        "engine": "pocket",
+        "model": "english",
+        "voice": "george",
+        "temperature": 0.3,
+        "seed": 1234,
+        "tempo": 0.9
+      }
+    },
+    "narrator_supertonic": {
+      "fr": {
+        "engine": "supertonic",
+        "model": "supertonic-3",
+        "voice": "M4",
+        "lang": "fr",
+        "speed": 0.9,
+        "steps": 16,
+        "seed": 1234
+      },
+      "en": {
+        "engine": "supertonic",
+        "model": "supertonic-3",
+        "voice": "M4",
+        "lang": "en",
+        "speed": 0.9,
+        "steps": 16,
+        "seed": 1234
+      }
+    },
+    "narrator_kokoro": {
+      "fr": {
+        "engine": "kokoro",
+        "lang_code": "f",
+        "voice": "ff_siwis",
+        "speed": 0.9
+      },
+      "en": {
+        "engine": "kokoro",
+        "lang_code": "b",
+        "voice": "bm_george",
+        "speed": 0.9
+      }
+    }
+  }
+}

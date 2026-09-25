@@ -1,0 +1,15 @@
+# Ombres — outil TTS narrateur. Installer via ./setup.sh (torch CPU installé avant, depuis l'index CPU PyTorch).
+# Moteur principal : Kyutai Pocket TTS (code MIT, poids CC-BY-4.0, voix prédéfinies CC0 / CC-BY-4.0)
+pocket-tts==3.3.0
+# Moteur secondaire (anglais alternatif, voix FR féminine ff_siwis) : Kokoro-82M (Apache-2.0)
+kokoro==0.9.4
+misaki[en]==0.9.4
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+# Moteur alternatif : Supertonic 3 (code MIT, modèle OpenRAIL-M), ONNX
+supertonic==1.3.1
+# E/S audio
+soundfile>=0.13
+numpy>=1.26
+# Sélection/vérification des prises (--takes N / --asr) : UTMOS via torch.hub (exige torchaudio, installé par setup.sh depuis l'index CPU) + faster-whisper
+librosa>=0.10
+faster-whisper>=1.1

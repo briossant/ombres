@@ -1,0 +1,53 @@
+<!doctype html><html><body>
+<script>
+// Regular "ligne claire" hatching TAM, tileable 512, nested levels.
+const N=512;
+function rng(seed){return ()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const R=rng(77);
+const c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d');
+g.fillStyle='#fff';g.fillRect(0,0,N,N);
+// family: dir 'a' slope 1/2 (y = x/2 + c), 'b' slope -2 (x = -y/2 + c), 'h' horizontal
+function line(fam, c0, width, dashMin, dashMax, gapMin, gapMax, wob){
+  // parametrize by u in [0,N): point p(u)
+  const ph=R()*6.283, ph2=R()*6.283, amp=wob*(0.5+R());
+  const P=(u)=>{ const w=amp*Math.sin(u/N*6.283*3+ph)+amp*0.5*Math.sin(u/N*6.283*7+ph2);
+    if(fam==='a'){ return [u - w*0.447, u/2 + c0 + w*0.894]; }
+    if(fam==='b'){ return [-u/2 + c0 + w*0.894, u + w*0.447]; }
+    return [u, c0 + w]; };
+  let u=R()*N; const end=u+N;
+  while(u<end){
+    const L=dashMin+R()*(dashMax-dashMin); const u1=Math.min(u+L,end);
+    const steps=Math.max(2,Math.ceil((u1-u)/6));
+    for(const ox of [-N,0,N]) for(const oy of [-N,0,N]){
+      for(let i=0;i<steps;i++){
+        const t0=u+(u1-u)*i/steps, t1=u+(u1-u)*(i+1)/steps; const tm=((i+0.5)/steps);
+        const taper=Math.min(1, Math.sin(tm*Math.PI)*2.2);
+        const [x0,y0]=P(t0),[x1,y1]=P(t1);
+        g.lineWidth=width*(0.35+0.65*taper); g.lineCap='round'; g.strokeStyle='#000';
+        g.beginPath(); g.moveTo(((x0+ox)%N+N)%N===x0+ox?x0+ox:x0+ox, y0+oy); g.lineTo(x1+ox,y1+oy); g.stroke();
+      }
+    }
+    u=u1+gapMin+R()*(gapMax-gapMin);
+  }
+}
+// wrap helper: draw lines for all c in family spacing s with offset o
+function family(fam,s,o,width,dash,gap,wob,prob=1){ const cnt = fam==='a'? 256/s*2 : N/s; for(let k=0;k<cnt;k++){ if(R()>prob) continue; line(fam,k*s+o+(R()-0.5)*1.2,width,dash[0],dash[1],gap[0],gap[1],wob);} }
+const out=[]; const snap=()=>out.push(g.getImageData(0,0,N,N));
+// L1: sparse main hatch, broken dashes
+family('a',16,0,1.5,[40,160],[20,70],0.8,0.7); snap();
+// L2: complete main hatch lines + fewer gaps
+family('a',16,0,1.5,[80,260],[10,40],0.8,0.6); snap();
+// L3: in-between main hatch (spacing 8 overall)
+family('a',16,8,1.4,[60,220],[15,60],0.8,0.9); snap();
+// L4: cross hatch
+family('b',16,0,1.4,[60,220],[15,60],0.8,0.9); snap();
+// L5: cross hatch in-between + thicker
+family('b',16,8,1.5,[80,260],[10,40],0.8,0.9); family('a',16,4,1.3,[40,120],[30,90],0.8,0.5); snap();
+// L6: horizontal third direction, dense
+family('h',8,0,1.6,[100,300],[5,25],0.6,1); family('a',16,12,1.4,[80,200],[10,40],0.8,0.8); snap();
+function pack(ids){const cc=document.createElement('canvas');cc.width=cc.height=N;const gg=cc.getContext('2d');const im=gg.createImageData(N,N);
+  for(let i=0;i<N*N;i++){im.data[i*4]=ids[0].data[i*4];im.data[i*4+1]=ids[1].data[i*4];im.data[i*4+2]=ids[2].data[i*4];im.data[i*4+3]=255;}gg.putImageData(im,0,0);return cc.toDataURL('image/png');}
+const cov=out.map(id=>{let s=0;for(let i=0;i<id.data.length;i+=4)s+=1-id.data[i]/255;return (s/(N*N)).toFixed(3)});
+window.RESULT={a:pack(out.slice(0,3)),b:pack(out.slice(3,6)),cov,levels:out.map(id=>{const cc=document.createElement('canvas');cc.width=cc.height=N;cc.getContext('2d').putImageData(id,0,0);return cc.toDataURL('image/png');})};
+document.title='done';
+</script></body></html>

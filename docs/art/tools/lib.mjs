@@ -1,0 +1,11 @@
+import * as c from 'culori';
+export const lab = c.converter('oklab'), lch = c.converter('oklch'), rgb = c.converter('rgb');
+export const hex = x => c.formatHex(c.clampChroma(x, 'oklch'));
+export const dE = (x, y) => { const A = lab(x), B = lab(y); return Math.hypot(A.l - B.l, A.a - B.a, A.b - B.b); };
+export const CVD = { deutan: c.filterDeficiencyDeuter(1), protan: c.filterDeficiencyProt(1), tritan: c.filterDeficiencyTrit(1) };
+export const sim = (kind, x) => kind === 'normal' ? x : CVD[kind](c.parse(typeof x === 'string' ? x : hex(x)));
+export const okl = (l, C, h) => ({ mode: 'oklch', l, c: C, h });
+export const mixLab = (x, y, t) => { const A = lab(x), B = lab(y); return { mode: 'oklab', l: A.l + (B.l - A.l) * t, a: A.a + (B.a - A.a) * t, b: A.b + (B.b - A.b) * t }; };
+export const inGamut = c.inGamut('rgb');
+export const clampLCH = x => c.clampChroma(x, 'oklch');
+export const fmt = (x) => { const L = lch(x); return `${hex(x)} (L${L.l.toFixed(2)} C${L.c.toFixed(3)} h${Math.round(L.h ?? 0)})`; };

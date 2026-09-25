@@ -1,0 +1,943 @@
+{
+ "_doc": "Ombres — palette maîtresse (docs/ART_BIBLE.md §2-3). Keyframes indexées sur paletteElev (°), interpolation OKLab. Généré par docs/art/tools/.",
+ "keyframes": [
+  {
+   "id": "KF80",
+   "name": "Zénith",
+   "paletteElevDeg": 80,
+   "hex": {
+    "skyTop": "#8DD3D2",
+    "skyMid": "#B5E3D9",
+    "skyHorizon": "#E6F3E3",
+    "sandLit": "#F1DABE",
+    "groundFlat": "#F1DABE",
+    "sandShade": "#CCB0A7",
+    "castShadow": "#A18EA1",
+    "ink": "#2B1D23",
+    "sun": "#FFFCF0",
+    "haze": "#EBE8DA"
+   },
+   "oklch": {
+    "skyTop": [
+     0.82,
+     0.07,
+     195
+    ],
+    "skyMid": [
+     0.881,
+     0.05,
+     180
+    ],
+    "skyHorizon": [
+     0.95,
+     0.025,
+     140
+    ],
+    "sandLit": [
+     0.9,
+     0.045,
+     73
+    ],
+    "groundFlat": [
+     0.9,
+     0.045,
+     73
+    ],
+    "sandShade": [
+     0.779,
+     0.035,
+     39
+    ],
+    "castShadow": [
+     0.67,
+     0.035,
+     326
+    ],
+    "ink": [
+     0.25,
+     0.024,
+     352
+    ],
+    "sun": [
+     0.99,
+     0.016,
+     95
+    ],
+    "haze": [
+     0.93,
+     0.019,
+     97
+    ]
+   },
+   "derived": {
+    "hatch": "#2B1D23",
+    "hatchOpacity": 0.3,
+    "birdLit": "#EFEEE1",
+    "birdShade": "#BFBDB6",
+    "paintChroma": 0.105
+   }
+  },
+  {
+   "id": "KF50",
+   "name": "Après-midi",
+   "paletteElevDeg": 50,
+   "hex": {
+    "skyTop": "#57B8CD",
+    "skyMid": "#93D4DA",
+    "skyHorizon": "#CFEAE8",
+    "sandLit": "#EED1A9",
+    "groundFlat": "#EED1A9",
+    "sandShade": "#C1A199",
+    "castShadow": "#8C7F98",
+    "ink": "#2B1D23",
+    "sun": "#FFF9E3",
+    "haze": "#E6DBC8"
+   },
+   "oklch": {
+    "skyTop": [
+     0.732,
+     0.095,
+     214
+    ],
+    "skyMid": [
+     0.828,
+     0.066,
+     203
+    ],
+    "skyHorizon": [
+     0.917,
+     0.029,
+     191
+    ],
+    "sandLit": [
+     0.875,
+     0.062,
+     76
+    ],
+    "groundFlat": [
+     0.875,
+     0.062,
+     76
+    ],
+    "sandShade": [
+     0.735,
+     0.04,
+     34
+    ],
+    "castShadow": [
+     0.617,
+     0.04,
+     309
+    ],
+    "ink": [
+     0.25,
+     0.024,
+     352
+    ],
+    "sun": [
+     0.981,
+     0.029,
+     94
+    ],
+    "haze": [
+     0.895,
+     0.028,
+     81
+    ]
+   },
+   "derived": {
+    "hatch": "#2B1D23",
+    "hatchOpacity": 0.35,
+    "birdLit": "#F0EEDE",
+    "birdShade": "#B7B5B2",
+    "paintChroma": 0.105
+   }
+  },
+  {
+   "id": "KF25",
+   "name": "Fin d'après-midi",
+   "paletteElevDeg": 25,
+   "hex": {
+    "skyTop": "#6294C2",
+    "skyMid": "#8FCCD1",
+    "skyHorizon": "#EAE9BD",
+    "sandLit": "#F2C284",
+    "groundFlat": "#EBBC86",
+    "sandShade": "#B38887",
+    "castShadow": "#77698D",
+    "ink": "#2C1C22",
+    "sun": "#FFF4CC",
+    "haze": "#EED2A7"
+   },
+   "oklch": {
+    "skyTop": [
+     0.65,
+     0.088,
+     247
+    ],
+    "skyMid": [
+     0.806,
+     0.063,
+     202
+    ],
+    "skyHorizon": [
+     0.924,
+     0.057,
+     106
+    ],
+    "sandLit": [
+     0.843,
+     0.096,
+     73
+    ],
+    "groundFlat": [
+     0.825,
+     0.088,
+     70
+    ],
+    "sandShade": [
+     0.668,
+     0.053,
+     20
+    ],
+    "castShadow": [
+     0.547,
+     0.057,
+     302
+    ],
+    "ink": [
+     0.249,
+     0.027,
+     355
+    ],
+    "sun": [
+     0.966,
+     0.053,
+     94
+    ],
+    "haze": [
+     0.877,
+     0.064,
+     78
+    ]
+   },
+   "derived": {
+    "hatch": "#2F1F27",
+    "hatchOpacity": 0.38,
+    "birdLit": "#F1E5C9",
+    "birdShade": "#A29DA7",
+    "paintChroma": 0.11
+   }
+  },
+  {
+   "id": "KF16",
+   "name": "Heure dorée",
+   "paletteElevDeg": 16,
+   "hex": {
+    "skyTop": "#6886BD",
+    "skyMid": "#B7DBCA",
+    "skyHorizon": "#F7E9A7",
+    "sandLit": "#F4BC74",
+    "groundFlat": "#EAB377",
+    "sandShade": "#AE7E80",
+    "castShadow": "#6F6089",
+    "ink": "#2D1C22",
+    "sun": "#FFF2C3",
+    "haze": "#F2CE99"
+   },
+   "oklch": {
+    "skyTop": [
+     0.62,
+     0.091,
+     262
+    ],
+    "skyMid": [
+     0.861,
+     0.045,
+     165
+    ],
+    "skyHorizon": [
+     0.93,
+     0.085,
+     98
+    ],
+    "sandLit": [
+     0.831,
+     0.11,
+     72
+    ],
+    "groundFlat": [
+     0.804,
+     0.1,
+     68
+    ],
+    "sandShade": [
+     0.641,
+     0.06,
+     16
+    ],
+    "castShadow": [
+     0.519,
+     0.066,
+     301
+    ],
+    "ink": [
+     0.251,
+     0.029,
+     356
+    ],
+    "sun": [
+     0.96,
+     0.062,
+     94
+    ],
+    "haze": [
+     0.87,
+     0.08,
+     77
+    ]
+   },
+   "derived": {
+    "hatch": "#33222B",
+    "hatchOpacity": 0.4,
+    "birdLit": "#F2DEBB",
+    "birdShade": "#9892A2",
+    "paintChroma": 0.115
+   }
+  },
+  {
+   "id": "KF10",
+   "name": "Soleil bas",
+   "paletteElevDeg": 10,
+   "hex": {
+    "skyTop": "#7570A3",
+    "skyMid": "#F4C7A3",
+    "skyHorizon": "#FBDE8C",
+    "sandLit": "#F2A96A",
+    "groundFlat": "#D29E90",
+    "sandShade": "#977B86",
+    "castShadow": "#62567D",
+    "ink": "#2A1A22",
+    "sun": "#FFECB7",
+    "haze": "#EEBA90"
+   },
+   "oklch": {
+    "skyTop": [
+     0.57,
+     0.078,
+     288
+    ],
+    "skyMid": [
+     0.86,
+     0.07,
+     60
+    ],
+    "skyHorizon": [
+     0.907,
+     0.106,
+     91
+    ],
+    "sandLit": [
+     0.792,
+     0.117,
+     61
+    ],
+    "groundFlat": [
+     0.744,
+     0.066,
+     36
+    ],
+    "sandShade": [
+     0.613,
+     0.038,
+     353
+    ],
+    "castShadow": [
+     0.481,
+     0.063,
+     298
+    ],
+    "ink": [
+     0.242,
+     0.029,
+     348
+    ],
+    "sun": [
+     0.946,
+     0.071,
+     91
+    ],
+    "haze": [
+     0.826,
+     0.082,
+     60
+    ]
+   },
+   "derived": {
+    "hatch": "#32222E",
+    "hatchOpacity": 0.42,
+    "birdLit": "#F2D2AF",
+    "birdShade": "#8C8799",
+    "paintChroma": 0.12
+   }
+  },
+  {
+   "id": "KF3",
+   "name": "Coucher",
+   "paletteElevDeg": 3.5,
+   "hex": {
+    "skyTop": "#795C87",
+    "skyMid": "#EC9C63",
+    "skyHorizon": "#FFD16B",
+    "sandLit": "#EF945F",
+    "groundFlat": "#82788B",
+    "sandShade": "#7D768C",
+    "castShadow": "#554C70",
+    "ink": "#261721",
+    "sun": "#FFE6A9",
+    "haze": "#E8A587"
+   },
+   "oklch": {
+    "skyTop": [
+     0.521,
+     0.074,
+     314
+    ],
+    "skyMid": [
+     0.761,
+     0.121,
+     55
+    ],
+    "skyHorizon": [
+     0.881,
+     0.131,
+     85
+    ],
+    "sandLit": [
+     0.75,
+     0.13,
+     50
+    ],
+    "groundFlat": [
+     0.588,
+     0.031,
+     309
+    ],
+    "sandShade": [
+     0.58,
+     0.034,
+     300
+    ],
+    "castShadow": [
+     0.44,
+     0.059,
+     295
+    ],
+    "ink": [
+     0.228,
+     0.03,
+     340
+    ],
+    "sun": [
+     0.931,
+     0.082,
+     88
+    ],
+    "haze": [
+     0.779,
+     0.09,
+     45
+    ]
+   },
+   "derived": {
+    "hatch": "#2F2130",
+    "hatchOpacity": 0.42,
+    "birdLit": "#F1C1A0",
+    "birdShade": "#7F7B8E",
+    "paintChroma": 0.13
+   }
+  },
+  {
+   "id": "KF1",
+   "name": "Soleil sur la Falaise",
+   "paletteElevDeg": 1,
+   "hex": {
+    "skyTop": "#624D7A",
+    "skyMid": "#E7885D",
+    "skyHorizon": "#FFC669",
+    "sandLit": "#E57E5E",
+    "groundFlat": "#797286",
+    "sandShade": "#726C82",
+    "castShadow": "#4E476A",
+    "ink": "#231521",
+    "sun": "#FFD7A0",
+    "haze": "#DA9982"
+   },
+   "oklch": {
+    "skyTop": [
+     0.461,
+     0.075,
+     305
+    ],
+    "skyMid": [
+     0.719,
+     0.13,
+     45
+    ],
+    "skyHorizon": [
+     0.86,
+     0.128,
+     78
+    ],
+    "sandLit": [
+     0.701,
+     0.136,
+     38
+    ],
+    "groundFlat": [
+     0.565,
+     0.031,
+     301
+    ],
+    "sandShade": [
+     0.545,
+     0.035,
+     298
+    ],
+    "castShadow": [
+     0.42,
+     0.058,
+     293
+    ],
+    "ink": [
+     0.22,
+     0.031,
+     332
+    ],
+    "sun": [
+     0.9,
+     0.083,
+     75
+    ],
+    "haze": [
+     0.741,
+     0.085,
+     40
+    ]
+   },
+   "derived": {
+    "hatch": "#2D2132",
+    "hatchOpacity": 0.4,
+    "birdLit": "#EDB79F",
+    "birdShade": "#7B788A",
+    "paintChroma": 0.135
+   }
+  },
+  {
+   "id": "KF-4",
+   "name": "Crépuscule (derrière la nuit)",
+   "paletteElevDeg": -4,
+   "hex": {
+    "skyTop": "#272950",
+    "skyMid": "#775774",
+    "skyHorizon": "#D69F58",
+    "sandLit": "#706C7F",
+    "groundFlat": "#575568",
+    "sandShade": "#575568",
+    "castShadow": "#45455D",
+    "ink": "#181322",
+    "sun": "#F6B669",
+    "haze": "#816C85"
+   },
+   "oklch": {
+    "skyTop": [
+     0.3,
+     0.07,
+     279
+    ],
+    "skyMid": [
+     0.5,
+     0.06,
+     330
+    ],
+    "skyHorizon": [
+     0.74,
+     0.11,
+     72
+    ],
+    "sandLit": [
+     0.542,
+     0.03,
+     295
+    ],
+    "groundFlat": [
+     0.459,
+     0.031,
+     290
+    ],
+    "sandShade": [
+     0.459,
+     0.031,
+     290
+    ],
+    "castShadow": [
+     0.4,
+     0.04,
+     284
+    ],
+    "ink": [
+     0.201,
+     0.03,
+     299
+    ],
+    "sun": [
+     0.82,
+     0.12,
+     70
+    ],
+    "haze": [
+     0.56,
+     0.045,
+     321
+    ]
+   },
+   "derived": {
+    "hatch": "#252133",
+    "hatchOpacity": 0.25,
+    "birdLit": "#A6A4A9",
+    "birdShade": "#757682",
+    "paintChroma": 0.13
+   }
+  },
+  {
+   "id": "KF-15",
+   "name": "Nuit (résultats)",
+   "paletteElevDeg": -15,
+   "hex": {
+    "skyTop": "#162C55",
+    "skyMid": "#294875",
+    "skyHorizon": "#5B678C",
+    "sandLit": "#9B94AB",
+    "groundFlat": "#7B778D",
+    "sandShade": "#7B778D",
+    "castShadow": "#626079",
+    "ink": "#131423",
+    "sun": "#E3F0FE",
+    "haze": "#69708F"
+   },
+   "oklch": {
+    "skyTop": [
+     0.3,
+     0.079,
+     262
+    ],
+    "skyMid": [
+     0.401,
+     0.085,
+     258
+    ],
+    "skyHorizon": [
+     0.519,
+     0.061,
+     270
+    ],
+    "sandLit": [
+     0.68,
+     0.034,
+     299
+    ],
+    "groundFlat": [
+     0.58,
+     0.034,
+     294
+    ],
+    "sandShade": [
+     0.58,
+     0.034,
+     294
+    ],
+    "castShadow": [
+     0.5,
+     0.04,
+     289
+    ],
+    "ink": [
+     0.198,
+     0.03,
+     280
+    ],
+    "sun": [
+     0.95,
+     0.023,
+     250
+    ],
+    "haze": [
+     0.551,
+     0.049,
+     275
+    ]
+   },
+   "derived": {
+    "hatch": "#2C2D3F",
+    "hatchOpacity": 0.2,
+    "birdLit": "#BFBBC2",
+    "birdShade": "#888793",
+    "paintChroma": 0.12
+   }
+  }
+ ],
+ "players": [
+  {
+   "slot": 1,
+   "fr": "Corail",
+   "en": "Coral",
+   "hex": "#E07148",
+   "oklch": [
+    0.67,
+    0.15,
+    40
+   ],
+   "text": "#A0421D",
+   "glyph": "croix",
+   "glyphEn": "cross",
+   "pattern": "lignes45",
+   "terr": {
+    "dL": -0.053,
+    "cs": 1.15,
+    "h": 40
+   }
+  },
+  {
+   "slot": 2,
+   "fr": "Lagon",
+   "en": "Lagoon",
+   "hex": "#6ADDD9",
+   "oklch": [
+    0.83,
+    0.105,
+    192
+   ],
+   "text": "#007270",
+   "glyph": "vagues",
+   "glyphEn": "waves",
+   "pattern": "lignes0",
+   "terr": {
+    "dL": 0.06,
+    "cs": 0.92,
+    "h": 192
+   }
+  },
+  {
+   "slot": 3,
+   "fr": "Indigo",
+   "en": "Indigo",
+   "hex": "#414CAA",
+   "oklch": [
+    0.46,
+    0.15,
+    274
+   ],
+   "text": "#424EA2",
+   "glyph": "croissant",
+   "glyphEn": "crescent",
+   "pattern": "points",
+   "terr": {
+    "dL": -0.109,
+    "cs": 1.07,
+    "h": 274
+   }
+  },
+  {
+   "slot": 4,
+   "fr": "Safran",
+   "en": "Saffron",
+   "hex": "#FBCF55",
+   "oklch": [
+    0.87,
+    0.145,
+    89
+   ],
+   "text": "#7B5F00",
+   "glyph": "disque",
+   "glyphEn": "disc",
+   "pattern": "lignes90",
+   "terr": {
+    "dL": 0.056,
+    "cs": 1.15,
+    "h": 89
+   }
+  },
+  {
+   "slot": 5,
+   "fr": "Azur",
+   "en": "Azure",
+   "hex": "#3C96D8",
+   "oklch": [
+    0.65,
+    0.13,
+    244
+   ],
+   "text": "#1169A0",
+   "glyph": "triangle",
+   "glyphEn": "triangle",
+   "pattern": "lignes135",
+   "terr": {
+    "dL": -0.019,
+    "cs": 0.96,
+    "h": 244
+   }
+  },
+  {
+   "slot": 6,
+   "fr": "Carmin",
+   "en": "Carmine",
+   "hex": "#A52E49",
+   "oklch": [
+    0.49,
+    0.155,
+    12
+   ],
+   "text": "#9F364B",
+   "glyph": "carre",
+   "glyphEn": "square",
+   "pattern": "grille",
+   "terr": {
+    "dL": -0.12,
+    "cs": 1.15,
+    "h": 12
+   }
+  },
+  {
+   "slot": 7,
+   "fr": "Prune",
+   "en": "Plum",
+   "hex": "#9B60A4",
+   "oklch": [
+    0.58,
+    0.12,
+    322
+   ],
+   "text": "#7F4D87",
+   "glyph": "goutte",
+   "glyphEn": "drop",
+   "pattern": "grilleDiag",
+   "terr": {
+    "dL": -0.07,
+    "cs": 0.94,
+    "h": 322
+   }
+  },
+  {
+   "slot": 8,
+   "fr": "Anis",
+   "en": "Anise",
+   "hex": "#8CC460",
+   "oklch": [
+    0.76,
+    0.145,
+    133
+   ],
+   "text": "#447214",
+   "glyph": "etoile",
+   "glyphEn": "star",
+   "pattern": "vagues",
+   "terr": {
+    "dL": 0.052,
+    "cs": 1.15,
+    "h": 133
+   }
+  },
+  {
+   "slot": 9,
+   "fr": "Sarcelle",
+   "en": "Teal",
+   "hex": "#006773",
+   "oklch": [
+    0.47,
+    0.085,
+    209
+   ],
+   "text": "#106672",
+   "glyph": "chevron",
+   "glyphEn": "chevron",
+   "pattern": "tirets0",
+   "terr": {
+    "dL": -0.091,
+    "cs": 0.94,
+    "h": 209
+   }
+  },
+  {
+   "slot": 10,
+   "fr": "Rose",
+   "en": "Rose",
+   "hex": "#F79BB6",
+   "oklch": [
+    0.79,
+    0.115,
+    1
+   ],
+   "text": "#924860",
+   "glyph": "losange",
+   "glyphEn": "diamond",
+   "pattern": "anneaux",
+   "terr": {
+    "dL": 0.059,
+    "cs": 0.96,
+    "h": 1
+   }
+  },
+  {
+   "slot": 11,
+   "fr": "Lilas",
+   "en": "Lilac",
+   "hex": "#B0A4F5",
+   "oklch": [
+    0.76,
+    0.115,
+    290
+   ],
+   "text": "#63589A",
+   "glyph": "anneau",
+   "glyphEn": "ring",
+   "pattern": "zigzag",
+   "terr": {
+    "dL": 0.049,
+    "cs": 1.15,
+    "h": 290
+   }
+  },
+  {
+   "slot": 12,
+   "fr": "Jade",
+   "en": "Jade",
+   "hex": "#44975F",
+   "oklch": [
+    0.61,
+    0.118,
+    152
+   ],
+   "text": "#2A7444",
+   "glyph": "eclair",
+   "glyphEn": "bolt",
+   "pattern": "tirets90",
+   "terr": {
+    "dL": -0.097,
+    "cs": 0.93,
+    "h": 152
+   }
+  }
+ ],
+ "constants": {
+  "bone": "#EDEDDF",
+  "boneShade": "#C4C6BA",
+  "boneHollow": "#ACADA3",
+  "paper": "#F7F0E3",
+  "towerCream": "#EFE2C8",
+  "towerOchre": "#D9A45B",
+  "towerTerracotta": "#C8765A",
+  "domeTurquoise": "#4FB3AE",
+  "domeCobalt": "#3C5FA8",
+  "crownGold": "#FFF2C3"
+ }
+}

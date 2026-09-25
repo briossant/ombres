@@ -1,0 +1,154 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Ombres palette sheets</title>
+<link href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&family=Patrick+Hand+SC&display=block" rel="stylesheet">
+<style>
+ html,body{margin:0;background:#F7F0E3;color:#2B1D23;font-family:'Patrick Hand SC',sans-serif}
+ h1{font-family:'Julius Sans One',sans-serif;font-weight:400;font-size:26px;margin:14px 20px 4px;letter-spacing:1px}
+ .sub{margin:0 20px 10px;font-size:17px}
+ canvas{display:block;margin:0 20px}
+</style>
+<script src="sheet-data.js"></script>
+</head><body>
+<h1 id="t"></h1><div class="sub" id="s"></div>
+<canvas id="c"></canvas>
+<script>
+const Q = new URLSearchParams(location.search); const MODE = Q.get('mode') || 'terr';
+const D = window.DATA; const KINDS = ['normal','deutan','protan','tritan'];
+const KLAB = { normal:'vision normale', deutan:'deutéranopie', protan:'protanopie', tritan:'tritanopie' };
+const rgb = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+const fr = x => x - Math.floor(x);
+const sst = (a,b,x) => { const t = Math.min(1, Math.max(0, (x-a)/(b-a))); return t*t*(3-2*t); };
+// ---- patterns (colour-blind mode), px coords; returns coverage 0..1
+function pattern(name, x, y) {
+  const S = 9, W = 1.3;
+  const line = u => { const d = Math.abs(fr(u / S + 0.5) - 0.5) * S; return 1 - sst(W*0.5 - 0.5, W*0.5 + 0.5, d); };
+  const r2 = Math.SQRT1_2;
+  switch (name) {
+    case 'lignes0': return line(y);
+    case 'lignes90': return line(x);
+    case 'lignes45': return line((x + y) * r2);
+    case 'lignes135': return line((x - y) * r2);
+    case 'grille': return Math.max(line(y), line(x));
+    case 'grilleDiag': return Math.max(line((x + y) * r2), line((x - y) * r2));
+    case 'points': { const s = 8, cx = (fr(x / s) - 0.5) * s, cy = (fr(y / s) - 0.5) * s; return 1 - sst(1.2, 2.0, Math.hypot(cx, cy)); }
+    case 'vagues': return line(y + 2.2 * Math.sin(x * 2 * Math.PI / 16));
+    case 'tirets0': return line(y) * (fr(x / 11) < 0.55 ? 1 : 0);
+    case 'tirets90': return line(x) * (fr(y / 11) < 0.55 ? 1 : 0);
+    case 'anneaux': { const s = 12, cx = (fr(x / s) - 0.5) * s, cy = (fr(y / s) - 0.5) * s; const d = Math.abs(Math.hypot(cx, cy) - 3.4); return 1 - sst(0.3, 1.0, d); }
+    case 'zigzag': { const tri = Math.abs(fr(y / 12) - 0.5) * 2; return line(x + 4 * tri); }
+  }
+  return 0;
+}
+// ---- glyphs
+function glyph(ctx, name, cx, cy, r, col, stroke) {
+  ctx.save(); ctx.translate(cx, cy); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = r * 0.34; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const P = () => ctx.beginPath();
+  switch (name) {
+    case 'croix': P(); ctx.rect(-r*0.22, -r*0.9, r*0.44, r*1.8); ctx.rect(-r*0.9, -r*0.22, r*1.8, r*0.44); ctx.fill(); break;
+    case 'vagues': ctx.lineWidth = r*0.28; for (const oy of [-0.38, 0.38]) { P(); for (let i = 0; i <= 24; i++) { const t = i/24; const x = (t-0.5)*1.9*r, y = oy*r + Math.sin(t*2*Math.PI)*0.25*r; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); } ctx.stroke(); } break;
+    case 'croissant': { const R = r*0.9, cx2 = r*0.42, cy2 = -r*0.22, R2 = r*0.72; const d = Math.hypot(cx2, cy2);
+      const a0 = Math.atan2(cy2, cx2), x = (d*d + R*R - R2*R2) / (2*d), h = Math.sqrt(Math.max(R*R - x*x, 0));
+      const pA = [ (x*cx2 - h*cy2)/d, (x*cy2 + h*cx2)/d ], pB = [ (x*cx2 + h*cy2)/d, (x*cy2 - h*cx2)/d ];
+      const angA = Math.atan2(pA[1], pA[0]), angB = Math.atan2(pB[1], pB[0]);
+      P(); ctx.arc(0, 0, R, angA, angB + (angB < angA ? 0 : -2*Math.PI) , false);
+      ctx.arc(cx2, cy2, R2, Math.atan2(pB[1]-cy2, pB[0]-cx2), Math.atan2(pA[1]-cy2, pA[0]-cx2), true); ctx.closePath(); ctx.fill(); break; }
+    case 'disque': P(); ctx.arc(0, 0, r*0.85, 0, 2*Math.PI); ctx.fill(); break;
+    case 'triangle': P(); ctx.moveTo(0, -r*0.95); ctx.lineTo(r*0.95, r*0.75); ctx.lineTo(-r*0.95, r*0.75); ctx.closePath(); ctx.fill(); break;
+    case 'carre': P(); ctx.rect(-r*0.72, -r*0.72, r*1.44, r*1.44); ctx.fill(); break;
+    case 'goutte': P(); ctx.moveTo(0, -r*0.98); ctx.bezierCurveTo(r*0.35, -r*0.45, r*0.8, -r*0.05, r*0.8, r*0.3); ctx.arc(0, r*0.3, r*0.8, 0, Math.PI); ctx.bezierCurveTo(-r*0.8, -r*0.05, -r*0.35, -r*0.45, 0, -r*0.98); ctx.fill(); break;
+    case 'etoile': P(); for (let i = 0; i < 10; i++) { const a = -Math.PI/2 + i*Math.PI/5, rr = i%2 ? r*0.42 : r*1.0; ctx.lineTo(Math.cos(a)*rr, Math.sin(a)*rr); } ctx.closePath(); ctx.fill(); break;
+    case 'chevron': ctx.lineWidth = r*0.36; P(); ctx.moveTo(-r*0.9, r*0.45); ctx.lineTo(0, -r*0.45); ctx.lineTo(r*0.9, r*0.45); ctx.stroke(); break;
+    case 'losange': P(); ctx.moveTo(0, -r); ctx.lineTo(r*0.75, 0); ctx.lineTo(0, r); ctx.lineTo(-r*0.75, 0); ctx.closePath(); ctx.fill(); break;
+    case 'anneau': ctx.lineWidth = r*0.32; P(); ctx.arc(0, 0, r*0.7, 0, 2*Math.PI); ctx.stroke(); break;
+    case 'eclair': P(); ctx.moveTo(r*0.25, -r); ctx.lineTo(-r*0.55, r*0.12); ctx.lineTo(-r*0.02, r*0.12); ctx.lineTo(-r*0.25, r); ctx.lineTo(r*0.55, -r*0.12); ctx.lineTo(r*0.02, -r*0.12); ctx.closePath(); ctx.fill(); break;
+  }
+  ctx.restore();
+}
+// ---- blob SDF (organic union of circles), deterministic
+function blobs(W, H) {
+  const out = []; let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const cols = 6, rows = 2, cw = (W - 20) / cols, ch = (H - 16) / rows;
+  for (let i = 0; i < 12; i++) { const c = i % cols, r = Math.floor(i / cols); const cx = 10 + cw * (c + 0.5), cy = 8 + ch * (r + 0.5);
+    const circ = []; for (let k = 0; k < 4; k++) circ.push([cx + (rnd() - 0.5) * cw * 0.45, cy + (rnd() - 0.5) * ch * 0.32, Math.min(cw, ch) * (0.2 + rnd() * 0.12)]);
+    out.push({ cx, cy, circ, split: cx + cw * 0.12 }); }
+  return out;
+}
+function sdfBlob(b, x, y) { let d = 1e9; for (const [cx, cy, r] of b.circ) d = Math.min(d, Math.hypot(x - cx, y - cy) - r); return d + 1.6 * Math.sin(x * 0.35 + y * 0.21); }
+// ---- territory cell renderer
+function renderCell(img, W0, X0, Y0, W, H, kf, kind, cb) {
+  const B = blobs(W, H); const G = rgb(kf.ground[kind]), C = rgb(kf.cast[kind]);
+  const ell = [ { cx: B[1].cx - 26, cy: B[1].cy + 4, a: 34, b: 13, strong: true, player: 0, over: 1 }, { cx: B[2].cx - 22, cy: B[2].cy - 2, a: 38, b: 18, strong: false, player: 0, over: 2 } ];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let col = G, owner = -1, pale = false, dist = 0;
+    for (let i = 0; i < 12; i++) { const d = sdfBlob(B[i], x, y); if (d < 0) { owner = i; dist = -d; pale = x > B[i].split + 4 * Math.sin(y * 0.3); break; } }
+    const band = Math.abs((x * 0.28 - y) - (W * 0.28 * 0.62 - H * 0.5)) < 11;   // tower shadow band (diagonal)
+    const e = kf.p[owner] ?? null;
+    if (owner >= 0) {
+      const key = pale ? (dist < 1.5 ? 'paleRim' : 'pale') : (dist < 3 ? 'rim' : 'strong');
+      col = rgb(e[key + (band ? 'Sh' : '')][kind]);
+      if (cb) { const cov = pattern(D.players[owner].pattern, x + X0, y + Y0) * (pale ? 0.55 : 1); const L = rgb(e[(pale ? 'paleLine' : 'line') + (band ? 'Sh' : '')][kind]); col = col.map((v, i) => v + (L[i] - v) * cov); }
+    } else if (band) col = C;
+    // bird shadow ellipses (player 0), flat, crisp, player-colour rim: solid = strong, dotted = pale
+    for (const E of ell) {
+      const q = Math.hypot((x - E.cx) / E.a, (y - E.cy) / E.b); const dpx = (q - 1) * E.b;
+      if (q < 1) { const p = kf.p[E.player];
+        let sc = owner >= 0 ? (E.strong ? kf.over[owner].s[kind] : kf.over[owner].pale[kind]) : (E.strong ? p.bShadow[kind] : p.bShadowPale[kind]);
+        col = rgb(sc);
+        if (dpx > -2.2) { const ang = Math.atan2((y - E.cy) / E.b, (x - E.cx) / E.a); const dotted = !E.strong && fr(ang * 60 / (2 * Math.PI)) > 0.5; if (!dotted) col = rgb(p.bRim[kind]); }
+      }
+    }
+    const o = ((Y0 + y) * W0 + (X0 + x)) * 4; img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
+  }
+}
+async function main() {
+  await document.fonts.load('22px "Patrick Hand SC"'); await document.fonts.load('24px "Julius Sans One"'); await document.fonts.ready;
+  const cv = document.getElementById('c'); const ctx = cv.getContext('2d');
+  if (MODE === 'terr' || MODE === 'cb') {
+    const rowsKF = MODE === 'cb' ? D.kf.filter(k => ['KF80','KF16','KF3','KF-4'].includes(k.id)) : D.kf;
+    const CW = 380, CH = 112, LX = 150, HY = 64;
+    cv.width = LX + CW * 4 + 3 * 8; cv.height = HY + rowsKF.length * (CH + 8) + 8;
+    ctx.fillStyle = '#F7F0E3'; ctx.fillRect(0, 0, cv.width, cv.height);
+    document.getElementById('t').textContent = MODE === 'cb' ? 'Ombres — mode daltonien : motif par joueur (+ glyphes)' : 'Ombres — territoire des 12 joueurs sur chaque keyframe';
+    document.getElementById('s').textContent = 'Blocs 1-6 en haut, 7-12 en bas (ordre d\'attribution). Moitié gauche = fort (liseré de pigment), moitié droite = pâle. Bande diagonale = ombre de tour (territoire gelé). Ellipses = ombre d\'oiseau Corail : pleine = forte (liseré continu), pâle = liseré pointillé.';
+    const img = ctx.createImageData(cv.width, cv.height);
+    for (let i = 0; i < img.data.length; i += 4) { img.data[i] = 247; img.data[i + 1] = 240; img.data[i + 2] = 227; img.data[i + 3] = 255; }
+    rowsKF.forEach((kf, r) => KINDS.forEach((kind, c) => renderCell(img, cv.width, LX + c * (CW + 8), HY + r * (CH + 8), CW, CH, kf, kind, MODE === 'cb')));
+    ctx.putImageData(img, 0, 0);
+    ctx.fillStyle = '#2B1D23'; ctx.font = '22px "Patrick Hand SC"';
+    KINDS.forEach((k, c) => ctx.fillText(KLAB[k], LX + c * (CW + 8) + 4, 26));
+    // legend: order + identity swatches with glyphs
+    D.players.forEach((p, i) => { const x = LX + i * 64 + 4, y = 40; ctx.fillStyle = p.id.normal; ctx.fillRect(x, y, 18, 16); ctx.strokeStyle = '#2B1D23'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, 18, 16); ctx.fillStyle = '#2B1D23'; ctx.font = '15px "Patrick Hand SC"'; ctx.fillText((i + 1) + ' ' + p.fr, x + 22, y + 13); });
+    rowsKF.forEach((kf, r) => { const y = HY + r * (CH + 8); ctx.fillStyle = '#2B1D23'; ctx.font = '19px "Patrick Hand SC"'; ctx.fillText(kf.id, 6, y + 30); ctx.font = '15px "Patrick Hand SC"'; ctx.fillText(kf.name, 6, y + 52); ctx.fillText('soleil ' + kf.elev + '°', 6, y + 72);
+      if (MODE === 'cb') { const B = blobs(CW, 112); KINDS.forEach((k, c) => B.forEach((b, i) => { const x = LX + c * (CW + 8) + b.cx - 14, yy = y + b.cy - 2; ctx.fillStyle = '#F7F0E3'; ctx.beginPath(); ctx.arc(x, yy, 9, 0, 7); ctx.fill(); ctx.strokeStyle = kf.ink[k]; ctx.lineWidth = 1.5; ctx.stroke(); glyph(ctx, D.players[i].glyph, x, yy, 6, kf.ink[k]); })); } });
+  } else if (MODE === 'id') {
+    const RH = 58, W = 1500; cv.width = W; cv.height = 70 + 12 * RH;
+    document.getElementById('t').textContent = 'Ombres — couleurs d\'identité des 12 joueurs (cape, selle, bandes d\'ailes, UI)';
+    document.getElementById('s').textContent = 'Ordre = ordre d\'attribution. Jeton = couleur + glyphe à l\'encre, sur papier. Motif = hachure du mode daltonien (sur lavis de territoire zénith).';
+    ctx.fillStyle = '#F7F0E3'; ctx.fillRect(0, 0, W, cv.height);
+    ctx.fillStyle = '#2B1D23'; ctx.font = '20px "Patrick Hand SC"';
+    const cols = ['#', 'nom', 'hex', ...KINDS.map(k => KLAB[k]), 'motif (zénith)', 'motif (coucher)', 'aile (os + bande)'];
+    const xs = [0, 34, 240, 340, 470, 600, 730, 880, 1040, 1200];
+    cols.forEach((c, i) => ctx.fillText(c, xs[i], 22));
+    const img = ctx.getImageData(0, 0, W, cv.height);
+    D.players.forEach((p, i) => { const y0 = 40 + i * RH; const K0 = D.kf[0].p[i], K3 = D.kf[5].p[i];
+      for (const [xoff, e] of [[880, K0], [1040, K3]]) for (let y = 0; y < 44; y++) for (let x = 0; x < 140; x++) {
+        const cov = pattern(p.pattern, x, y); const base = rgb(e.strong.normal), L = rgb(e.line.normal); const c = base.map((v, j) => v + (L[j] - v) * cov);
+        const o = ((y0 + y) * W + xoff + x) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; }
+    });
+    ctx.putImageData(img, 0, 0);
+    D.players.forEach((p, i) => { const y0 = 40 + i * RH, cy = y0 + 22;
+      ctx.fillStyle = '#2B1D23'; ctx.font = '22px "Patrick Hand SC"'; ctx.fillText(String(i + 1), 0, cy + 7);
+      ctx.font = '24px "Julius Sans One"'; ctx.fillText(p.fr, 34, cy + 2); ctx.font = '16px "Patrick Hand SC"'; ctx.fillText(p.en + ' · ' + p.glyph, 34, cy + 20);
+      ctx.fillText(p.id.normal.toUpperCase(), 240, cy + 7);
+      KINDS.forEach((k, c) => { const x = 340 + c * 130 + 40; ctx.fillStyle = p.id[k]; ctx.beginPath(); ctx.arc(x, cy, 20, 0, 7); ctx.fill(); ctx.strokeStyle = '#2B1D23'; ctx.lineWidth = 2; ctx.stroke(); glyph(ctx, p.glyph, x, cy, 11, '#2B1D23'); });
+      ctx.strokeStyle = '#2B1D23'; ctx.lineWidth = 1.5; ctx.strokeRect(880, y0, 140, 44); ctx.strokeRect(1040, y0, 140, 44);
+      // wing mock: bone white, player band, ink outline
+      ctx.save(); ctx.translate(1300, cy); ctx.beginPath(); ctx.ellipse(0, 0, 90, 12, 0, 0, 7); ctx.fillStyle = '#EDEDDF'; ctx.fill();
+      ctx.save(); ctx.clip(); ctx.fillStyle = p.id.normal; ctx.fillRect(-58, -14, 16, 28); ctx.fillRect(42, -14, 16, 28); ctx.restore();
+      ctx.strokeStyle = '#2B1D23'; ctx.lineWidth = 2.2; ctx.stroke(); ctx.beginPath(); ctx.ellipse(0, -2, 14, 8, 0, 0, 7); ctx.fillStyle = p.id.normal; ctx.fill(); ctx.stroke(); ctx.restore();
+    });
+  }
+  window.__ready = true;
+}
+main();
+</script></body></html>

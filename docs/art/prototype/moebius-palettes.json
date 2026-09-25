@@ -1,0 +1,149 @@
+{
+ "_doc": "ART_BIBLE keyframes (prototype format)",
+ "keyframes": [
+  {
+   "name": "KF80 Zénith",
+   "sunElevationDeg": 80,
+   "hex": {
+    "skyTop": "#8DD3D2",
+    "skyMid": "#B5E3D9",
+    "skyHorizon": "#E6F3E3",
+    "sandLit": "#F1DABE",
+    "groundFlat": "#F1DABE",
+    "sandShade": "#CCB0A7",
+    "castShadow": "#A18EA1",
+    "ink": "#2B1D23",
+    "sun": "#FFFCF0",
+    "haze": "#EBE8DA"
+   }
+  },
+  {
+   "name": "KF50 Après-midi",
+   "sunElevationDeg": 50,
+   "hex": {
+    "skyTop": "#57B8CD",
+    "skyMid": "#93D4DA",
+    "skyHorizon": "#CFEAE8",
+    "sandLit": "#EED1A9",
+    "groundFlat": "#EED1A9",
+    "sandShade": "#C1A199",
+    "castShadow": "#8C7F98",
+    "ink": "#2B1D23",
+    "sun": "#FFF9E3",
+    "haze": "#E6DBC8"
+   }
+  },
+  {
+   "name": "KF25 Fin d'après-midi",
+   "sunElevationDeg": 25,
+   "hex": {
+    "skyTop": "#6294C2",
+    "skyMid": "#8FCCD1",
+    "skyHorizon": "#EAE9BD",
+    "sandLit": "#F2C284",
+    "groundFlat": "#EBBC86",
+    "sandShade": "#B38887",
+    "castShadow": "#77698D",
+    "ink": "#2C1C22",
+    "sun": "#FFF4CC",
+    "haze": "#EED2A7"
+   }
+  },
+  {
+   "name": "KF16 Heure dorée",
+   "sunElevationDeg": 16,
+   "hex": {
+    "skyTop": "#6886BD",
+    "skyMid": "#B7DBCA",
+    "skyHorizon": "#F7E9A7",
+    "sandLit": "#F4BC74",
+    "groundFlat": "#EAB377",
+    "sandShade": "#AE7E80",
+    "castShadow": "#6F6089",
+    "ink": "#2D1C22",
+    "sun": "#FFF2C3",
+    "haze": "#F2CE99"
+   }
+  },
+  {
+   "name": "KF10 Soleil bas",
+   "sunElevationDeg": 10,
+   "hex": {
+    "skyTop": "#7570A3",
+    "skyMid": "#F4C7A3",
+    "skyHorizon": "#FBDE8C",
+    "sandLit": "#F2A96A",
+    "groundFlat": "#D29E90",
+    "sandShade": "#977B86",
+    "castShadow": "#62567D",
+    "ink": "#2A1A22",
+    "sun": "#FFECB7",
+    "haze": "#EEBA90"
+   }
+  },
+  {
+   "name": "KF3 Coucher",
+   "sunElevationDeg": 3.5,
+   "hex": {
+    "skyTop": "#795C87",
+    "skyMid": "#EC9C63",
+    "skyHorizon": "#FFD16B",
+    "sandLit": "#EF945F",
+    "groundFlat": "#82788B",
+    "sandShade": "#7D768C",
+    "castShadow": "#554C70",
+    "ink": "#261721",
+    "sun": "#FFE6A9",
+    "haze": "#E8A587"
+   }
+  },
+  {
+   "name": "KF1 Soleil sur la Falaise",
+   "sunElevationDeg": 1,
+   "hex": {
+    "skyTop": "#624D7A",
+    "skyMid": "#E7885D",
+    "skyHorizon": "#FFC669",
+    "sandLit": "#E57E5E",
+    "groundFlat": "#797286",
+    "sandShade": "#726C82",
+    "castShadow": "#4E476A",
+    "ink": "#231521",
+    "sun": "#FFD7A0",
+    "haze": "#DA9982"
+   }
+  },
+  {
+   "name": "KF-4 Crépuscule (derrière la nuit)",
+   "sunElevationDeg": -4,
+   "hex": {
+    "skyTop": "#272950",
+    "skyMid": "#775774",
+    "skyHorizon": "#D69F58",
+    "sandLit": "#706C7F",
+    "groundFlat": "#575568",
+    "sandShade": "#575568",
+    "castShadow": "#45455D",
+    "ink": "#181322",
+    "sun": "#F6B669",
+    "haze": "#816C85"
+   }
+  },
+  {
+   "name": "KF-15 Nuit (résultats)",
+   "sunElevationDeg": -15,
+   "hex": {
+    "skyTop": "#162C55",
+    "skyMid": "#294875",
+    "skyHorizon": "#5B678C",
+    "sandLit": "#9B94AB",
+    "groundFlat": "#7B778D",
+    "sandShade": "#7B778D",
+    "castShadow": "#626079",
+    "ink": "#131423",
+    "sun": "#E3F0FE",
+    "haze": "#69708F"
+   }
+  }
+ ]
+}

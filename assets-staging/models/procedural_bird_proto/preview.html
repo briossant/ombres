@@ -1,0 +1,16 @@
+<!doctype html><html><body style="margin:0;background:#efe3c8">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three'; import { createBird } from './proceduralBird.js';
+const W=2400,H=400; const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(W,H); r.setClearColor(0xefe3c8); document.body.appendChild(r.domElement);
+const poses=[{phase:1.2,amp:0.6},{phase:-1.2,amp:0.7},{fold:1,pitch:0.5},{phase:0.3,amp:0.3,bank:0.6},{fold:1},{fold:0.45,phase:0.5,amp:0.3}];
+const views=[[0,1,0.0001],[1.1,0.7,1],[1.3,0.5,0.9],[0,0.6,-1],[0,1,0.0001],[0,1,0.0001]];
+poses.forEach((p,i)=>{ const scene=new THREE.Scene(); scene.add(new THREE.HemisphereLight(0xffffff,0x9a8060,1.6)); const d=new THREE.DirectionalLight(0xffffff,2.2); d.position.set(2,5,3); scene.add(d);
+  const bird=createBird(); bird.pose(p); scene.add(bird.mesh);
+  // contour 'inverted hull' pour juger la silhouette encre
+  const ol=new THREE.SkinnedMesh(bird.mesh.geometry,new THREE.ShaderMaterial({side:THREE.BackSide,vertexShader:`#include <common>\n#include <skinning_pars_vertex>\nvoid main(){\n#include <skinbase_vertex>\n#include <begin_vertex>\n#include <beginnormal_vertex>\n#include <skinnormal_vertex>\n#include <skinning_vertex>\ntransformed+=normalize(objectNormal)*0.025;\ngl_Position=projectionMatrix*modelViewMatrix*vec4(transformed,1.0);}`,fragmentShader:`void main(){gl_FragColor=vec4(0.12,0.08,0.1,1.0);}`}));
+  ol.bind(bird.mesh.skeleton, bird.mesh.bindMatrix); scene.add(ol);
+  const cam=new THREE.PerspectiveCamera(35,1,0.1,100); const v=new THREE.Vector3(...views[i]).normalize(); cam.position.copy(v.multiplyScalar(13)); cam.lookAt(0,0.2,0.2);
+  r.setViewport(i*400,0,400,400); r.setScissor(i*400,0,400,400); r.setScissorTest(true); r.render(scene,cam); });
+document.title='done';
+</script></body></html>
