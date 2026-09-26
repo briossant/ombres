@@ -1,0 +1,194 @@
+/* Surcouches : pause, réglages, reconnexion. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.veil.veil--deep {
+  background: rgb(24 19 34 / 0.62);
+}
+
+/* ─── Pause ─── */
+.pause__panel {
+  width: 760px;
+}
+.pause__inner {
+  padding: 46px 60px 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pause__head {
+  text-align: center;
+}
+.pause__title {
+  margin: 0;
+  font-size: 84px;
+  letter-spacing: 0.14em;
+  margin-right: -0.14em;
+}
+.pause__by {
+  margin: 14px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 30px;
+}
+.pause__where {
+  margin: 8px 0 0;
+  font-size: 24px;
+  color: var(--ink-60);
+}
+.pause__menu {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 520px;
+}
+.pause__menu .btn {
+  width: 100%;
+}
+.btn--danger {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn--danger.is-focus {
+  background: var(--ink);
+  color: var(--sun);
+}
+
+/* ─── Réglages ─── */
+.settings {
+  z-index: 3;
+}
+.settings__panel {
+  width: 1560px;
+}
+.settings__inner {
+  padding: 30px 48px 20px;
+}
+.settings__head {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding-bottom: 16px;
+  border-bottom: 3px solid var(--ink);
+}
+.settings__title {
+  margin: 0;
+  font-size: 58px;
+}
+.settings__help {
+  flex: 1;
+  font-size: 22px;
+  color: var(--ink-60);
+}
+.settings__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  margin-top: 20px;
+}
+.settings__sec + .settings__sec {
+  margin-top: 26px;
+}
+.settings__sec-title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.settings__sec-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--ink-35);
+}
+.settings__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* Référence des touches */
+.keys {
+  padding: 4px 14px 0;
+}
+.keys__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 25px;
+}
+.keys__table th {
+  font-weight: 400;
+  text-align: left;
+  font-size: 20px;
+  color: var(--ink-60);
+  padding: 0 0 6px;
+}
+.keys__table td {
+  padding: 6px 0;
+  vertical-align: middle;
+  border-top: 1.5px solid var(--ink-15);
+  white-space: nowrap;
+}
+.keys__table td:first-child {
+  padding-right: 16px;
+}
+.keys__table .key {
+  font-size: 20px;
+  margin-right: 4px;
+}
+.keys__group,
+.keys__arrows {
+  display: inline-flex;
+  gap: 2px;
+}
+.keys__or {
+  margin: 0 10px;
+  font-size: 20px;
+  color: var(--ink-60);
+}
+.keys__dim {
+  font-size: 21px;
+  color: var(--ink-80);
+}
+.keys__note {
+  margin: 8px 0 0;
+  font-size: 20px;
+  color: var(--ink-60);
+}
+
+/* ─── Reconnexion ─── */
+.reconnect {
+  z-index: 8;
+}
+.reconnect__case {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  max-width: 980px;
+  padding: 34px 48px 34px 40px;
+  border-width: 3px;
+  box-shadow: 8px 8px 0 rgb(0 0 0 / 0.35);
+}
+.reconnect__icon {
+  flex: none;
+}
+.reconnect__title {
+  margin: 0;
+  font-size: 46px;
+}
+.reconnect__body {
+  margin: 10px 0 0;
+  font-size: 30px;
+  line-height: 1.25;
+}

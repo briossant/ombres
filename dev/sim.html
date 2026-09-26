@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ombres — simulation (dev)</title>
+    <style>
+      :root { --ink: #2b1d23; --paper: #f7f0e3; --paper2: #efe4cf; --sand: #e6d6b4; --muted: #7c6a5c; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: var(--paper); color: var(--ink); font: 13px/1.35 system-ui, sans-serif; }
+      header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 14px; background: var(--sand); border-bottom: 2px solid var(--ink); }
+      header h1 { margin: 0 8px 0 0; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+      label { display: inline-flex; gap: 4px; align-items: center; }
+      select, input, button { font: inherit; font-size: 12px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); padding: 2px 6px; }
+      button { cursor: pointer; }
+      button.on { background: var(--ink); color: var(--paper); }
+      main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; padding: 12px 14px; }
+      #view { width: 100%; max-height: calc(100vh - 90px); object-fit: contain; display: block; image-rendering: pixelated; background: #d9c2a2; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+      aside { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+      section { border: 2px solid var(--ink); background: #fbf6ec; padding: 8px 10px; box-shadow: 3px 3px 0 var(--ink); }
+      section h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+      .mono { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 12px; }
+      #bar { display: flex; height: 22px; border: 1px solid var(--ink); margin: 4px 0 6px; }
+      #bar div { height: 100%; }
+      #log { height: 260px; overflow: auto; white-space: pre; }
+      table { border-collapse: collapse; width: 100%; }
+      td, th { padding: 1px 4px; text-align: right; }
+      td:first-child, th:first-child { text-align: left; }
+      .sw { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--ink); vertical-align: -1px; margin-right: 4px; }
+      .hint { color: var(--muted); font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Ombres · simulation</h1>
+      <label>Mode <select id="mode"><option value="round">manche</option><option value="lobby">lobby</option><option value="demo">démo</option></select></label>
+      <label>Carte <select id="map"><option>parasols</option><option>aiguilles</option><option>geantes</option><option>cadran</option><option>lobby</option></select></label>
+      <label><input type="checkbox" id="mirror" /> miroir</label>
+      <label>Oiseaux <input id="n" type="number" min="1" max="12" value="6" style="width: 48px" /></label>
+      <label>Bots <select id="pol"><option value="mix">mixed + hunter</option><option value="mixed">tous mixed</option><option value="low">tous low</option><option value="high">tous high</option><option value="idle">immobiles</option></select></label>
+      <label>Graine <input id="seed" type="number" value="1" style="width: 64px" /></label>
+      <label><input type="checkbox" id="human" checked /> je pilote le slot 0</label>
+      <button id="restart">Relancer</button>
+      <button id="pause">Pause</button>
+      <button id="stepBtn">+1 tick</button>
+      <label>Vitesse <select id="speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option><option>16</option></select></label>
+      <label><input type="checkbox" id="hulls" /> enveloppes</label>
+      <span class="hint">ZQSD/WASD/flèches · Espace = PLONGER · Maj = COUP D'AILE</span>
+    </header>
+    <main>
+      <canvas id="view" width="1024" height="704"></canvas>
+      <aside>
+        <section>
+          <h2>Soleil</h2>
+          <div class="mono" id="sun"></div>
+          <div id="bar"></div>
+          <div class="mono" id="perf"></div>
+        </section>
+        <section>
+          <h2>Oiseaux</h2>
+          <table class="mono" id="birds"></table>
+        </section>
+        <section>
+          <h2>Événements</h2>
+          <div class="mono" id="log"></div>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/src/dev/sim/main.ts"></script>
+  </body>
+</html>

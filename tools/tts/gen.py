@@ -3,6 +3,7 @@
 
 Entrée : JSON [{"id": "lead_coral", "lang": "fr", "text": "Le Corail prend la tête !"}, ...]
   champs optionnels : "voice" (preset de voices.json, défaut "narrator"), "seed" (int),
+                      "asr_prompt" (vocabulaire soufflé à Whisper, ex. la liste des noms de couleur),
                       "keywords" (mots devant être entendus par l'ASR, ex. ["Ocre"] : le nom de couleur ;
                       variantes homophones séparées par "|", ex. ["Lilas|lila"]),
                       "say" (graphie prononcée si elle diffère du sous-titre, ex. text "Le Carmin…",
@@ -41,7 +42,7 @@ import soundfile as sf
 
 TOOL_VERSION = "ombres-tts/1"
 HERE = Path(__file__).resolve().parent
-ID_RE = re.compile(r"^[a-z0-9][a-z0-9_\-]*$")
+ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]*$")  # ex. "leaderChange1.5" (réplique × couleur)
 PAUSE_RE = re.compile(r"\[pause(?:\s*[= ]\s*(\d+))?\]", re.I)
 LANGS = {"fr", "en"}
 
@@ -207,20 +208,45 @@ class AsrChecker:
               "sixteen seventeen eighteen nineteen twenty".split(),
     }
 
+    TENS = {
+        "fr": {2: "vingt", 3: "trente", 4: "quarante", 5: "cinquante", 6: "soixante", 8: "quatre-vingt"},
+        "en": {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty", 6: "sixty", 7: "seventy", 8: "eighty", 9: "ninety"},
+    }
+
+    @classmethod
+    def _num(cls, n: int, lang: str) -> str:
+        """Nombre de 0 à 99 en lettres (Whisper écrit « 36 chandelles », le texte « trente-six »)."""
+        units = cls.NUMS.get(lang, [])
+        if n < len(units):
+            return units[n]
+        tens = cls.TENS.get(lang, {})
+        t, u = divmod(n, 10)
+        if lang == "fr" and t in (7, 9):  # soixante-dix…, quatre-vingt-dix…
+            return f"{tens[t - 1]}-{units[10 + u]}" if t == 9 or u != 1 else "soixante et onze"
+        if t not in tens:
+            return str(n)
+        if u == 0:
+            return tens[t] + ("s" if lang == "fr" and t == 8 else "")
+        if lang == "fr" and u == 1 and t != 8:
+            return f"{tens[t]} et un"
+        return f"{tens[t]}-{units[u]}"
+
     @classmethod
     def _norm(cls, s: str, lang: str) -> str:
-        words = cls.NUMS.get(lang, [])
-        s = re.sub(r"\b(\d{1,2})\b", lambda m: words[int(m.group(1))] if int(m.group(1)) < len(words) else m.group(1), s)
+        s = re.sub(r"\b(\d{1,2})\b", lambda m: cls._num(int(m.group(1)), lang), s)
         s = unicodedata.normalize("NFD", s.lower().replace("’", "'"))
         s = "".join(c for c in s if unicodedata.category(c) != "Mn")
         return re.sub(r"[^a-z0-9]+", "", s)  # sans espaces ni ponctuation : « l'ocre » == « locre »
 
-    def __call__(self, y: np.ndarray, sr: int, text: str, lang: str) -> tuple[float, str]:
+    def __call__(self, y: np.ndarray, sr: int, text: str, lang: str, prompt: str | None = None) -> tuple[float, str]:
         import librosa
 
         y16 = librosa.resample(y, orig_sr=sr, target_sr=16000) if sr != 16000 else y
+        # `prompt` : vocabulaire attendu (noms propres), pour que Whisper les ÉCRIVE correctement quand
+        # ils sont bien prononcés ; une prise mâchée reste mâchée dans la transcription.
         segs, _ = self.model.transcribe(y16, language=lang, beam_size=5, temperature=0.0,
-                                        without_timestamps=True, condition_on_previous_text=False)
+                                        without_timestamps=True, condition_on_previous_text=False,
+                                        initial_prompt=prompt or None)
         hyp = " ".join(s.text.strip() for s in segs).strip()
         return _cer(self._norm(PAUSE_RE.sub(" ", text), lang), self._norm(hyp, lang)), hyp
 
@@ -247,7 +273,62 @@ def voiced_bounds(y: np.ndarray, sr: int, gate_db: float = 45.0) -> tuple[int, i
     idx = np.where(db > db.max() - gate_db)[0]
     if len(idx) == 0:
         return None
-    return max(0, idx[0] * hop - int(0.02 * sr)), min(len(y), (idx[-1] + 1) * hop + int(0.06 * sr))
+    # Îlots de bruit isolés en bord de prise (clic, souffle de Pocket : ≤ 100 ms suivis de ≥ 200 ms de
+    # silence) : on les écarte, sinon le clip commence par un « tic » et un blanc.
+    breaks = np.where(np.diff(idx) > 20)[0]
+    first, last = 0, len(idx) - 1
+    while len(breaks) and breaks[0] >= first and idx[breaks[0]] - idx[first] < 10:
+        first, breaks = breaks[0] + 1, breaks[1:]
+    while len(breaks) and breaks[-1] < last and idx[last] - idx[breaks[-1] + 1] < 10:
+        last, breaks = breaks[-1], breaks[:-1]
+    idx = idx[first:last + 1]
+    # 50 ms avant la voix : les attaques douces (/s/, voyelle initiale d'un nom de couleur) restent entières.
+    return max(0, idx[0] * hop - int(0.05 * sr)), min(len(y), (idx[-1] + 1) * hop + int(0.06 * sr))
+
+
+def compact_pauses(y: np.ndarray, sr: int, max_pause_s: float, gate_db: float = 40.0) -> np.ndarray:
+    """Raccourcit à max_pause_s les silences internes plus longs (Pocket marque un point d'une pause de
+    0,55 à 1,3 s : trop pour une réplique de moins de 3 s). On coupe au milieu du silence, avec un
+    fondu enchaîné de 8 ms ; les bords de la voix ne sont jamais touchés."""
+    hop = max(1, int(sr * 0.01))
+    n = len(y) // hop
+    if n < 3 or max_pause_s <= 0:
+        return y
+    db = 20 * np.log10(np.sqrt((y[: n * hop].reshape(n, hop) ** 2).mean(1) + 1e-12))
+    active = db > db.max() - gate_db
+    idx = np.where(active)[0]
+    if len(idx) < 2:
+        return y
+    keep = int(max_pause_s * sr)
+    xf = int(0.008 * sr)
+    cuts: list[tuple[int, int]] = []
+    run_start = None
+    for i in range(idx[0], idx[-1] + 1):
+        if not active[i]:
+            run_start = i if run_start is None else run_start
+        elif run_start is not None:
+            a, b = run_start * hop, i * hop
+            excess = (b - a) - keep
+            if excess > xf:
+                c0 = a + (b - a - excess) // 2
+                cuts.append((c0, c0 + excess))
+            run_start = None
+    if not cuts:
+        return y
+    out, pos = [], 0
+    for c0, c1 in cuts:
+        head = y[pos:c0].copy()
+        tail_start = y[c1:c1 + xf]
+        if len(head) >= xf and len(tail_start) == xf:
+            ramp = np.linspace(0, 1, xf, dtype=np.float32)
+            head[-xf:] = head[-xf:] * (1 - ramp) + tail_start * ramp
+            out.append(head)
+            pos = c1 + xf
+        else:
+            out.append(head)
+            pos = c1
+    out.append(y[pos:])
+    return np.concatenate(out).astype(np.float32)
 
 
 def fade(y: np.ndarray, sr: int, fin: float = 0.005, fout: float = 0.03) -> np.ndarray:
@@ -275,6 +356,27 @@ def speech_stats(y: np.ndarray, sr: int) -> dict:
     return {"speech_s": (idx[-1] - idx[0] + 1) * 0.01, "max_pause_s": float(gaps.max() * 0.01) if len(gaps) else 0.0}
 
 
+def atempo(y: np.ndarray, sr: int, tempo: float) -> np.ndarray:
+    """Ralenti/accéléré ffmpeg (WSOLA), le même que celui du MP3 final : les prises sont notées
+    (UTMOS, ASR) telles que le joueur les entendra."""
+    if abs(tempo - 1.0) <= 1e-3:
+        return y
+    p = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(sr), "-ac", "1", "-i", "pipe:0",
+                        "-af", f"atempo={tempo}", "-f", "f32le", "-ar", str(sr), "-ac", "1", "pipe:1"],
+                       input=np.ascontiguousarray(y, dtype=np.float32).tobytes(), capture_output=True)
+    if p.returncode != 0:
+        raise RuntimeError("échec atempo: " + p.stderr.decode(errors="replace")[-500:])
+    return np.frombuffer(p.stdout, dtype=np.float32).copy()
+
+
+def decode_audio(path: Path, sr: int = 16000) -> np.ndarray:
+    p = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "f32le", "-ac", "1", "-ar", str(sr), "pipe:1"],
+                       capture_output=True)
+    if p.returncode != 0:
+        raise RuntimeError(f"décodage impossible : {path}")
+    return np.frombuffer(p.stdout, dtype=np.float32).copy()
+
+
 def ffmpeg_loudnorm_json(stderr: str) -> dict:
     m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", stderr, re.S)
     if not m:
@@ -290,7 +392,8 @@ def run(cmd: list[str]) -> subprocess.CompletedProcess:
 
 
 def encode_normalized_mp3(wav_in: Path, mp3_out: Path, I: float, TP: float, LRA: float, q: int,
-                          tempo: float, tag: str) -> dict:
+                          tempo: float, tag: str, sample_rate: int = 44100, bitrate: str | None = None,
+                          abr: bool = False) -> dict:
     """EBU R128 : mesure -> (gain + limiteur si le gain ferait dépasser le true-peak) -> loudnorm
     2e passe linéaire -> MP3 mono 44.1 kHz VBR. Sans pré-limiteur, loudnorm linéaire plafonne le
     gain sur les voix à pics marqués (jusqu'à -2 LU mesuré sur des répliques courtes)."""
@@ -313,10 +416,11 @@ def encode_normalized_mp3(wav_in: Path, mp3_out: Path, I: float, TP: float, LRA:
     af = head + ((pre + ",") if pre else "") + (
         f"{base}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
         f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true:print_format=json,"
-        f"aresample=44100")
+        f"aresample={sample_rate}")
+    rate = (["-b:a", bitrate] + (["-abr", "1"] if abr else [])) if bitrate else ["-q:a", str(q)]
     tmp = mp3_out.with_suffix(".tmp.mp3")
     run(["ffmpeg", "-hide_banner", "-nostats", "-y", "-i", str(wav_in), "-af", af, "-ac", "1",
-         "-c:a", "libmp3lame", "-q:a", str(q), "-metadata", f"comment={tag}", "-id3v2_version", "3", str(tmp)])
+         "-c:a", "libmp3lame", *rate, "-metadata", f"comment={tag}", "-id3v2_version", "3", str(tmp)])
     os.replace(tmp, mp3_out)
     chk = ffmpeg_loudnorm_json(run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(mp3_out), "-af",
                                     base + ":print_format=json", "-f", "null", "-"]).stderr)
@@ -330,8 +434,17 @@ def probe(path: Path) -> dict:
 
 
 # ============================================================================ génération
-def synth_line(engine, text: str, cfg: dict, seed: int, pause_ms_default: int) -> tuple[np.ndarray, int]:
-    """Gère les marqueurs [pause N] : synthèse par morceau + silences exacts."""
+def synth_line(engine, text: str, cfg: dict, seed: int, pause_ms_default: int,
+               max_pause_s: float = 0.0) -> tuple[np.ndarray, int]:
+    """Gère les marqueurs [pause N] : synthèse par morceau + silences exacts. Avec max_pause_s (durée
+    finale, après le ralenti `tempo`), les pauses internes de chaque morceau sont raccourcies ;
+    les silences explicites [pause N] restent exacts."""
+    raw_max = max_pause_s * float(cfg.get("tempo", 1.0))
+
+    def one(p: str, s: int) -> tuple[np.ndarray, int]:
+        y, sr = engine.synth(p, cfg, s)
+        return (compact_pauses(trim(y, sr), sr, raw_max) if raw_max > 0 else y), sr
+
     parts, pauses, pos = [], [], 0
     for m in PAUSE_RE.finditer(text):
         parts.append(text[pos:m.start()])
@@ -340,12 +453,12 @@ def synth_line(engine, text: str, cfg: dict, seed: int, pause_ms_default: int) -
     parts.append(text[pos:])
     parts = [p.strip() for p in parts]
     if len(parts) == 1:
-        return engine.synth(parts[0], cfg, seed)
+        return one(parts[0], seed)
     out, sr = [], None
     for i, p in enumerate(parts):
         if not p:
             continue
-        y, sr = engine.synth(p, cfg, seed + i)
+        y, sr = one(p, seed + i)
         if out:
             out.append(np.zeros(int(sr * pauses[i - 1] / 1000), np.float32))
         out.append(trim(y, sr))
@@ -364,6 +477,40 @@ def is_sane(y: np.ndarray, sr: int, text: str, pause_ms_default: int) -> tuple[b
     return sane, {"s_per_char": round(spc, 3), "max_pause_s": round(st["max_pause_s"], 2)}
 
 
+def cache_load(cache_dir: Path | None, key: str) -> dict | None:
+    """Prise retenue mise en cache (audio ralenti, rogné, avant padding et encodage) + ses notes."""
+    if not cache_dir:
+        return None
+    wav, meta = cache_dir / f"{key}.wav", cache_dir / f"{key}.json"
+    if not (wav.exists() and meta.exists()):
+        return None
+    try:
+        y, sr = sf.read(wav, dtype="float32")
+        return {**json.loads(meta.read_text(encoding="utf-8")), "y": np.asarray(y, dtype=np.float32).reshape(-1), "sr": int(sr)}
+    except Exception:  # noqa: BLE001 — cache corrompu : on régénère
+        return None
+
+
+def cache_save(cache_dir: Path | None, key: str, chosen: dict, extra: dict) -> None:
+    if not cache_dir:
+        return
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    tmp = cache_dir / f"{key}.tmp.wav"
+    sf.write(tmp, chosen["y"], chosen["sr"], subtype="FLOAT")
+    os.replace(tmp, cache_dir / f"{key}.wav")
+    meta = {k: v for k, v in chosen.items() if k not in ("y", "sr") and isinstance(v, (int, float, str, bool, list, type(None)))}
+    (cache_dir / f"{key}.json").write_text(json.dumps({**meta, **extra}, ensure_ascii=False), encoding="utf-8")
+
+
+def synth_key_of(ln: dict, say: str, lang: str, vcfg: dict, seed: int, args) -> str:
+    """Clé de la prise retenue : tout ce qui décide de l'audio et de son choix, sauf l'encodage et le padding."""
+    return hashlib.sha256(json.dumps({"v": TOOL_VERSION, "say": say, "lang": lang, "voice": vcfg, "seed": seed,
+                                      "pause": args.pause_ms, "maxpause": args.max_pause_ms,
+                                      "takes": args.takes, "asr": args.asr, "max_cer": args.max_cer,
+                                      "kw": ln.get("keywords"), "prompt": ln.get("asr_prompt")},
+                                     sort_keys=True).encode()).hexdigest()[:24]
+
+
 def load_lines(path: Path) -> list[dict]:
     lines = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(lines, list):
@@ -375,7 +522,7 @@ def load_lines(path: Path) -> list[dict]:
             errors.append(f"ligne {i}: champ(s) {bad} manquant(s) ou vide(s)")
             continue
         if not ID_RE.match(ln["id"]):
-            errors.append(f"ligne {i}: id '{ln['id']}' invalide (a-z0-9_- uniquement, minuscules)")
+            errors.append(f"ligne {i}: id '{ln['id']}' invalide (A-Za-z0-9_.- uniquement)")
         if ln["lang"] not in LANGS:
             errors.append(f"ligne {i}: lang '{ln['lang']}' non supportée ({sorted(LANGS)})")
         if (ln["lang"], ln["id"]) in seen:
@@ -386,15 +533,25 @@ def load_lines(path: Path) -> list[dict]:
     return lines
 
 
-def write_manifest(path: Path, entries: dict, lines: list[dict], post: dict) -> None:
+LITE_FIELDS = ("id", "lang", "text", "file", "duration_s")
+
+
+def write_manifest(path: Path, entries: dict, lines: list[dict], post: dict, lite: Path | None = None) -> None:
+    """Manifest complet (notes de prise, ASR, hash) ; `lite` : copie réduite aux champs utiles au jeu
+    (id, lang, text, file, duration_s), à servir au navigateur."""
     order = {(ln["lang"], ln["id"]): i for i, ln in enumerate(lines)}
     kept = sorted((e for k, e in entries.items() if k in order), key=lambda e: order[(e["lang"], e["id"])])
-    doc = {"generator": TOOL_VERSION, "format": {"codec": "mp3", "sample_rate": 44100, "channels": 1},
+    doc = {"generator": TOOL_VERSION, "format": {"codec": "mp3", "sample_rate": post.get("sr", 44100), "channels": 1,
+                                                 **({"bitrate": post["br"]} if post.get("br") else {})},
            "loudness_target": {"integrated_lufs": post["lufs"], "true_peak_db": post["tp"]},
            "total_duration_s": round(sum(e.get("duration_s", 0) for e in kept), 2), "lines": kept}
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    os.replace(tmp, path)
+    for target, body, indent in ((path, doc, 1), (lite, {**doc, "lines": [{k: e[k] for k in LITE_FIELDS if k in e} for e in kept]}, None)):
+        if target is None:
+            continue
+        tmp = target.with_suffix(".tmp")
+        text = json.dumps(body, ensure_ascii=False, indent=indent, separators=None if indent else (",", ":"))
+        tmp.write_text(text.replace('},{"id"', '},\n{"id"') + "\n", encoding="utf-8")
+        os.replace(tmp, target)
 
 
 def main() -> int:
@@ -411,13 +568,32 @@ def main() -> int:
                     help="vérifie l'intelligibilité par faster-whisper (défaut: small ; large-v3-turbo = plus sûr, plus lent)")
     ap.add_argument("--max-cer", type=float, default=0.12, help="seuil CER pour --asr")
     ap.add_argument("--pause-ms", type=int, default=500, help="durée par défaut de [pause]")
+    ap.add_argument("--max-pause-ms", type=int, default=0,
+                    help="raccourcit les pauses internes du TTS à cette durée (ms, après tempo) ; 0 = intactes")
     ap.add_argument("--lufs", type=float, default=-16.0)
     ap.add_argument("--true-peak", type=float, default=-1.5)
     ap.add_argument("--lra", type=float, default=11.0)
     ap.add_argument("--mp3-quality", type=int, default=3, help="libmp3lame -q:a (0=meilleur … 9)")
+    ap.add_argument("--bitrate", default=None, help="débit MP3 constant (ex. 40k) à la place du VBR --mp3-quality")
+    ap.add_argument("--abr", action="store_true", help="avec --bitrate : débit MOYEN (ABR), plus de bits pour la voix que pour les silences")
+    ap.add_argument("--cache", type=Path, default=HERE / "out" / "cache",
+                    help="cache des prises retenues (audio avant encodage) : changer l'encodage ou le padding ne "
+                         "re-synthétise rien. --force l'ignore.")
+    ap.add_argument("--lite-manifest", type=Path, default=None,
+                    help="écrit aussi une copie réduite du manifest (id, lang, file, duration_s) pour le jeu")
+    ap.add_argument("--sample-rate", type=int, default=44100,
+                    help="fréquence de sortie (Pocket produit du 24 kHz : 24000 évite un suréchantillonnage inutile)")
     ap.add_argument("--head-ms", type=int, default=40, help="silence avant la voix")
     ap.add_argument("--tail-ms", type=int, default=200, help="silence après la voix")
     ap.add_argument("--keep-wav", action="store_true", help="garde aussi le WAV brut retenu (debug)")
+    ap.add_argument("--manifest", type=Path, default=None,
+                    help="manifest à lire/écrire (défaut <out>/manifest.json) : un par processus pour générer "
+                         "plusieurs langues en parallèle dans le même dossier, puis --merge")
+    ap.add_argument("--merge", type=Path, nargs="+", default=None, metavar="MANIFEST",
+                    help="ne génère rien : fusionne ces manifests dans <out>/manifest.json (ordre de l'entrée)")
+    ap.add_argument("--verify", action="store_true",
+                    help="ne génère rien : re-transcrit les MP3 à jour (--asr, défaut small) et met à jour "
+                         "asr_cer/asr_text/asr_ok du manifest, pour juger ce que le joueur entend vraiment")
     args = ap.parse_args()
 
     for tool in ("ffmpeg", "ffprobe"):
@@ -429,15 +605,40 @@ def main() -> int:
     only = {s.strip() for s in args.only.split(",") if s.strip()}
     out: Path = args.out
     out.mkdir(parents=True, exist_ok=True)
-    manifest_path = out / "manifest.json"
+    manifest_path = args.manifest or (out / "manifest.json")
     entries: dict = {}
     if manifest_path.exists():
         try:
             entries = {(e["lang"], e["id"]): e for e in json.loads(manifest_path.read_text(encoding="utf-8")).get("lines", [])}
         except (ValueError, KeyError):
             log("manifest existant illisible : il sera reconstruit")
+    if args.merge:
+        # Pour chaque clip, l'entrée qui décrit le MP3 réellement sur disque gagne (hash du tag ID3) ;
+        # à défaut, la plus riche. Cible : --manifest, sinon <out>/manifest.json.
+        cands_by_key: dict = {}
+        for e in list(entries.values()) + [e for mp in args.merge
+                                           for e in json.loads(mp.read_text(encoding="utf-8")).get("lines", [])]:
+            cands_by_key.setdefault((e["lang"], e["id"]), []).append(e)
+        entries = {}
+        for k, cs in cands_by_key.items():
+            f = out / f"{k[0]}/{k[1]}.mp3"
+            tag = probe(f)["comment"] if f.exists() else ""
+            on_disk = [e for e in cs if e.get("hash") and tag.endswith(":" + e["hash"])]
+            pool = on_disk or cs
+            entries[k] = max(pool, key=lambda e: ("take" in e, "asr_text" in e))
     post = {"lufs": args.lufs, "tp": args.true_peak, "lra": args.lra, "q": args.mp3_quality,
             "head": args.head_ms, "tail": args.tail_ms, "pause": args.pause_ms}
+    # Ajoutés au hash seulement s'ils diffèrent du défaut : les MP3 déjà générés avec l'ancien outil restent à jour.
+    if args.sample_rate != 44100:
+        post["sr"] = args.sample_rate
+    if args.bitrate:
+        post["br"] = args.bitrate + ("-abr" if args.abr else "")
+    if args.max_pause_ms:
+        post["maxpause"] = args.max_pause_ms
+    if args.merge:
+        write_manifest(manifest_path, entries, lines, post, args.lite_manifest)
+        log(f"manifest fusionné : {manifest_path} ({sum(1 for k in entries if k in {(l['lang'], l['id']) for l in lines})} lignes)")
+        return 0
 
     engines: dict = {}
     scorer = asr = None
@@ -446,6 +647,8 @@ def main() -> int:
             scorer = UtmosScorer()
         except Exception as ex:  # noqa: BLE001 — réseau/hub indisponible : on continue sans score
             log(f"⚠ UTMOS indisponible ({ex!r}) : sélection des prises sur les seuls garde-fous")
+    if args.verify and not args.asr:
+        args.asr = "small"
     if args.asr and not args.dry_run:
         asr = AsrChecker(args.asr)
 
@@ -469,14 +672,40 @@ def main() -> int:
         rel = f"{lang}/{lid}.mp3"
         mp3 = out / rel
         mp3.parent.mkdir(parents=True, exist_ok=True)
+        if args.verify:
+            info = probe(mp3) if mp3.exists() else {"comment": ""}
+            e = entries.get((lang, lid))
+            if info["comment"] != tag or not e:
+                log(f"✗ {rel}: absent ou pas à jour — rien à vérifier")
+                stats["failed"] += 1
+                continue
+            keywords = [[AsrChecker._norm(a, lang) for a in k.split("|")] for k in ln.get("keywords", [])]
+            audio = decode_audio(mp3)
+            cer, hyp = asr(audio, 16000, say, lang, ln.get("asr_prompt"))
+            e["speech_s"] = round(speech_stats(audio, 16000)["speech_s"], 2)
+            hyp_n = AsrChecker._norm(hyp, lang)
+            missing = [alts[0] for alts in keywords if not any(a in hyp_n for a in alts)]
+            ok = cer <= args.max_cer and not missing
+            e.update({"asr_cer": round(cer, 3), "asr_text": hyp, "asr_ok": ok, "asr_model": args.asr})
+            stats["skipped"] += 1
+            if not ok:
+                stats["asr_warn"] += 1
+                log(f"  ⚠ {rel}: CER {cer:.2f}{f', mots-clés non entendus : {missing}' if missing else ''} « {hyp} »")
+            continue
         if mp3.exists() and not args.force:
             info = probe(mp3)
             if info["comment"] == tag:
                 stats["skipped"] += 1
                 if (entries.get((lang, lid)) or {}).get("hash") != h:  # manifest perdu : reconstruit sans régénérer
-                    entries[(lang, lid)] = {"id": lid, "lang": lang, "text": text, "file": rel,
-                                            "duration_s": round(info["duration"], 3), "voice": preset,
-                                            "engine": vcfg["engine"], "hash": h}
+                    meta = cache_load(args.cache, synth_key_of(ln, say, lang, vcfg, seed, args)) or {}
+                    entries[(lang, lid)] = {"id": lid, "lang": lang, "text": text, **({"say": say} if say != text else {}),
+                                            "file": rel, "duration_s": round(info["duration"], 3),
+                                            **({"speech_s": round(speech_stats(meta["y"], meta["sr"])["speech_s"], 2)} if "y" in meta else {}),
+                                            "voice": preset, "engine": vcfg["engine"],
+                                            **({"seed": meta["seed"], "take": f"{meta['take']}/{meta.get('n', 1)}",
+                                                "utmos": round(meta["score"], 2) if meta.get("score") else None,
+                                                **(meta.get("asr_info") or {})} if meta else {}),
+                                            "hash": h}
                 continue
             if not info["comment"].startswith("ombres-tts/"):
                 # fichier posé à la main (enregistrement humain, retouche…) : jamais écrasé sans --force
@@ -492,73 +721,99 @@ def main() -> int:
             log(f"• (dry-run) {rel}: {text}")
             continue
 
-        eng = engines.setdefault(vcfg["engine"], ENGINES[vcfg["engine"]]())
         t0 = time.time()
+        synth_key = synth_key_of(ln, say, lang, vcfg, seed, args)
+        cached = None if args.force else cache_load(args.cache, synth_key)
+        if cached:
+            chosen, asr_info, n_cands = cached, cached.get("asr_info") or {}, int(cached.get("n", 1))
+            log(f"♻ {rel}: prise en cache, ré-encodage seul")
+        else:
+            chosen, asr_info, n_cands = None, {}, 0
         cands = []
-        n_takes = max(1, args.takes)
-        for k in range(n_takes + 2):  # +2 prises de secours si toutes sont aberrantes
+        n_takes = 0 if cached else max(1, args.takes)
+        eng = None if cached else engines.setdefault(vcfg["engine"], ENGINES[vcfg["engine"]]())
+        for k in range(n_takes + 2 if n_takes else 0):  # +2 prises de secours si toutes sont aberrantes
             if k >= n_takes and any(c["sane"] for c in cands):
                 break
             s = seed + 101 * k
             try:
-                y, sr = synth_line(eng, say, vcfg, s, args.pause_ms)
+                y, sr = synth_line(eng, say, vcfg, s, args.pause_ms, args.max_pause_ms / 1000)
             except Exception as ex:  # noqa: BLE001
                 log(f"✗ {rel}: erreur moteur ({ex!r})")
                 break
             sane, st = is_sane(y, sr, say, args.pause_ms)
-            y = trim(y, sr)
+            y = atempo(trim(y, sr), sr, float(vcfg.get("tempo", 1.0)))
             score = scorer(y, sr) if scorer else 0.0
             cands.append({"y": y, "sr": sr, "seed": s, "take": k + 1, "sane": sane, "score": score, **st})
-        if not cands:
+        if not cands and not cached:
             stats["failed"] += 1
             continue
-        cands.sort(key=lambda c: (c["sane"], c["score"]), reverse=True)
-        chosen, asr_info = cands[0], {}
-        if asr:
-            # mot-clé "Lilas|lila" : variantes acceptées (homophones que Whisper orthographie autrement)
+        if not cached:
+            cands.sort(key=lambda c: (c["sane"], c["score"]), reverse=True)
+            chosen, n_cands = cands[0], len(cands)
+        def encode_take(c: dict, dest: Path) -> dict:
+            """Padding, normalisation EBU R128 et encodage MP3 d'une prise."""
+            yy = np.concatenate([np.zeros(int(c["sr"] * args.head_ms / 1000), np.float32), c["y"],
+                                 np.zeros(int(c["sr"] * args.tail_ms / 1000), np.float32)])
+            peak = float(np.abs(yy).max())
+            if peak > 0.89:  # certains moteurs (Chatterbox, Piper) sortent > 0 dBFS : on évite l'écrêtage PCM16,
+                yy = yy * (0.89 / peak)  # la normalisation loudness rétablit le niveau ensuite
+            with tempfile.TemporaryDirectory() as td:
+                wav = Path(td) / "raw.wav"
+                sf.write(wav, yy, c["sr"], subtype="PCM_16")
+                # le ralenti est déjà appliqué à la prise (voir atempo) : tempo 1 ici
+                res = encode_normalized_mp3(wav, dest, args.lufs, args.true_peak, args.lra, args.mp3_quality,
+                                            1.0, tag, args.sample_rate, args.bitrate, args.abr)
+                if args.keep_wav:
+                    shutil.copy(wav, mp3.with_suffix(".raw.wav"))
+            return res
+
+        if asr and not cached:
+            # L'ASR juge chaque prise candidate APRÈS encodage : exactement ce que le joueur entendra
+            # (et ce que --verify relira). Mot-clé "Lilas|lila" : homophones que Whisper écrit autrement.
             keywords = [[AsrChecker._norm(a, lang) for a in k.split("|")] for k in ln.get("keywords", [])]
-            for c in cands:
-                cer, hyp = asr(c["y"], c["sr"], say, lang)
-                hyp_n = AsrChecker._norm(hyp, lang)
-                missing = [alts[0] for alts in keywords if not any(a in hyp_n for a in alts)]
-                c["asr_cer"], c["asr_text"], c["asr_missing"] = round(cer, 3), hyp, missing
-                if cer <= args.max_cer and not missing:
-                    chosen = c
-                    break
-            else:
-                chosen = min(cands, key=lambda c: (len(c.get("asr_missing", [])), c.get("asr_cer", 9)))
-                stats["asr_warn"] += 1
-                miss = f", mots-clés non entendus : {chosen['asr_missing']}" if chosen.get("asr_missing") else ""
-                log(f"  ⚠ {rel}: aucune prise valide (CER ≤ {args.max_cer}{' + mots-clés' if keywords else ''}) ; "
-                    f"retenue : CER {chosen['asr_cer']}{miss} « {chosen['asr_text']} » → reformuler ou changer de voix")
+            with tempfile.TemporaryDirectory(dir=out, prefix=".cand-") as cand_dir:
+                for i, c in enumerate(cands):
+                    c_mp3 = Path(cand_dir) / f"{i}.mp3"
+                    c["_loud"], c["_mp3"] = encode_take(c, c_mp3), c_mp3
+                    cer, hyp = asr(decode_audio(c_mp3), 16000, say, lang, ln.get("asr_prompt"))
+                    hyp_n = AsrChecker._norm(hyp, lang)
+                    missing = [alts[0] for alts in keywords if not any(a in hyp_n for a in alts)]
+                    c["asr_cer"], c["asr_text"], c["asr_missing"] = round(cer, 3), hyp, missing
+                    if cer <= args.max_cer and not missing:
+                        chosen = c
+                        break
+                else:
+                    chosen = min(cands, key=lambda c: (len(c.get("asr_missing", [])), c.get("asr_cer", 9)))
+                    stats["asr_warn"] += 1
+                    miss = f", mots-clés non entendus : {chosen['asr_missing']}" if chosen.get("asr_missing") else ""
+                    log(f"  ⚠ {rel}: aucune prise valide (CER ≤ {args.max_cer}{' + mots-clés' if keywords else ''}) ; "
+                        f"retenue : CER {chosen['asr_cer']}{miss} « {chosen['asr_text']} » → reformuler ou changer de voix")
+                os.replace(chosen["_mp3"], mp3)
+                loud = chosen["_loud"]
             asr_info = {"asr_cer": chosen.get("asr_cer"), "asr_text": chosen.get("asr_text"),
-                        "asr_ok": not (chosen.get("asr_missing") or (chosen.get("asr_cer") or 0) > args.max_cer)}
-        y = np.concatenate([np.zeros(int(chosen["sr"] * args.head_ms / 1000), np.float32), chosen["y"],
-                            np.zeros(int(chosen["sr"] * args.tail_ms / 1000), np.float32)])
-        peak = float(np.abs(y).max())
-        if peak > 0.89:  # certains moteurs (Chatterbox, Piper) sortent > 0 dBFS : on évite l'écrêtage PCM16,
-            y = y * (0.89 / peak)  # la normalisation loudness rétablit le niveau ensuite
-        with tempfile.TemporaryDirectory() as td:
-            wav = Path(td) / "raw.wav"
-            sf.write(wav, y, chosen["sr"], subtype="PCM_16")
-            loud = encode_normalized_mp3(wav, mp3, args.lufs, args.true_peak, args.lra, args.mp3_quality,
-                                         float(vcfg.get("tempo", 1.0)), tag)
-            if args.keep_wav:
-                shutil.copy(wav, mp3.with_suffix(".raw.wav"))
+                        "asr_ok": not (chosen.get("asr_missing") or (chosen.get("asr_cer") or 0) > args.max_cer),
+                        "asr_model": args.asr}
+        else:
+            loud = encode_take(chosen, mp3)
+        if not cached:
+            cache_save(args.cache, synth_key, chosen, {"n": n_cands, "asr_info": asr_info})
         dur = probe(mp3)["duration"]
         entries[(lang, lid)] = {"id": lid, "lang": lang, "text": text, **({"say": say} if say != text else {}),
                                 "file": rel, "duration_s": round(dur, 3),
+                                # durée parlée (première à dernière syllabe), ce que mesure la règle « < 3 s »
+                                "speech_s": round(speech_stats(chosen["y"], chosen["sr"])["speech_s"], 2),
                                 "lufs": round(loud["lufs"], 1), "true_peak_db": round(loud["true_peak_db"], 1),
                                 "voice": preset, "engine": vcfg["engine"], "seed": chosen["seed"],
-                                "take": f"{chosen['take']}/{len(cands)}", "utmos": round(chosen["score"], 2) if scorer else None,
+                                "take": f"{chosen['take']}/{n_cands}", "utmos": round(chosen["score"], 2) if chosen.get("score") else None,
                                 **asr_info, "hash": h}
         stats["generated"] += 1
         flag = "" if chosen["sane"] else " ⚠ débit/pauses suspects"
-        mos = f" mos={chosen['score']:.2f}" if scorer else ""
-        log(f"✓ {rel} {dur:.2f}s {loud['lufs']:.1f} LUFS prise {chosen['take']}/{len(cands)}{mos} ({time.time() - t0:.1f}s){flag}")
-        write_manifest(manifest_path, entries, lines, post)
+        mos = f" mos={chosen['score']:.2f}" if chosen.get("score") else ""
+        log(f"✓ {rel} {dur:.2f}s {loud['lufs']:.1f} LUFS prise {chosen['take']}/{n_cands}{mos} ({time.time() - t0:.1f}s){flag}")
+        write_manifest(manifest_path, entries, lines, post, args.lite_manifest)
 
-    write_manifest(manifest_path, entries, lines, post)
+    write_manifest(manifest_path, entries, lines, post, args.lite_manifest)
     wanted = {f"{ln['lang']}/{ln['id']}.mp3" for ln in lines}
     orphans = sorted(str(p.relative_to(out)) for p in out.glob("*/*.mp3") if str(p.relative_to(out)) not in wanted)
     if orphans:

@@ -72,6 +72,38 @@ tools/tts/tts.sh lines.json --out public/audio/narrator --only lead_coral,last_t
 
 Le jeu lit `duration_s` pour caler les sous-titres et l'enchaînement des répliques. Ce sont les durées réelles des MP3, padding inclus.
 
+## Voix du narrateur d'Ombres (lot complet)
+
+Le lot du jeu (~720 clips : 28 modèles à couleur × 12 couleurs × FR/EN + 25 répliques neutres × FR/EN) se génère avec des scripts dédiés. Décisions et limites : `docs/agent-notes/director.md` §5.
+
+```bash
+tools/tts/narrator.sh                 # construit narrator.lines.json puis génère ce qui manque ou a changé
+tools/tts/narrator.sh --parallel      # FR et EN dans deux processus (manifests séparés, fusionnés à la fin)
+tools/tts/narrator.sh --verify        # re-transcrit les MP3 finaux (ce que le joueur entend), met à jour asr_* et speech_s
+npx tsx tools/tts/narrator-retry.ts   # nouvelle graine (+1000) pour chaque clip refusé par l'ASR → narrator.seeds.json
+tools/tts/narrator.sh                 # ne régénère que ces clips (la graine fait partie du hash)
+```
+
+- `narrator-lines.ts` lit le catalogue `src/director/lines.ts`, les textes `src/shared/strings/narrator.ts` et les noms de couleur, vérifie les règles d'écriture (`--check` : couleur jamais en dernier mot, jamais d'article, une seule couleur…), et écrit `narrator.lines.json` : ids `<lineId>` et `<lineId>.<colorIndex>`, graphie prononcée (`say` : « Carmain »), mots-clés (le nom de couleur et ses homophones), amorce ASR (la liste des 12 noms).
+- Réglages du lot : preset `narrator`, `--takes 4 --asr`, `--max-pause-ms 420`, `--sample-rate 24000 --bitrate 32k --abr`, `--tail-ms 100`.
+- Manifests : **complet** (notes de prise, UTMOS, transcription, hash) dans `tools/tts/narrator.manifest.json` ; **réduit** (`id`, `lang`, `file`, `duration_s`) dans `public/audio/narrator/manifest.json`, le seul que le jeu charge.
+
+### Options ajoutées pour ce lot
+
+| option / champ | effet |
+|---|---|
+| `--max-pause-ms N` | raccourcit à N ms (durée finale, après `tempo`) les pauses internes que le TTS met aux points (Pocket : 0,55 à 1,3 s). Les `[pause N]` explicites restent exactes. |
+| `--sample-rate 24000` | fréquence du MP3 (Pocket produit du 24 kHz : pas de suréchantillonnage inutile). |
+| `--bitrate 32k [--abr]` | débit constant (ou moyen avec `--abr` : plus de bits pour la voix que pour les silences) à la place du VBR `--mp3-quality`. |
+| `--cache DIR` | cache des prises retenues (audio ralenti, rogné, avant padding et encodage) + leurs notes ; défaut `tools/tts/out/cache`. Changer l'encodage, la loudness ou le padding ne re-synthétise rien (`♻` dans le log). `--force` l'ignore. |
+| `--lite-manifest F` | écrit aussi le manifest réduit pour le jeu. |
+| `"asr_prompt"` (entrée) | vocabulaire soufflé à Whisper (`initial_prompt`) : il écrit alors correctement un nom propre bien prononcé ; une prise mâchée reste mâchée. |
+| `--verify` | ne génère rien : re-transcrit les MP3 à jour et met à jour `asr_cer`, `asr_text`, `asr_ok`, `speech_s` dans le manifest. |
+| `--manifest F` / `--merge A B` | un manifest par processus pour générer plusieurs langues en parallèle, puis fusion dans `<out>/manifest.json`. |
+| ids `A-Za-z0-9_.-` | les ids peuvent contenir des points (`leaderChange2.5`) et des majuscules. |
+
+Le ralenti `tempo` est désormais appliqué **à chaque prise avant la notation** (UTMOS, ASR) : on juge ce que le joueur entendra. Le manifest note aussi `speech_s` (durée parlée, de la première à la dernière syllabe).
+
 ## Qualité : prises multiples et vérification automatique
 
 Personne ne peut écouter chaque prise. Les garde-fous sont donc automatiques :

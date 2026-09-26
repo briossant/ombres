@@ -1,0 +1,451 @@
+/* Page de contrôle du narrateur : papier + encre (ART_BIBLE §8). */
+@font-face {
+  font-family: 'Patrick Hand SC';
+  src: url('/fonts/patrick-hand-sc-400-latin.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Patrick Hand SC';
+  src: url('/fonts/patrick-hand-sc-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Julius Sans One';
+  src: url('/fonts/julius-sans-one-400-latin.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Averia Sans Libre';
+  src: url('/fonts/averia-sans-libre-700-latin.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --paper: #f7f0e3;
+  --paper-2: #efe4cf;
+  --ink: #2b1d23;
+  --ink-60: rgb(43 29 35 / 0.6);
+  --ink-35: rgb(43 29 35 / 0.35);
+  --drop: rgb(161 142 161 / 0.6);
+  --sun: #fff2c3;
+  --lavender: #a18ea1;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: #e6dcc8;
+  color: var(--ink);
+  font: 18px/1.35 'Patrick Hand SC', system-ui, sans-serif;
+}
+main {
+  padding: 20px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+h1,
+h2 {
+  font-family: 'Julius Sans One', serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+h1 {
+  font-size: 34px;
+}
+h2 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: var(--ink);
+}
+button {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  box-shadow: 3px 3px 0 var(--drop);
+  padding: 2px 10px;
+  cursor: pointer;
+}
+button:active,
+button.on {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+  background: var(--sun);
+}
+button:disabled {
+  opacity: 0.35;
+  box-shadow: none;
+  cursor: default;
+}
+input,
+select {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  padding: 0 6px;
+  width: 64px;
+}
+select {
+  width: auto;
+}
+
+.case {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  box-shadow: 5px 5px 0 var(--drop);
+  padding: 14px 18px;
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+.toggles {
+  display: flex;
+  gap: 6px;
+}
+.swatches {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.swatches button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: none;
+}
+.swatches button.on {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  transform: none;
+}
+.cname {
+  margin-left: 8px;
+  font-size: 22px;
+  min-width: 90px;
+}
+.chk input {
+  width: auto;
+}
+.stats {
+  margin-left: auto;
+  font-size: 17px;
+}
+.stats b {
+  font-family: 'Averia Sans Libre', sans-serif;
+}
+.stats b.bad {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0 5px;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Liste des répliques */
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kind h3 {
+  margin: 6px 0 4px;
+  font-size: 17px;
+  font-weight: 400;
+  border-bottom: 1.5px solid var(--ink);
+  display: flex;
+  justify-content: space-between;
+}
+.kind .meta {
+  color: var(--ink-60);
+  font-size: 15px;
+}
+.row {
+  display: grid;
+  grid-template-columns: 34px 1fr auto 78px;
+  gap: 10px;
+  align-items: center;
+  padding: 3px 0;
+}
+.row .play {
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  font-size: 13px;
+}
+.row .txt {
+  font-size: 19px;
+}
+.row .asr {
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--ink-60);
+}
+.row .id {
+  font-size: 12px;
+  color: var(--ink-60);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.row .id .all {
+  font-size: 11px;
+  padding: 0 4px;
+  box-shadow: 1px 1px 0 var(--drop);
+}
+.badge {
+  font-family: 'Averia Sans Libre', sans-serif;
+  font-size: 14px;
+  text-align: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.badge.ok {
+  background: var(--paper-2);
+}
+.badge.warn,
+.badge.missing {
+  background: var(--ink);
+  color: var(--paper);
+}
+.name {
+  white-space: nowrap;
+}
+.dot {
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  margin: 0 0.18em 0.08em 0;
+  vertical-align: middle;
+}
+
+/* Manche synthétique */
+.sim header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.sim header h2 {
+  margin: 0 8px 0 0;
+}
+.legend {
+  margin: 4px 0 10px;
+  font-size: 15px;
+  color: var(--ink-60);
+}
+.timeline .band {
+  position: relative;
+  height: 64px;
+  border: 2px solid var(--ink);
+  background: linear-gradient(90deg, #cfe9e3 0%, #f5e8c8 45%, #f3c98f 72%, #d79a8a 88%, #7d6a8a 100%);
+  margin: 22px 0 12px;
+}
+.timeline .quiet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(135deg, rgb(43 29 35 / 0.28) 0 2px, transparent 2px 7px);
+}
+.timeline .mark {
+  position: absolute;
+  top: -22px;
+  bottom: 0;
+  border-left: 1.5px dashed var(--ink-60);
+}
+.timeline .mark span {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.timeline .ev {
+  position: absolute;
+  bottom: 3px;
+  width: 3px;
+  height: 10px;
+  margin-left: -1px;
+  background: var(--ink-60);
+}
+.timeline .cue {
+  position: absolute;
+  top: 14px;
+  height: 26px;
+  min-width: 6px;
+  padding: 0;
+  border-width: 1.5px;
+  box-shadow: 2px 2px 0 var(--drop);
+}
+.cue.p1,
+.prio.p1 {
+  background: var(--ink);
+  color: var(--paper);
+}
+.cue.p2,
+.prio.p2 {
+  background: #6b5570;
+  color: var(--paper);
+}
+.cue.p3,
+.prio.p3 {
+  background: var(--lavender);
+}
+.cue.p4,
+.prio.p4,
+.cue.p5,
+.prio.p5 {
+  background: var(--paper-2);
+}
+.timeline .cue.on {
+  outline: 3px solid var(--sun);
+  transform: none;
+}
+.cuelist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 330px;
+  overflow: auto;
+  border-top: 1.5px solid var(--ink);
+}
+.cuelist li {
+  display: grid;
+  grid-template-columns: 62px 34px 170px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--ink-35);
+  cursor: pointer;
+}
+.cuelist li.on {
+  background: var(--sun);
+}
+.cuelist .t {
+  font-family: 'Averia Sans Libre', sans-serif;
+  font-size: 14px;
+}
+.cuelist .prio {
+  font-family: 'Averia Sans Libre', sans-serif;
+  font-size: 12px;
+  text-align: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+}
+.cuelist .k {
+  color: var(--ink-60);
+  font-size: 15px;
+}
+.stage {
+  margin-top: 14px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #b9a7b3 radial-gradient(ellipse at 50% 120%, #e8b98f 0%, #b9a7b3 60%);
+  border: 2px solid var(--ink);
+}
+/* Récitatif du narrateur (ART_BIBLE §8.2, §8.6) */
+.recitatif {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  padding: 0.35em 0.8em;
+  font-size: 30px;
+  max-width: 88%;
+  animation: wipe 250ms ease-out;
+}
+.recitatif.empty {
+  opacity: 0.4;
+  animation: none;
+}
+@keyframes wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Indications */
+.hintgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+.hint code {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-60);
+  margin: 16px 0 0 48px;
+}
+.hint--banner code {
+  margin: 6px 0 0;
+}
+.bubble {
+  position: relative;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-left: 8px solid var(--pc);
+  border-radius: 3px;
+  box-shadow: 4px 4px 0 var(--drop);
+  padding: 6px 12px;
+  font-size: 20px;
+}
+.hint--bubble .bubble::after {
+  /* queue de la bulle, vers l'oiseau */
+  content: '';
+  position: absolute;
+  left: 22px;
+  bottom: -11px;
+  width: 16px;
+  height: 16px;
+  background: var(--paper);
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: rotate(45deg) skew(8deg, 8deg);
+}
+.hint--banner .bubble {
+  border-left-width: 2px;
+  background: var(--sun);
+  text-align: center;
+}
+.bubble .fx {
+  display: inline-block;
+  margin-left: 8px;
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--ink-60);
+  border: 1px dashed var(--ink-60);
+  padding: 0 4px;
+}

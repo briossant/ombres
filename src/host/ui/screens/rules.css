@@ -1,0 +1,94 @@
+.rules {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 54px;
+}
+.rules__title {
+  position: relative;
+  margin: 0;
+  padding: 12px 34px 9px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 7px 7px 0 var(--drop);
+  font-size: 46px;
+}
+.rules__cards {
+  position: relative;
+  display: flex;
+  gap: 46px;
+}
+.rules__card {
+  width: 520px;
+  padding: 26px 26px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rules__num {
+  position: absolute;
+  top: -26px;
+  left: -22px;
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 3px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 34px;
+  box-shadow: 4px 4px 0 var(--drop);
+}
+.rules__art {
+  width: 464px;
+  height: 267px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.rules__art .rule-art {
+  width: 464px;
+  height: auto;
+}
+.rules__text span {
+  display: block;
+  white-space: nowrap;
+}
+.rules__text {
+  margin: 20px 0 0;
+  min-height: 2.3em;
+  font-size: 38px;
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
+.rules__foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  width: 1652px;
+}
+.rules__timer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.rules__timer .sand-timer {
+  flex: 1;
+  height: 14px;
+  box-shadow: 4px 4px 0 var(--drop);
+}
+.rules__ok {
+  font-size: 28px;
+  color: var(--paper);
+  background: var(--ink);
+  padding: 4px 14px 3px;
+  border-radius: 2px;
+  white-space: nowrap;
+}

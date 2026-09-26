@@ -1,0 +1,406 @@
+/* Interface du PC — fondations (ART_BIBLE §8).
+ * Toutes les tailles sont en « px de conception » 1080p : la racine .ui-root
+ * est mise à l'échelle par `zoom` (hauteur d'écran / 1080), voir useUiScale.ts. */
+
+/* ─── Polices OFL auto-hébergées (public/fonts) ──────────────────────────── */
+@font-face {
+  font-family: 'Julius Sans One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/julius-sans-one-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Julius Sans One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/julius-sans-one-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Patrick Hand SC';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/patrick-hand-sc-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Patrick Hand SC';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/patrick-hand-sc-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Averia Sans Libre';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('/fonts/averia-sans-libre-700-latin.woff2') format('woff2');
+}
+
+/* ─── Jetons de style ────────────────────────────────────────────────────── */
+.ui-root {
+  --paper: #f7f0e3;
+  --paper-2: #efe4cf;
+  --paper-3: #e4d6bb;
+  --ink: #2b1d23;
+  --ink-80: rgb(43 29 35 / 0.8);
+  --ink-60: rgb(43 29 35 / 0.6);
+  --ink-35: rgb(43 29 35 / 0.35);
+  --ink-15: rgb(43 29 35 / 0.15);
+  --drop: rgb(161 142 161 / 0.6);
+  --drop-solid: #a18ea1;
+  --sun: #fff2c3;
+  --sun-deep: #f6dc8c;
+  --night: #181322;
+  --radius: 3px;
+
+  --f-title: 'Julius Sans One', 'Patrick Hand SC', serif;
+  --f-ui: 'Patrick Hand SC', 'Julius Sans One', sans-serif;
+  --f-num: 'Averia Sans Libre', 'Patrick Hand SC', sans-serif;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --enter-ms: 220ms;
+  --exit-ms: 160ms;
+
+  /* Zone de sécurité TV : 4 % de chaque bord (ART_BIBLE §8.5). */
+  --safe-y: 44px;
+  --safe-x: 4%;
+
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--ink);
+  font-family: var(--f-ui);
+  font-size: 24px;
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  z-index: 10;
+}
+
+.ui-root *,
+.ui-root *::before,
+.ui-root *::after {
+  box-sizing: border-box;
+}
+
+.ui-root button {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+.ui-root .interactive,
+.ui-root button,
+.ui-root [data-nav] {
+  pointer-events: auto;
+}
+
+.ui-root svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Mouvement réduit (réglage « Réduire les flashs » ou préférence système) : fondus seuls. */
+.ui-root.reduce-motion {
+  --slide: 0px;
+}
+
+/* ─── Typographie ────────────────────────────────────────────────────────── */
+.t-title {
+  font-family: var(--f-title);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+}
+.t-ui {
+  font-family: var(--f-ui);
+}
+.t-num {
+  font-family: var(--f-num);
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+}
+.t-dim {
+  color: var(--ink-60);
+}
+
+/* ─── Cases de BD ────────────────────────────────────────────────────────── */
+.case {
+  position: relative;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 5px 5px 0 var(--drop);
+}
+.case--title {
+  border-width: 3px;
+  box-shadow: 7px 7px 0 var(--drop);
+}
+.case--flat {
+  box-shadow: none;
+}
+.case--alert {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.case--sun {
+  background: var(--sun);
+}
+
+/* En-tête de case : cartouche posé à cheval sur le bord haut (légende de BD). */
+.case__cap {
+  position: absolute;
+  left: 18px;
+  top: 0;
+  transform: translateY(-58%);
+  padding: 4px 14px 3px;
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  font-family: var(--f-title);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 20px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.case--alert .case__cap {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ─── Boutons ────────────────────────────────────────────────────────────── */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 10px 26px 9px 20px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 5px 5px 0 var(--drop);
+  font-family: var(--f-ui);
+  font-size: 30px;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition:
+    transform 120ms var(--ease-out),
+    box-shadow 120ms var(--ease-out),
+    background-color 90ms linear;
+}
+.btn .icon {
+  flex: none;
+}
+.btn:focus-visible,
+.btn.is-focus {
+  background: var(--sun);
+  border-width: 3px;
+  padding: 9px 25px 8px 19px;
+}
+.btn:active,
+.btn.is-pressed {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--drop);
+  transition-duration: 80ms;
+}
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  color: var(--ink-35);
+  border-color: var(--ink-35);
+  box-shadow: none;
+  cursor: default;
+}
+.btn--primary {
+  font-family: var(--f-title);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 38px;
+  min-height: 84px;
+  padding: 14px 34px 12px 26px;
+  border-width: 3px;
+  box-shadow: 7px 7px 0 var(--drop);
+}
+.btn--primary:focus-visible,
+.btn--primary.is-focus {
+  border-width: 4px;
+  padding: 13px 33px 11px 25px;
+}
+.btn--primary:active,
+.btn--primary.is-pressed {
+  transform: translate(4px, 4px);
+}
+.btn--quiet {
+  box-shadow: none;
+  background: transparent;
+  border-color: transparent;
+}
+.btn--quiet:focus-visible,
+.btn--quiet.is-focus {
+  border-color: var(--ink);
+}
+.btn--icon {
+  min-height: 0;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  box-shadow: 3px 3px 0 var(--drop);
+}
+.btn--icon:focus-visible,
+.btn--icon.is-focus {
+  padding: 0;
+}
+.btn__hint {
+  margin-left: auto;
+  padding-left: 18px;
+}
+
+/* ─── Touches de clavier ─────────────────────────────────────────────────── */
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7em;
+  height: 1.55em;
+  padding: 0 0.42em;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-bottom-width: 4px;
+  border-radius: 4px;
+  font-family: var(--f-ui);
+  font-size: 0.78em;
+  line-height: 1;
+  color: var(--ink);
+  vertical-align: 0.08em;
+  white-space: nowrap;
+}
+.case--alert .key {
+  border-color: var(--paper);
+}
+
+/* ─── Jetons et glyphes ──────────────────────────────────────────────────── */
+.token {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.glyph {
+  flex: none;
+}
+
+/* ─── Barre de focus / attribut commun ───────────────────────────────────── */
+.ui-root [data-nav]:focus {
+  outline: none;
+}
+
+/* ─── Animations d'entrée / sortie (ART_BIBLE §8.6) ──────────────────────── */
+@keyframes ui-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--slide, 12px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ui-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--slide, 12px) * -0.5));
+  }
+}
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ui-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+.enter {
+  animation: ui-enter var(--enter-ms) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+.screen--exit .enter,
+.screen--exit {
+  animation: ui-exit var(--exit-ms) ease-in both;
+}
+
+/* Essuyage d'encre de gauche à droite (récitatif, bannières). */
+@keyframes ui-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.wipe {
+  animation: ui-wipe 250ms var(--ease-out) both;
+}
+
+/* Tampon : 1,15 → 1 en 120 ms. */
+@keyframes ui-stamp {
+  from {
+    transform: scale(1.15);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* ─── Écrans ─────────────────────────────────────────────────────────────── */
+.screen {
+  position: absolute;
+  inset: 0;
+}
+.safe {
+  position: absolute;
+  inset: var(--safe-y) var(--safe-x);
+}
+
+/* Voile de lisibilité (jamais de flou) : encre à plat. */
+.veil {
+  position: absolute;
+  inset: 0;
+  background: rgb(24 19 34 / 0.42);
+  animation: ui-fade-in 200ms linear both;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 1.6s linear infinite;
+}

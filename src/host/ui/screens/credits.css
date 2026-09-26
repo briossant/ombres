@@ -1,0 +1,82 @@
+.credits__back {
+  position: absolute;
+  left: var(--safe-x);
+  top: var(--safe-y);
+}
+.hand-frame.credits__panel {
+  position: absolute;
+  left: 50%;
+  top: var(--safe-y);
+  bottom: var(--safe-y);
+  width: 1040px;
+  margin-left: -520px;
+}
+.credits__panel .hand-frame__content {
+  height: 100%;
+}
+.credits__view {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  /* Fondu d'entrée/sortie du texte en haut et en bas de la case (masque, pas d'ombre). */
+  mask-image: linear-gradient(to bottom, transparent 0, #000 90px, #000 calc(100% - 90px), transparent 100%);
+}
+.credits__roll {
+  padding: 0 70px 120px;
+  text-align: center;
+  will-change: transform;
+}
+.credits__logo {
+  display: flex;
+  justify-content: center;
+  transform: scale(0.72);
+  margin: -20px 0 -60px;
+}
+.credits__made {
+  margin: 20px 0 0;
+  font-size: 44px;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.credits__made-sub {
+  margin: 12px 0 0;
+  font-size: 28px;
+  color: var(--ink-80);
+}
+.credits__sec {
+  margin-top: 70px;
+}
+.credits__h {
+  margin: 0 0 18px;
+  font-size: 30px;
+  letter-spacing: 0.14em;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.credits__h::before,
+.credits__h::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--ink-35);
+}
+.credits__line {
+  margin: 0 0 10px;
+  font-size: 28px;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.credits__sub {
+  font-size: 22px;
+  color: var(--ink-60);
+}
+.credits__line--prose {
+  text-wrap: balance;
+}
+.credits__end {
+  margin-top: 110px;
+  font-size: 36px;
+}

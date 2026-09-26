@@ -188,6 +188,14 @@ export interface TerritoryGrid {
   counts: Int32Array
   /** Incrémenté à chaque modification de owner/level. */
   version: number
+  /**
+   * Ajout sim : rectangle (en cellules, bornes incluses) des cellules modifiées depuis
+   * la dernière remise à zéro par le consommateur (le rendu du territoire) ; vide si x0 > x1.
+   * Remettre à zéro avec `clearDirty(grid)` (src/sim/territory.ts) après l'envoi de la texture.
+   */
+  dirty?: DirtyRect
+  /** Ajout sim : incrémenté à chaque recalcul du masque figé (tours à 10 Hz, avancée de la nuit). */
+  frozenVersion?: number
 }
 
 // ─── Oiseaux ───────────────────────────────────────────────────────────────
@@ -252,6 +260,18 @@ export interface BirdState {
   assist: boolean
   /** Glissade contre un fût : temps restant (s). */
   towerSlide: number
+  // ─── Ajouts sim (compatibles, optionnels pour les maquettes ; toujours remplis par la sim) ───
+  /** Cellules gagnées ou renforcées par cette ombre à ce tick (grain de sable qui coule, audio). */
+  paintedCells?: number
+  /** Durée (s) continue pendant laquelle l'ombre pâle frotte du sable fort adverse (0 sinon). */
+  paleOnStrong?: number
+  /** Gain net de cellules sur les 3 dernières secondes, en fraction de l'arène. */
+  gain3s?: number
+  /** Cellules prises à d'autres joueurs sur les 3 dernières secondes (repeint + traînées), fraction de l'arène. */
+  stolen3s?: number
+  /** Coup d'aile en cours : direction de l'impulsion (unitaire). */
+  flapDirX?: number
+  flapDirY?: number
 }
 
 // ─── Statistiques (titres, résultats) ──────────────────────────────────────
@@ -283,6 +303,13 @@ export interface BirdRoundStats {
   rankAt90: number
   rankAt98: number
   rankAtNight: number
+  // ─── Ajouts sim (compatibles, optionnels pour les maquettes ; toujours remplis par la sim) ───
+  /** Piqués annulés par le chasseur (PLONGER relâché avant le clac). */
+  feints?: number
+  /** Cellules possédées à la nuit qui étaient déjà à soi à t = 60 s (× T/110) : titre « Le Bâtisseur ». */
+  keptFrom60?: number
+  /** Cellules possédées à la nuit (score de manche). */
+  finalCells?: number
 }
 
 // ─── État complet ──────────────────────────────────────────────────────────

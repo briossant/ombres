@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ombres — UI (dev)</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #1b1620;
+      }
+      .dev-bg {
+        position: fixed;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dev-bg" id="bg"></div>
+    <div id="root"></div>
+    <script type="module" src="/src/dev/ui/main.tsx"></script>
+  </body>
+</html>

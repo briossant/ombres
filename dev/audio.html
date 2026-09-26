@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ombres — audio (dev)</title>
+    <style>
+      :root { --ink: #2b1d23; --paper: #f4ecdc; --sand: #e6d6b4; --accent: #b4553c; --muted: #7c6a5c; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: var(--paper); color: var(--ink); font: 13px/1.35 system-ui, sans-serif; }
+      header { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: var(--sand); border-bottom: 1px solid var(--ink); position: sticky; top: 0; z-index: 5; }
+      header h1 { margin: 0; font-size: 16px; letter-spacing: .05em; }
+      main { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; padding: 12px 16px 120px; }
+      section { border: 1px solid var(--ink); background: #fbf6ec; padding: 8px 10px 10px; }
+      section h2 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+      .row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 3px 0; }
+      .grp { font-size: 11px; color: var(--muted); width: 100%; margin-top: 4px; }
+      button { font: inherit; font-size: 12px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); padding: 2px 7px; cursor: pointer; }
+      button:hover { background: var(--sand); }
+      button.on { background: var(--ink); color: var(--paper); }
+      button.big { font-size: 14px; padding: 5px 12px; }
+      input[type=range] { width: 150px; accent-color: var(--accent); }
+      label { display: inline-flex; gap: 4px; align-items: center; }
+      .mix { display: grid; grid-template-columns: 70px 1fr 52px 18px 18px; gap: 2px 6px; align-items: center; }
+      .mix span.v { font-variant-numeric: tabular-nums; text-align: right; }
+      canvas { display: block; width: 100%; background: #1d1417; }
+      #timeline { width: 100%; }
+      .mono { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+      #subtitle { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--paper); border: 2px solid var(--ink); padding: 8px 18px; font-size: 22px; max-width: 70vw; text-align: center; display: none; box-shadow: 4px 4px 0 var(--ink); }
+      #subtitle b { padding: 0 2px; }
+      table { border-collapse: collapse; width: 100%; font-size: 12px; }
+      td, th { border-bottom: 1px solid #d8c9aa; padding: 2px 4px; text-align: left; }
+      .full { grid-column: 1 / -1; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>OMBRES — AUDIO</h1>
+      <button id="unlock" class="big">Activer le son</button>
+      <span id="status" class="mono"></span>
+      <progress id="progress" max="1" value="0" style="width:160px"></progress>
+    </header>
+    <main id="main"></main>
+    <div id="subtitle"></div>
+    <script type="module" src="/src/dev/audio/main.ts"></script>
+  </body>
+</html>

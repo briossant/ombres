@@ -114,7 +114,12 @@ export const RULES = {
   diveTurnDegPerS: 150,
   diveCommitLead: 0.65,
   diveMaxTime: 1.4,
-  diveHitRadius: 4.0,
+  // Agent sim : 4,0 → 5,5. La micro-simulation du GDD (§17-E) réorientait le coup d'aile
+  // perpendiculairement à l'approche à chaque instant ; dans le jeu, il part dans la direction
+  // du joystick, fixée à l'appui, ce qui rendait l'esquive ≈ 0,1 s plus facile (réaction
+  // 0,30 s : 2 % de touches au lieu de 52 %). 5,5 m restitue la courbe visée par le GDD
+  // (0,20 / 0,27 / 0,30 / 0,37 / 0,40 s → 3 / 21 / 45 / 97 / 97 %). Voir docs/agent-notes/sim.md.
+  diveHitRadius: 5.5,
   diveHitMaxBelow: 1,
   stunHit: 1.5,
   stunDriftSpeed: 8,
@@ -168,7 +173,8 @@ export const RULES = {
   noSlowmoLastSeconds: 3,
   hudDialHeightFrac: 0.18,
   hudBarWidthFrac: 0.46,
-  hudBarHeightPx: 18,
+  // Lead : 18 → 38 px (ART_BIBLE §8.5 : le % en Averia doit tenir dans la bande et se lire à 3 m).
+  hudBarHeightPx: 38,
   hudSegmentLabelMinFrac: 0.03,
   hudBarAnimMs: 300,
   phaseBannerSeconds: 3,
@@ -201,6 +207,10 @@ export const RULES = {
   stormLongSeconds: 3,
   idleSeconds: 10,
   runawayRatio: 1.8,
+  /** « Écart énorme » seulement après cet instant (GDD §16.4). */
+  runawayFromAt: 60,
+  /** Écart minimal entre deux annonces de « gros vol » (GDD §16.4). */
+  bigStealNarrMinGap: 20,
   photoFinishGap: 0.015,
   closeFinishGap: 0.01,
   landslideGap: 0.12,
@@ -221,6 +231,9 @@ export const RULES = {
   lockTickMinGapSeconds: 2,
   inputSendHz: 30,
   wsPingSeconds: 25,
+  /** Mode de contrôle Relatif : écart de cap visé selon |x| du joystick (min à la zone morte, max à fond). */
+  relativeSteerMinDeg: 25,
+  relativeSteerMaxDeg: 90,
 
   // ─── 19.11 Aide au vol ──────────────────────────────────────────────────
   assistLockRange: 34,
@@ -261,6 +274,40 @@ export const RULES = {
   lobbyGoalDiveHoldSeconds: 1,
   rulesCardsSeconds: 8,
   titleDemoSunSeconds: 40,
+
+  // ─── Ajouts de l'agent sim (compatibles ; voir docs/agent-notes/sim.md) ──
+  /** Azimut fixe du soleil du lobby (ombres vers l'est-nord-est). */
+  lobbySunAzDeg: 250,
+  /** Horloge de palette du lobby : KF50 fixe (ART_BIBLE §2.4). */
+  lobbyPaletteElevDeg: 50,
+  /** Pause entre deux boucles de l'écran titre (après la nuit). */
+  demoLoopPauseSeconds: 2,
+  /** Carte d'ouverture (Parasols) : rayon dégagé autour du centre (GDD §9.3). */
+  openingCenterClear: 30,
+  /** Falaise : distance à l'ouest (m) ; sa crête culmine à atan(h/d) = sunElevEndDeg. */
+  cliffDistance: 1700,
+  /** Échantillonnage du profil dentelé du front de nuit (m). */
+  cliffJagSpacing: 2,
+  /** Prise d'élan : fraction de la vitesse conservée pendant que le chasseur se cabre. */
+  diveWindupSpeedFactor: 0.5,
+  /** Raté constaté dès que le chasseur passe à plus de ce dénivelé sous sa cible (m). */
+  diveMissBelow: 1.5,
+  /** Aide au vol : délai du coup d'aile automatique après le clac (s). */
+  assistAutoFlapDelay: 0.15,
+  /** « tsk » : au plus un événement paleOnStrong par oiseau toutes les … s. */
+  paleOnStrongEventGap: 0.35,
+  /** « tsk » : cellules fortes adverses sous une ombre pâle pour compter un contact. */
+  paleOnStrongMinCells: 4,
+  /** Collision entre oiseaux : délai avant un nouvel événement pour la même paire (s). */
+  bumpRepeatSeconds: 0.6,
+  /** Collision avec une tour : délai avant un nouvel événement (s). */
+  towerBumpRepeatSeconds: 0.6,
+  /** Événement bigSteal : réarmé quand le gain sur 3 s retombe sous cette fraction du seuil. */
+  bigStealRearmFrac: 0.66,
+  /** Événement storm : hystérésis de sortie de la bande du Simoun (rayon elliptique). */
+  stormEventHysteresis: 0.01,
+  /** Aide au vol : horizon d'anticipation de l'évitement du Simoun (s). */
+  assistStormLookahead: 1.0,
 } as const
 
 export type Rules = typeof RULES

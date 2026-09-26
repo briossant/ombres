@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ombres — bots (dev)</title>
+    <style>
+      :root { --ink: #2b1d23; --paper: #f7f0e3; --sand: #e6d6b4; --muted: #7c6a5c; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: var(--paper); color: var(--ink); font: 13px/1.35 system-ui, sans-serif; }
+      header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 14px; background: var(--sand); border-bottom: 2px solid var(--ink); }
+      header h1 { margin: 0 8px 0 0; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+      label { display: inline-flex; gap: 4px; align-items: center; }
+      select, input, button { font: inherit; font-size: 12px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); padding: 2px 6px; }
+      button { cursor: pointer; }
+      main { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 12px; padding: 12px 14px; }
+      #view { width: 100%; max-height: calc(100vh - 90px); object-fit: contain; display: block; background: #d9c2a2; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+      aside { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+      section { border: 2px solid var(--ink); background: #fbf6ec; padding: 8px 10px; box-shadow: 3px 3px 0 var(--ink); }
+      section h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+      .mono { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 12px; }
+      table { border-collapse: collapse; width: 100%; }
+      td, th { padding: 1px 4px; text-align: left; white-space: nowrap; }
+      td.num, th.num { text-align: right; }
+      .sw { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--ink); vertical-align: -1px; margin-right: 4px; }
+      #log { height: 220px; overflow: auto; white-space: pre; }
+      .hint { color: var(--muted); font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Ombres · bots</h1>
+      <label>Équipe
+        <select id="team">
+          <option value="v6">6 Voyageurs (caractères)</option>
+          <option value="all7">les 7 caractères</option>
+          <option value="lord">Seigneur contre 3 Oisillons</option>
+          <option value="levels">2 par niveau</option>
+          <option value="solo">1 humain + bots par défaut</option>
+          <option value="duo">2 humains + bots par défaut</option>
+          <option value="twelve">12 oiseaux</option>
+          <option value="demo">écran titre (démo)</option>
+          <option value="lobby">lobby + mannequin</option>
+        </select>
+      </label>
+      <label>Niveau <select id="level"><option value="0">Oisillon</option><option value="1" selected>Voyageur</option><option value="2">Seigneur</option></select></label>
+      <label>Carte <select id="map"><option>parasols</option><option>aiguilles</option><option>geantes</option><option>cadran</option></select></label>
+      <label>Graine <input id="seed" type="number" value="1" style="width: 64px" /></label>
+      <label>Traînée (s) <input id="trail" type="number" value="8" style="width: 48px" /></label>
+      <label><input type="checkbox" id="human" /> je pilote le slot 0</label>
+      <button id="restart">Relancer</button>
+      <button id="pause">Pause</button>
+      <label>Vitesse <select id="speed"><option>0.5</option><option selected>1</option><option>2</option><option>4</option><option>8</option></select></label>
+      <span class="hint">ZQSD/WASD/flèches · Espace = PLONGER · Maj = COUP D'AILE · ?t=85 pour sauter</span>
+    </header>
+    <main>
+      <canvas id="view" width="1024" height="704"></canvas>
+      <aside>
+        <section>
+          <h2>Soleil et perf</h2>
+          <div class="mono" id="sun"></div>
+        </section>
+        <section>
+          <h2>Bots</h2>
+          <table class="mono" id="bots"></table>
+        </section>
+        <section>
+          <h2>Événements</h2>
+          <div class="mono" id="log"></div>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/src/dev/bots/main.ts"></script>
+  </body>
+</html>

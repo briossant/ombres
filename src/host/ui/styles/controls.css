@@ -1,0 +1,171 @@
+/* Contrôles : lignes de réglage, sélecteurs, curseurs, cadre tremblé, sablier. */
+
+.screen-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* ─── Ligne de réglage (un arrêt de focus) ───────────────────────────────── */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 58px;
+  padding: 6px 10px 6px 14px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  outline: none;
+  transition: background-color 90ms linear;
+}
+.row--compact {
+  min-height: 50px;
+  gap: 12px;
+}
+.row.is-focus,
+.row:focus-visible {
+  background: var(--sun);
+  border-color: var(--ink);
+}
+.row__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 28px;
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+.row__label .icon {
+  color: var(--ink-80);
+}
+
+/* ─── Sélecteur segmenté ─────────────────────────────────────────────────── */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.seg__opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 6px 14px 5px;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ink-60);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+.seg__opt:hover {
+  color: var(--ink);
+}
+.seg__opt.is-on {
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--drop);
+}
+.row.is-focus .seg__opt:not(.is-on) {
+  color: var(--ink-80);
+}
+.seg__opt .t-num {
+  font-size: 1.05em;
+}
+
+/* ─── Curseur ────────────────────────────────────────────────────────────── */
+.slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  flex: none;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.slider__track {
+  position: relative;
+  display: block;
+  width: 300px;
+  height: 22px;
+}
+.slider__track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 1px;
+}
+.slider__tick {
+  position: absolute;
+  top: 7px;
+  width: 2px;
+  height: 8px;
+  margin-left: -1px;
+  background: var(--ink-60);
+}
+.slider__tick--major {
+  top: 4px;
+  height: 14px;
+  background: var(--ink);
+}
+.slider__fill {
+  position: absolute;
+  left: 0;
+  top: 7px;
+  height: 8px;
+  background: var(--ink);
+  border-radius: 1px;
+}
+.slider__knob {
+  position: absolute;
+  top: 11px;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  background: var(--sun);
+  border: 2.5px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--drop);
+}
+.slider__value {
+  display: inline-block;
+  width: 2.2em;
+  text-align: right;
+  font-size: 26px;
+}
+
+/* ─── Cadre tremblé ──────────────────────────────────────────────────────── */
+.hand-frame {
+  position: relative;
+}
+.hand-frame__svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.hand-frame__content {
+  position: relative;
+}
+
+/* ─── Sablier ────────────────────────────────────────────────────────────── */
+.sand-timer {
+  position: relative;
+  display: block;
+  height: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  background: var(--paper);
+  overflow: hidden;
+}
+.sand-timer__fill {
+  position: absolute;
+  inset: 0;
+  background: #e8c48a;
+  transform-origin: left center;
+}

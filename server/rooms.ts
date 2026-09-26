@@ -39,6 +39,14 @@ function newRoomCode(): string {
   }
 }
 
+function isValidRoomCode(code: string): boolean {
+  return code.length === ROOM_CODE_LENGTH && [...code].every(c => ROOM_ALPHABET.includes(c))
+}
+
+function isValidToken(token: string | undefined): token is string {
+  return typeof token === 'string' && /^[0-9a-f]{32}$/.test(token)
+}
+
 function connectedPeerIds(room: Room): string[] {
   return [...room.peers.values()].filter(p => p.socket).map(p => p.id)
 }
@@ -56,6 +64,12 @@ export function attachHost(ws: WebSocket, joinOrigin: string) {
           // Rafraîchissement du PC : on reprend la salle et ses téléphones.
           if (existing.host && existing.host !== ws) existing.host.close(4000, 'replaced')
           room = existing
+          resumed = true
+        } else if (!existing && msg.room && isValidRoomCode(msg.room) && isValidToken(msg.hostToken)) {
+          // Le serveur a redémarré (redeploy) : le PC, qui fait autorité, recrée sa
+          // salle avec le même code et le même jeton ; les téléphones s'y reconnectent.
+          room = { code: msg.room, hostToken: msg.hostToken, host: null, hostGoneAt: 0, peers: new Map() }
+          rooms.set(room.code, room)
           resumed = true
         } else {
           room = {

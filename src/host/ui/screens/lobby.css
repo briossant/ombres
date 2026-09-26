@@ -1,0 +1,453 @@
+/* Salon : trois colonnes, le centre haut laissé au désert. */
+.lobby {
+  --col-l: 430px;
+  --col-r: 480px;
+  --top: 62px;
+}
+.lobby__left,
+.lobby__right {
+  position: absolute;
+  top: var(--top);
+  bottom: var(--safe-y);
+  display: flex;
+  flex-direction: column;
+  gap: 42px;
+}
+.lobby__left {
+  left: var(--safe-x);
+  width: var(--col-l);
+}
+.lobby__right {
+  right: var(--safe-x);
+  width: var(--col-r);
+}
+.lobby__center {
+  position: absolute;
+  bottom: var(--safe-y);
+  left: calc(var(--safe-x) + var(--col-l) + 56px);
+  right: calc(var(--safe-x) + var(--col-r) + 56px);
+  display: flex;
+  justify-content: center;
+}
+
+/* ─── Rejoindre ─── */
+.join {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 24px 20px;
+}
+.join__qr {
+  width: 320px;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.join__qr .qr {
+  width: 320px;
+  height: 320px;
+}
+.join__pending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  font-size: 26px;
+  text-align: center;
+  color: var(--ink-80);
+}
+.join__scan {
+  margin-top: 6px;
+  font-size: 26px;
+}
+.join__code {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+.join__letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 84px;
+  padding-top: 4px;
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 4px 4px 0 var(--drop);
+  font-size: 62px;
+  line-height: 1;
+}
+.join__url {
+  margin-top: 14px;
+  font-size: 24px;
+  color: var(--ink-80);
+}
+.join__url b {
+  font-weight: 400;
+  color: var(--ink);
+  font-family: var(--f-num);
+  font-size: 22px;
+  letter-spacing: 0.01em;
+}
+/* Rappel clavier, en pied de la liste des oiseaux. */
+.kbd-join {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding: 12px 6px 4px;
+  border-top: 2px dashed var(--ink-35);
+  font-size: 25px;
+  justify-content: center;
+}
+
+/* ─── Règles qui tournent ─── */
+.carousel {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 26px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.carousel__art {
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  overflow: hidden;
+  width: 382px;
+  height: 220px;
+  flex: none;
+  animation: ui-fade-in 300ms linear both;
+}
+.carousel__art .rule-art {
+  width: 378px;
+  height: auto;
+}
+.carousel__text {
+  margin: 12px 0 0;
+  font-size: 28px;
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+  animation: ui-enter var(--enter-ms) var(--ease-out) both;
+}
+.carousel__text > span {
+  display: block;
+  white-space: nowrap;
+}
+.carousel__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 20px;
+  vertical-align: 3px;
+}
+
+/* ─── Réglages de partie ─── */
+.match {
+  padding: 26px 16px 12px;
+  width: 640px;
+}
+.match__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+.match .row__label {
+  font-size: 26px;
+}
+.match__sub {
+  margin-left: 12px;
+  font-size: 22px;
+  color: var(--ink-60);
+}
+.pips {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 0;
+}
+.pip {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: transparent;
+}
+.pip.is-on {
+  background: var(--ink);
+}
+
+/* ─── Les oiseaux ─── */
+.roster {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 14px 10px 16px;
+}
+.roster__head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 0 12px 4px 0;
+  font-size: 17px;
+  color: var(--ink-60);
+}
+.roster__goals-head {
+  display: flex;
+  gap: 4px;
+}
+.roster__goals-head span {
+  width: 44px;
+  text-align: center;
+}
+.roster__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+.slot {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 10px 5px 4px;
+  border-bottom: 1.5px solid var(--ink-15);
+}
+.slot--bot {
+  grid-template-columns: 42px 1fr auto auto;
+}
+.slot--off .token {
+  opacity: 0.55;
+}
+.slot__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 2px 8px;
+  margin-left: -8px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+}
+.slot__main--bot {
+  cursor: pointer;
+}
+.slot__main--bot.is-focus {
+  background: var(--sun);
+  border-color: var(--ink);
+}
+.slot__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 30px;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slot__assist {
+  color: var(--ink-80);
+}
+.slot__meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 19px;
+  color: var(--ink-60);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.slot__meta .icon {
+  flex: none;
+}
+.slot__meta > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slot__off {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 2px;
+}
+.slot__goals {
+  display: flex;
+  gap: 4px;
+  padding-right: 2px;
+}
+.goal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 28px;
+}
+.goal::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ink-35);
+  border-radius: 50%;
+}
+.goal.is-done::before {
+  display: none;
+}
+.goal.is-done {
+  color: var(--ink);
+}
+.goal.is-done .icon {
+  width: 26px;
+  height: 26px;
+  padding: 3px;
+  background: var(--sun);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+.slot__trained {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+}
+.slot__trained .icon {
+  width: 40px;
+  height: 40px;
+  padding: 4px;
+  background: var(--sun);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+.slot__level {
+  display: inline-flex;
+  gap: 5px;
+  padding: 0 6px;
+}
+.slot__level .pip {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+.slot__remove.btn--icon {
+  width: 38px;
+  height: 38px;
+  box-shadow: none;
+  border-color: var(--ink-35);
+}
+.slot__remove.btn--icon .icon {
+  width: 22px;
+  height: 22px;
+}
+.slot__remove.btn--icon.is-focus {
+  border-color: var(--ink);
+}
+
+.slot__off-dense {
+  display: none;
+}
+/* Plus de 8 oiseaux : une ligne par oiseau (le jeton porte la couleur). */
+.roster--dense .roster__list {
+  gap: 0;
+}
+.roster--dense .slot {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.roster--dense .slot__name {
+  font-size: 27px;
+}
+.roster--dense .slot__meta {
+  display: none;
+}
+.roster--dense .slot__off-dense {
+  display: inline-flex;
+}
+.roster--dense .token {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.roster__add {
+  margin-top: 8px;
+  align-self: flex-start;
+  min-height: 52px;
+  font-size: 26px;
+  color: var(--ink-80);
+}
+.roster__full {
+  margin-top: 10px;
+  font-size: 22px;
+  color: var(--ink-60);
+  text-align: center;
+}
+
+.roster__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px 14px;
+}
+.roster__empty-title {
+  margin: 0;
+  font-family: var(--f-title);
+  font-size: 30px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.roster__empty-sub {
+  margin: 14px 0 0;
+  font-size: 26px;
+  color: var(--ink-80);
+  text-wrap: balance;
+}
+.roster__ghosts {
+  display: flex;
+  gap: 14px;
+  margin-top: 30px;
+}
+.roster__ghost {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px dashed var(--ink-35);
+}
+
+/* ─── Lancer ─── */
+.start {
+  display: flex;
+  flex-direction: column;
+}
+.start .btn {
+  width: 100%;
+}
+.start__why {
+  margin: 10px 0 0;
+  font-size: 22px;
+  color: var(--paper);
+  background: var(--ink);
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: 2px;
+}

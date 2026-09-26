@@ -1,0 +1,423 @@
+/* HUD de manche (ART_BIBLE §8.5). Zone de sécurité : 4 %. */
+
+.hud__dial {
+  position: absolute;
+  left: var(--safe-x);
+  top: var(--safe-y);
+}
+.hud__bar {
+  position: absolute;
+  top: calc(var(--safe-y) + 34px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+.hud__center {
+  position: absolute;
+  top: 150px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* ─── Cadran solaire ─── */
+.dial {
+  padding: 0;
+  overflow: visible;
+}
+.dial svg {
+  position: absolute;
+  inset: -2px;
+}
+.dial__round {
+  /* Cartouche posé sur le bord bas : le haut du cadran reste au soleil du zénith. */
+  position: absolute;
+  left: 14px;
+  bottom: 0;
+  transform: translateY(55%);
+  padding: 3px 10px 2px;
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  font-size: 20px;
+  line-height: 1.1;
+  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.dial__round .t-num {
+  font-size: 19px;
+}
+.dial__double {
+  margin-left: 2px;
+  padding: 0 5px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 2px;
+}
+.dial__phase {
+  position: absolute;
+  left: -2px;
+  top: calc(100% + 34px);
+  padding: 5px 14px 4px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius);
+  font-size: 24px;
+  white-space: nowrap;
+}
+
+/* ─── Bande de sable ─── */
+.sandbar {
+  position: relative;
+}
+.sandbar__track {
+  display: flex;
+  /* ART_BIBLE §8.5 (36 px + bords) ; RULES.hudBarHeightPx (18) est trop fin pour le % : voir REQUESTS.md. */
+  height: 38px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--paper);
+}
+.sandbar__seg {
+  position: relative;
+  flex: none;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink);
+  border-right: 2px solid var(--ink);
+  overflow: hidden;
+  transition-property: width;
+  transition-timing-function: ease-out;
+}
+.sandbar__seg.is-dark {
+  color: var(--paper);
+}
+.sandbar__pct {
+  font-size: 25px;
+  line-height: 1;
+  padding-top: 2px;
+  white-space: nowrap;
+}
+.sandbar__glyph {
+  flex: none;
+}
+.sandbar__neutral {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--paper);
+}
+.sandbar__crown {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% - 4px);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  transition: width 300ms ease-out;
+}
+.sandbar__crown-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 4px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.sandbar__crown-badge .icon path {
+  fill: var(--sun);
+}
+.sandbar__flash {
+  position: absolute;
+  inset: 0;
+  background: var(--sun);
+  opacity: 0;
+  animation: bar-flash 900ms linear both;
+}
+@keyframes bar-flash {
+  0%,
+  33%,
+  66% {
+    opacity: 0.95;
+  }
+  16%,
+  50%,
+  83%,
+  100% {
+    opacity: 0;
+  }
+}
+.sandbar__flash.is-soft {
+  background: transparent;
+  box-shadow: inset 0 0 0 4px var(--sun);
+  animation: bar-flash-soft 900ms ease-out both;
+}
+@keyframes bar-flash-soft {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ─── Tampons (compte à rebours, dernières secondes) ─── */
+.stamp {
+  animation: ui-stamp 120ms ease-out both;
+}
+.countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 60px;
+}
+.countdown__disc {
+  width: 230px;
+  height: 230px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 12px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 5px solid var(--ink);
+  box-shadow: 9px 9px 0 var(--drop);
+  font-size: 150px;
+  line-height: 1;
+}
+.countdown__go {
+  padding: 22px 56px 16px;
+  background: var(--sun);
+  border: 4px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 9px 9px 0 var(--drop);
+  font-size: 96px;
+}
+.last-seconds__disc {
+  width: 172px;
+  height: 172px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  box-shadow: 7px 7px 0 var(--drop);
+  font-size: 120px;
+  line-height: 1;
+}
+
+/* ─── Bannières ─── */
+.banner-wrap {
+  display: flex;
+  justify-content: center;
+}
+.banner {
+  padding: 12px 36px 12px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 7px 7px 0 var(--drop);
+  text-align: center;
+}
+.banner__title {
+  font-size: 44px;
+}
+.banner__sub {
+  margin-top: 6px;
+  font-size: 30px;
+}
+.banner--alert {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ─── Récitatif du narrateur ─── */
+.subtitle-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--safe-y) + 18px);
+  display: flex;
+  justify-content: center;
+}
+.recitatif {
+  margin: 0;
+  max-width: 1200px;
+  padding: 10px 26px 9px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 5px 5px 0 var(--drop);
+  font-size: 30px;
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: balance;
+}
+.cname {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.cname__swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  flex: none;
+  transform: translateY(1px);
+}
+
+/* ─── Éléments ancrés au monde ─── */
+.world {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+.anchor[data-mode='none'] {
+  display: none;
+}
+.anchor .tag,
+.anchor__token,
+.anchor .hint,
+.anchor .offarrow {
+  position: absolute;
+}
+.tag {
+  left: 0;
+  top: 6px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 12px 3px 4px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 21px;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 220ms linear;
+}
+.tag__name {
+  padding-top: 2px;
+}
+.tag__crown path {
+  fill: var(--sun);
+}
+.anchor.is-shown .tag {
+  opacity: 1;
+}
+.anchor.is-hidden-bird .tag {
+  background: rgb(247 240 227 / 0.3);
+  border-style: dashed;
+}
+.anchor__token {
+  display: none;
+  left: 0;
+  top: 8px;
+  transform: translateX(-50%);
+}
+.world--cb .anchor[data-mode='tag']:not(.is-shown) .anchor__token {
+  display: block;
+}
+.anchor[data-mode='arrow'] .tag,
+.anchor[data-mode='arrow'] .hint,
+.anchor[data-mode='arrow'] .anchor__token {
+  display: none;
+}
+.offarrow {
+  display: none;
+  left: -30px;
+  top: -30px;
+  width: 60px;
+  height: 60px;
+}
+.anchor[data-mode='arrow'] .offarrow {
+  display: block;
+}
+.offarrow svg {
+  position: absolute;
+  inset: 0;
+}
+.offarrow__rot {
+  transform: rotate(var(--ang, 0rad));
+}
+.offarrow__glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--ink);
+}
+.hint {
+  left: 0;
+  bottom: 96px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 440px;
+  padding: 10px 18px 9px;
+  background: var(--paper);
+  border: 4px solid;
+  border-radius: 6px;
+  box-shadow: 5px 5px 0 var(--drop);
+  font-size: 27px;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+}
+.hint__tail {
+  position: absolute;
+  left: 50%;
+  bottom: -21px;
+  margin-left: -17px;
+}
+.gain {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 30px;
+  white-space: nowrap;
+  -webkit-text-stroke: 6px var(--paper);
+  paint-order: stroke fill;
+  animation: gain-rise 900ms ease-out both;
+}
+@keyframes gain-rise {
+  from {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, calc(-50% - 40px)) scale(0.8);
+    opacity: 0;
+  }
+}

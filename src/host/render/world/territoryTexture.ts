@@ -1,0 +1,229 @@
+// Texture de territoire (ART_BIBLE §4, NPR §4.6) : DataTexture RGBA8 de la taille
+// de la grille de la sim (512 × 352), une cellule = un texel, lue en texelFetch.
+//   R = propriétaire (0 neutre, slot + 1)
+//   G = niveau (0 aucun, 90 pâle, 255 fort) : le shader lit q = smoothstep(0,45 ; 0,65 ; G)
+//   B = horodatage du dernier changement, 20 Hz modulo 250 ; 250 = « ancien » (> 1,2 s)
+//   A = propriétaire précédent (transitions : encre fraîche, front mouillé)
+//
+// Mises à jour ≤ 20 Hz, par rectangles sales seulement. La sim tient un rectangle
+// englobant (`grid.dirty`, remis à zéro ici après l'envoi) ; comme plusieurs
+// oiseaux éloignés donneraient un rectangle presque plein, on le découpe en tuiles
+// de 16 × 16 cellules : seules les tuiles réellement modifiées (comparaison au
+// miroir CPU) sont ré-encodées et envoyées, une plage de tuiles contiguës = un seul
+// texSubImage2D (renderer.copyTextureToTexture depuis les données CPU).
+// Chaque plage est ré-encodée ~1,5 s plus tard pour passer ses horodatages à
+// « ancien » (sinon le modulo les rendrait « fraîches » 12,5 s plus tard).
+import * as THREE from 'three'
+import { RULES } from '../../../sim/rules.ts'
+import { clearDirty } from '../../../sim/territory.ts'
+import type { TerritoryGrid } from '../../../sim/types.ts'
+
+export const TERR_STAMP_HZ = 20
+export const TERR_STAMP_MOD = 250
+export const TERR_OLD = 250
+const OLD_AFTER = 1.2
+const EXPIRE_AFTER = 1.5
+const LEVEL_BYTE = [0, 90, 255]
+const TILE = 16
+const QUEUE = 4096
+
+export class TerritoryTexture {
+  readonly texture: THREE.DataTexture
+  /**
+   * Texture « de transit » partageant les mêmes données CPU, jamais envoyée au GPU :
+   * copyTextureToTexture(transit → texture) fait alors un texSubImage2D depuis la
+   * mémoire CPU (si la source était déjà sur le GPU, three copierait GPU → GPU).
+   */
+  private readonly staging: THREE.DataTexture
+  readonly cols: number
+  readonly rows: number
+  private readonly data: Uint8Array
+  private readonly tilesX: number
+  private readonly tilesY: number
+  private readonly tileDirty: Uint8Array
+  private lastVersion = -1
+  private lastUpload = -Infinity
+  private boundGrid: TerritoryGrid | null = null
+  private needsFull = true
+  // file d'expiration des plages envoyées : (ligne de tuiles, tuile x0, tuile x1, instant)
+  private readonly qRow = new Int16Array(QUEUE)
+  private readonly qX0 = new Int16Array(QUEUE)
+  private readonly qX1 = new Int16Array(QUEUE)
+  private readonly qAt = new Float32Array(QUEUE)
+  private qHead = 0
+  private qLen = 0
+  private readonly box = new THREE.Box2()
+  private readonly pos = new THREE.Vector2()
+  /** Statistiques (debug) : tuiles envoyées à la dernière mise à jour. */
+  lastTiles = 0
+
+  constructor(cols: number = RULES.gridCols, rows: number = RULES.gridRows) {
+    this.cols = cols
+    this.rows = rows
+    this.tilesX = Math.ceil(cols / TILE)
+    this.tilesY = Math.ceil(rows / TILE)
+    this.tileDirty = new Uint8Array(this.tilesX * this.tilesY)
+    this.data = new Uint8Array(cols * rows * 4)
+    for (let i = 0; i < cols * rows; i++) this.data[i * 4 + 2] = TERR_OLD
+    const t = new THREE.DataTexture(this.data, cols, rows, THREE.RGBAFormat, THREE.UnsignedByteType)
+    t.minFilter = THREE.NearestFilter
+    t.magFilter = THREE.NearestFilter
+    t.generateMipmaps = false
+    t.flipY = false
+    t.name = 'territory'
+    t.needsUpdate = true
+    this.texture = t
+    this.staging = new THREE.DataTexture(this.data, cols, rows, THREE.RGBAFormat, THREE.UnsignedByteType)
+  }
+
+  /** Horloge (en « tics » d'horodatage) à passer au shader : (temps × 20) mod 250. */
+  static clock(simTime: number): number {
+    return (((simTime * TERR_STAMP_HZ) % TERR_STAMP_MOD) + TERR_STAMP_MOD) % TERR_STAMP_MOD
+  }
+
+  private encodeRect(grid: TerritoryGrid, x0: number, y0: number, x1: number, y1: number, now: number): void {
+    const d = this.data
+    const cols = this.cols
+    for (let y = y0; y <= y1; y++) {
+      let i = y * cols + x0
+      for (let x = x0; x <= x1; x++, i++) {
+        const o = i * 4
+        d[o] = grid.owner[i]!
+        d[o + 1] = LEVEL_BYTE[grid.level[i]!] ?? 0
+        const at = grid.changedAt[i]!
+        const age = now - at
+        d[o + 2] = age > OLD_AFTER || age < -0.5 ? TERR_OLD : Math.floor(at * TERR_STAMP_HZ) % TERR_STAMP_MOD
+        d[o + 3] = grid.prevOwner[i]!
+      }
+    }
+  }
+
+  private uploadRect(renderer: THREE.WebGLRenderer, x0: number, y0: number, x1: number, y1: number): void {
+    this.box.min.set(x0, y0)
+    this.box.max.set(x1 + 1, y1 + 1)
+    this.pos.set(x0, y0)
+    renderer.copyTextureToTexture(this.staging, this.texture, this.box, this.pos)
+  }
+
+  /** Plage de tuiles (ligne ty, colonnes tx0..tx1) : encode, envoie, et planifie l'expiration. */
+  private flushSpan(renderer: THREE.WebGLRenderer, grid: TerritoryGrid, ty: number, tx0: number, tx1: number, now: number, schedule: boolean): void {
+    const x0 = tx0 * TILE
+    const y0 = ty * TILE
+    const x1 = Math.min(this.cols - 1, (tx1 + 1) * TILE - 1)
+    const y1 = Math.min(this.rows - 1, (ty + 1) * TILE - 1)
+    this.encodeRect(grid, x0, y0, x1, y1, now)
+    this.uploadRect(renderer, x0, y0, x1, y1)
+    this.lastTiles += tx1 - tx0 + 1
+    if (schedule) {
+      if (this.qLen >= QUEUE) {
+        this.needsFull = true // file saturée : tout ré-encoder à la prochaine occasion
+        return
+      }
+      const k = (this.qHead + this.qLen) % QUEUE
+      this.qRow[k] = ty
+      this.qX0[k] = tx0
+      this.qX1[k] = tx1
+      this.qAt[k] = now + EXPIRE_AFTER
+      this.qLen++
+    }
+  }
+
+  /** Marque les tuiles dont owner/level diffèrent du miroir CPU (dans le rectangle donné). */
+  private markTiles(grid: TerritoryGrid, x0: number, y0: number, x1: number, y1: number): boolean {
+    const d = this.data
+    const cols = this.cols
+    const owner = grid.owner
+    const level = grid.level
+    let any = false
+    for (let y = y0; y <= y1; y++) {
+      const trow = ((y / TILE) | 0) * this.tilesX
+      let i = y * cols + x0
+      for (let x = x0; x <= x1; x++, i++) {
+        if (d[i * 4] !== owner[i] || d[i * 4 + 1] !== LEVEL_BYTE[level[i]!]) {
+          this.tileDirty[trow + ((x / TILE) | 0)] = 1
+          any = true
+          // saute au bout de la tuile : elle sera ré-encodée entièrement
+          const skip = TILE - 1 - (x % TILE)
+          x += skip
+          i += skip
+        }
+      }
+    }
+    return any
+  }
+
+  /** Ré-encode et envoie toute la grille (nouvelle manche, reprise, premier affichage). */
+  full(grid: TerritoryGrid, now: number): void {
+    this.boundGrid = grid
+    if (grid.dirty) clearDirty(grid)
+    this.qLen = 0
+    this.encodeRect(grid, 0, 0, this.cols - 1, this.rows - 1, now)
+    this.texture.needsUpdate = true
+    this.lastVersion = grid.version
+    this.lastUpload = now
+    this.needsFull = false
+    // les cellules encore « fraîches » seront vieillies par une passe complète plus tard
+    for (let ty = 0; ty < this.tilesY; ty++) {
+      const k = (this.qHead + this.qLen) % QUEUE
+      this.qRow[k] = ty
+      this.qX0[k] = 0
+      this.qX1[k] = this.tilesX - 1
+      this.qAt[k] = now + EXPIRE_AFTER
+      this.qLen++
+    }
+  }
+
+  /**
+   * À appeler chaque frame (avant le rendu) : envoie les tuiles modifiées (≤ 20 Hz)
+   * et celles dont les horodatages expirent. `now` = temps de sim courant (s).
+   */
+  update(renderer: THREE.WebGLRenderer, grid: TerritoryGrid, now: number, maxHz = 20): void {
+    if (this.needsFull || grid !== this.boundGrid || grid.cols !== this.cols || grid.rows !== this.rows) {
+      this.full(grid, now)
+      return
+    }
+    if (now < this.lastUpload - 0.5) {
+      this.full(grid, now) // temps de sim revenu en arrière (nouvelle manche, reprise)
+      return
+    }
+    if (now - this.lastUpload < 1 / maxHz) return
+    this.lastTiles = 0
+    let touched = false
+    if (grid.version !== this.lastVersion) {
+      const d = grid.dirty
+      const any = d
+        ? d.x1 >= d.x0 && d.y1 >= d.y0 && this.markTiles(grid, Math.max(0, d.x0), Math.max(0, d.y0), Math.min(this.cols - 1, d.x1), Math.min(this.rows - 1, d.y1))
+        : this.markTiles(grid, 0, 0, this.cols - 1, this.rows - 1)
+      if (d) clearDirty(grid)
+      this.lastVersion = grid.version
+      if (any) {
+        for (let ty = 0; ty < this.tilesY; ty++) {
+          let tx = 0
+          while (tx < this.tilesX) {
+            if (!this.tileDirty[ty * this.tilesX + tx]) {
+              tx++
+              continue
+            }
+            const tx0 = tx
+            while (tx < this.tilesX && this.tileDirty[ty * this.tilesX + tx]) this.tileDirty[ty * this.tilesX + tx++] = 0
+            this.flushSpan(renderer, grid, ty, tx0, tx - 1, now, true)
+          }
+        }
+        touched = true
+      }
+    }
+    // expirations (file ordonnée dans le temps)
+    while (this.qLen > 0 && now >= this.qAt[this.qHead]!) {
+      const k = this.qHead
+      this.flushSpan(renderer, grid, this.qRow[k]!, this.qX0[k]!, this.qX1[k]!, now, false)
+      this.qHead = (this.qHead + 1) % QUEUE
+      this.qLen--
+      touched = true
+    }
+    if (touched) this.lastUpload = now
+  }
+
+  dispose(): void {
+    this.texture.dispose()
+  }
+}
