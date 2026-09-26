@@ -422,8 +422,15 @@
   background: rgb(247 240 227 / 0.3);
   border-style: dashed;
 }
-/* Trait de rappel : de l'oiseau à son étiquette décalée. */
-.tag__lead {
+/* Traits de rappel : de l'oiseau à son étiquette décalée. Couche à part, avant toutes les ancres
+   (WorldLayer) : chaque .anchor est son propre contexte d'empilement (transform), un trait rangé dans
+   son ancre passait donc sur l'étiquette d'une autre ancre (final-pass §4.4). Le trait reçoit le même
+   transform que son ancre et le même --tag-dy que son étiquette. */
+.world__leads {
+  position: absolute;
+  inset: 0;
+}
+.world__lead {
   display: none;
   position: absolute;
   left: -1.5px;
@@ -433,18 +440,18 @@
   background: var(--ink);
   border-radius: 2px;
   box-shadow: 0 0 0 1.5px var(--paper);
+  will-change: transform;
   opacity: 0;
   transition: opacity 200ms linear;
 }
-.anchor.is-lead .tag__lead {
+.world__lead.is-on {
   display: block;
   opacity: 1;
 }
-/* Même fondu d'entrée que l'étiquette : sinon, à 12 oiseaux, le trait plein apparaît seul pendant
-   que son étiquette monte de 0 (bâtons d'encre isolés, parfois en travers d'une autre étiquette ;
-   verify2-eyes). */
+/* Même fondu d'entrée que l'étiquette (sortie immédiate, comme elle) : sinon, à 12 oiseaux, le trait
+   plein apparaît seul pendant que son étiquette monte de 0 (verify2-eyes). */
 @starting-style {
-  .anchor.is-lead .tag__lead {
+  .world__lead.is-on {
     opacity: 0;
   }
 }
@@ -480,8 +487,7 @@
 }
 .anchor[data-mode='arrow'] .tag,
 .anchor[data-mode='arrow'] .anchor__token,
-.anchor[data-mode='arrow'] .anchor__human,
-.anchor[data-mode='arrow'] .tag__lead {
+.anchor[data-mode='arrow'] .anchor__human {
   display: none;
 }
 .offarrow {

@@ -1349,9 +1349,9 @@ h2.t-title {
   translate: 24px 0;
 }
 
-/* Messages courts (récitatifs) posés sur le bandeau, au-dessus de tout le reste : jamais sous une case
-   (objectifs du salon, panneau du portrait). Entrée et sortie par essuyage d'encre, sans fondu : pas de
-   « fantôme » translucide. */
+/* Messages courts (récitatifs) posés sur le bandeau hors manche, au-dessus de tout le reste : jamais sous
+   une case (objectifs du salon, résultats). En manche, ils passent sous le bandeau (plus bas). Entrée et
+   sortie par essuyage d'encre, sans fondu : pas de « fantôme » translucide. */
 .toasts {
   position: absolute;
   z-index: 16;
@@ -1403,6 +1403,48 @@ h2.t-title {
 @keyframes ink-wipe-out {
   to {
     clip-path: inset(-2px -8px -8px 100%);
+  }
+}
+/* Pendant la manche, les messages quittent le bandeau : une indication longue y cachait le nom, le rang
+   et la jauge pendant 2,5 s (paysage de 320 à 393 px de haut). Paysage : récitatif en haut à gauche, sous
+   le bandeau, arrêté 12 px avant l'anneau de COUP D'AILE (--flap-reserve) et au-dessus du socle du
+   joystick. Un message à la fois : le nouveau s'essuie par-dessus l'ancien (deux messages empilés
+   descendaient sur le joystick). Le tampon (TOUCHÉ !…) se pose au même endroit : le message s'efface le
+   temps du tampon (0,9 s), puis revient. Portrait : sous le panneau du rang et l'état de jeu. */
+.app[data-screen='play'] .toasts {
+  left: calc(var(--gut-l) + 4px);
+  top: calc(var(--band) + var(--safe-t) + 8px);
+  transform: none;
+  width: max-content;
+  max-width: min(480px, calc(100% - var(--gut-l) - 4px - var(--flap-reserve) - 12px));
+  justify-items: start;
+}
+.app[data-screen='play'] .toast {
+  grid-area: 1 / 1;
+}
+.app[data-screen='play'] .toast:not(:last-child) {
+  animation: ink-wipe-away 200ms ease-in forwards;
+}
+/* comme ink-wipe-out, sans laisser le liseré d'ombre à droite jusqu'à la fin de la vie du message */
+@keyframes ink-wipe-away {
+  to {
+    clip-path: inset(-2px -8px -8px 100%);
+    visibility: hidden;
+  }
+}
+@media (orientation: landscape) {
+  .app[data-screen='play']:has(.fx__stamp) .toasts {
+    visibility: hidden;
+  }
+}
+@media (orientation: portrait) {
+  .app[data-screen='play'] .toasts {
+    left: 50%;
+    /* .play-state : top 128 px, 38 px de haut ; .play-info : bandeau + 14 px, 71 px de haut */
+    top: max(174px, calc(var(--band) + var(--safe-t) + 93px));
+    transform: translateX(-50%);
+    max-width: calc(100% - var(--gut-l) - var(--gut-r));
+    justify-items: center;
   }
 }
 /* ─── Effets (vibrations visuelles, prise d'élan, clac, tampons) ─────────── */
@@ -2370,6 +2412,30 @@ h2.t-title {
     padding: 4px 14px 6px;
   }
   .toast {
+    font-size: 18px;
+    min-height: 36px;
+  }
+  /* 320 px de haut : un message de deux lignes tient entre le bandeau et le socle du joystick (ou le niveau
+     à bulle, réduit à 140 px : son bouton de calibrage reste aussi dans l'écran). Le « ! » de la prise d'élan
+     se centre sous le bandeau, entre joystick et COUP D'AILE, et non plus sur le message. */
+  .app[data-screen='play'] .toasts {
+    top: calc(var(--band) + var(--safe-t) + 6px);
+  }
+  .app[data-screen='play'] .toast {
+    padding-block: 0.2em;
+  }
+  .tilt-pad {
+    width: 140px;
+    height: 140px;
+    margin: -70px 0 0 -70px;
+  }
+  .fx__bang {
+    top: calc(50% + (var(--band) + var(--safe-t)) / 2);
+  }
+}
+/* Petit portrait (iPhone SE) : un message de deux lignes s'arrête au-dessus du « ! » de la prise d'élan. */
+@media (orientation: portrait) and (max-height: 600px) {
+  .app[data-screen='play'] .toast {
     font-size: 18px;
     min-height: 36px;
   }

@@ -12,6 +12,12 @@
 //   sinon dessous (pointe vers le haut), sinon décalées ; masquées si rien ne tient ;
 // - étiquettes : masquées si une bulle les couvre, décalées vers le bas (avec un
 //   trait de rappel vers l'oiseau) quand elles se touchent, masquées au-delà.
+//
+// Les traits de rappel vivent dans leur propre couche (.world__leads), avant toutes
+// les ancres : chaque .anchor est un contexte d'empilement (transform), donc un trait
+// rangé dans son ancre passait sur l'étiquette d'une ancre précédente, quel que soit
+// le z-index. Le trait reprend la chaîne de transform de son ancre (aucune allocation
+// de plus) ; classe et longueur ne sont écrites que quand elles changent.
 import { useEffect, useRef, type CSSProperties, type Ref } from 'react'
 import { t } from '../../../shared/i18n.ts'
 import { PLAYER_COLORS } from '../../../shared/players.ts'
@@ -75,6 +81,7 @@ export function WorldLayer({ mode = 'round' }: { mode?: 'round' | 'lobby' }) {
   const crown = useHud(s => s.crownSlot)
   const rootRef = useRef<HTMLDivElement>(null)
   const els = useRef<(HTMLDivElement | null)[]>([])
+  const leadEls = useRef<(HTMLSpanElement | null)[]>([])
   const bubbleEls = useRef(new Map<number, HTMLDivElement>())
   const dummyRef = useRef<HTMLDivElement>(null)
   const slotsRef = useRef(slots)
@@ -91,6 +98,9 @@ export function WorldLayer({ mode = 'round' }: { mode?: 'round' | 'lobby' }) {
     const tagDy = new Array<number>(13).fill(0)
     const tagSettle = new Array<number>(13).fill(0)
     const tagShown = new Array<boolean>(13).fill(false)
+    // Ancre à laquelle tagDy se rapporte : une ancre remontée (slot retiré puis repris) repart à --tag-dy 0,
+    // sinon étiquette et trait pourraient garder deux longueurs différentes.
+    const tagNode = new Array<HTMLElement | null>(12).fill(null)
     const bubbles = new Map<number, BubbleMem>()
 
     const loop = () => {
@@ -262,16 +272,26 @@ export function WorldLayer({ mode = 'round' }: { mode?: 'round' | 'lobby' }) {
       // ── 5. Écritures
       for (let slot = 0; slot < 12; slot++) {
         const el = els.current[slot]
-        if (!el) continue
+        const lead = leadEls.current[slot]
+        if (!el) {
+          lead?.classList.toggle('is-on', false)
+          continue
+        }
+        if (tagNode[slot] !== el) {
+          tagNode[slot] = el
+          tagDy[slot] = 0
+        }
         const a = hudAnchors.birds[slot]!
         if (!a.active || !inRoster[slot]) {
           if (el.dataset.mode !== 'none') el.dataset.mode = 'none'
           tagShown[slot] = false
+          lead?.classList.toggle('is-on', false)
           continue
         }
         if (!onScreen[slot]) {
           // Flèche collée au bord, orientée vers l'oiseau (depuis le centre du cadre).
           tagShown[slot] = false
+          lead?.classList.toggle('is-on', false)
           if (lobby) {
             el.dataset.mode = 'none'
             continue
@@ -293,16 +313,24 @@ export function WorldLayer({ mode = 'round' }: { mode?: 'round' | 'lobby' }) {
           continue
         }
         el.dataset.mode = 'tag'
-        el.style.transform = `translate(${ax[slot]!.toFixed(1)}px, ${ay[slot]!.toFixed(1)}px)`
+        const tr = `translate(${ax[slot]!.toFixed(1)}px, ${ay[slot]!.toFixed(1)}px)`
+        el.style.transform = tr
         const dy = tagOut[slot]!
         const shown = dy >= 0
         if (shown && dy !== tagDy[slot]) {
           tagDy[slot] = dy
-          el.style.setProperty('--tag-dy', `${dy}px`)
+          const v = `${dy}px`
+          el.style.setProperty('--tag-dy', v)
+          lead?.style.setProperty('--tag-dy', v)
         }
         tagShown[slot] = shown
         el.classList.toggle('is-shown', shown)
-        el.classList.toggle('is-lead', shown && dy > 0)
+        // Trait de rappel (couche sous les étiquettes) : suit l'ancre seulement quand il est visible.
+        if (lead) {
+          const on = shown && dy > 0
+          if (on) lead.style.transform = tr
+          lead.classList.toggle('is-on', on)
+        }
         el.classList.toggle('is-hidden-bird', a.hidden)
         el.classList.toggle('is-pulse', shown && (pulseLobby[slot]! || now < hud.tagPulseUntil[slot]!))
         el.classList.toggle('is-human', human[slot]!)
@@ -354,11 +382,16 @@ export function WorldLayer({ mode = 'round' }: { mode?: 'round' | 'lobby' }) {
   const cls = ['world', cb ? 'world--cb' : '', crowded ? 'world--crowded' : '', lobby ? 'world--lobby' : ''].filter(Boolean).join(' ')
   return (
     <div className={cls} aria-hidden ref={rootRef}>
-      {/* le mannequin d'abord : son anneau au sol passe SOUS les étiquettes des joueurs (il en masquait une) */}
+      {/* les traits de rappel d'abord, dans leur couche : SOUS toutes les étiquettes (et l'anneau du mannequin) */}
+      <div className="world__leads">
+        {slots.map(s => (
+          <span key={s.slot} className="world__lead" ref={el => void (leadEls.current[s.slot] = el)} />
+        ))}
+      </div>
+      {/* le mannequin ensuite : son anneau au sol passe SOUS les étiquettes des joueurs (il en masquait une) */}
       {lobby ? <DummyMark ref={dummyRef} /> : null}
       {slots.map(s => (
         <div key={s.slot} className="anchor" data-mode="none" ref={el => void (els.current[s.slot] = el)}>
-          <span className="tag__lead" />
           <NameTag s={s} crown={crown === s.slot} />
           <span className="anchor__token">
             <Token colorIndex={s.colorIndex} size={26} variant="paper" />
