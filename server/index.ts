@@ -3,7 +3,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { networkInterfaces } from 'node:os'
 import { readFile, stat } from 'node:fs/promises'
-import { extname, join, normalize, resolve } from 'node:path'
+import { extname, join, normalize, resolve, sep } from 'node:path'
+import { createHash } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { WS_PATH } from '../src/shared/protocol.ts'
@@ -59,15 +60,22 @@ const MIME: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
 }
 const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.svg', '.gltf', '.txt'])
-const cache = new Map<string, { raw: Buffer; gz: Buffer | null }>()
+const cache = new Map<string, { raw: Buffer; gz: Buffer | null; etag: string }>()
 
 async function serveStatic(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x')
-  let path = decodeURIComponent(url.pathname)
+  let path: string
+  try {
+    path = decodeURIComponent(url.pathname)
+  } catch {
+    res.writeHead(400).end()
+    return
+  }
   if (path === '/' || path === '') path = '/index.html'
   else if (path === '/play' || path === '/play/') path = '/play.html'
   const file = normalize(join(DIST, path))
-  if (!file.startsWith(DIST)) {
+  // Strictement sous DIST (pas dans un dossier voisin comme <DIST>.old ou <DIST>.parts).
+  if (file !== DIST && !file.startsWith(DIST + sep)) {
     res.writeHead(403).end()
     return
   }
@@ -82,19 +90,48 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse): Promise<v
   let entry = cache.get(file)
   if (!entry) {
     const raw = await readFile(file)
-    entry = { raw, gz: COMPRESSIBLE.has(ext) && raw.length > 1024 ? gzipSync(raw, { level: 9 }) : null }
+    entry = {
+      raw,
+      gz: COMPRESSIBLE.has(ext) && raw.length > 1024 ? gzipSync(raw, { level: 9 }) : null,
+      etag: `"${createHash('sha1').update(raw).digest('base64url')}"`,
+    }
     cache.set(file, entry)
   }
+  // Fichiers hachés par Vite : immuables. Le reste (HTML, audio, polices…) : revalidé par ETag,
+  // donc un rafraîchissement du PC ne retélécharge rien qui n'ait changé.
   const headers: Record<string, string> = {
     'content-type': MIME[ext] ?? 'application/octet-stream',
     'cache-control': path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+    etag: entry.etag,
+    'accept-ranges': 'bytes',
+  }
+  if (req.headers['if-none-match'] === entry.etag) {
+    res.writeHead(304, headers).end()
+    return
+  }
+  // Requêtes partielles (lecture en continu de la musique par l'élément audio).
+  const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range?.toString() ?? '')
+  if (range && !entry.gz) {
+    const size = entry.raw.length
+    let start = range[1] ? Number(range[1]) : size - Number(range[2])
+    let end = range[1] && range[2] ? Number(range[2]) : size - 1
+    if (!range[1]) end = size - 1
+    start = Math.max(0, start)
+    end = Math.min(size - 1, end)
+    if (start > end || start >= size) {
+      res.writeHead(416, { 'content-range': `bytes */${size}` }).end()
+      return
+    }
+    headers['content-range'] = `bytes ${start}-${end}/${size}`
+    res.writeHead(206, headers).end(entry.raw.subarray(start, end + 1))
+    return
   }
   const acceptsGz = /\bgzip\b/.test(req.headers['accept-encoding']?.toString() ?? '')
   if (entry.gz && acceptsGz) {
     headers['content-encoding'] = 'gzip'
     headers['vary'] = 'accept-encoding'
-    res.writeHead(200, headers).end(entry.gz)
-  } else res.writeHead(200, headers).end(entry.raw)
+    res.writeHead(200, headers).end(req.method === 'HEAD' ? undefined : entry.gz)
+  } else res.writeHead(200, headers).end(req.method === 'HEAD' ? undefined : entry.raw)
 }
 
 // ─── Serveur HTTP + Vite (dev) ─────────────────────────────────────────────
