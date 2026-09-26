@@ -10,6 +10,7 @@ import type { GameView } from '../view.ts'
 import { projectRig, type Rig } from './framing.ts'
 import { CROWDED_BIRDS, FramingRig, greatShadowProgress, towerCoverage, USEFUL_RECT, USEFUL_RECT_CROWDED } from './framingRig.ts'
 import { DEG } from './math.ts'
+import { foregroundHats, HAT_NEAR, hatCutBase, hatCutZ, towerCoverStats, towerHats } from './towerCover.ts'
 
 const aspect = 16 / 9
 
@@ -162,6 +163,67 @@ describe('FramingRig (manche)', () => {
       expect(f.width).toBeLessThan(1.2 * sim.arena.a)
       expect(f.rig.pitch).toBeLessThan((RULES.camPitchEndDeg + 2) * DEG)
     })
+  })
+
+  it('chapeaux (vague 3) : disques repérés, effacés au premier plan à la Grande Ombre seulement, part de la plus grosse tour', () => {
+    run(2, 1, [-2.9], (sim) => {
+      const ti = sim.towers.findIndex((x) => x.archetype === 'parasol' && x.height > 40)
+      const t = sim.towers[ti]!
+      const hats = towerHats(sim.towers)[ti]!
+      // le Grand Parasol : un seul chapeau, court (≤ 6,5 m), large, au sommet du fût
+      expect(hats.length).toBe(1)
+      expect(hats[0]!.z1 - hats[0]!.z0).toBeLessThanOrEqual(6.5)
+      expect(hats[0]!.z0).toBeGreaterThan(0.6 * t.height)
+      expect(hats[0]!.r).toBeGreaterThan(10)
+      // gnomon du Cadran : trois disques ; les aiguilles n'en ont pas
+      const g = createSimulation({ mode: 'round', seed: 1, mapId: 'cadran', birds: [{ slot: 0, assist: false }], sunSeconds: RULES.roundSunSeconds, countdown: true })
+      expect(towerHats(g.state.towers)[0]!.length).toBe(3)
+      const a = createSimulation({ mode: 'round', seed: 1, mapId: 'aiguilles', birds: [{ slot: 0, assist: false }], sunSeconds: RULES.roundSunSeconds, countdown: true })
+      expect(towerHats(a.state.towers).every((h) => h.length === 0)).toBe(true)
+      // caméra à 40 m du disque : tour effacée au-dessus du bas du chapeau (et de ses lanternes pendues) ; à 200 m, rien
+      expect(hatCutZ(sim.towers, ti, t.x, t.y - 30, 70, HAT_NEAR)).toBe(hatCutBase(hats[0]!))
+      expect(hatCutZ(sim.towers, ti, t.x, t.y - 200, 120, HAT_NEAR)).toBe(Infinity)
+      // compte à rebours : pas de chapeau de premier plan effacé
+      expect(foregroundHats(sim)).toBe(false)
+      // une seule grosse tour à l'écran : sa part seule égale la couverture totale
+      const near: Rig = { tx: t.x, ty: t.y + 30, tz: 0, yaw: 0, pitch: 45 * DEG, dist: 75, fov: 40 }
+      const c = towerCoverage(sim, near, aspect)
+      expect(towerCoverStats.maxSingle).toBeLessThanOrEqual(c + 1e-9)
+      expect(towerCoverStats.maxSingle).toBeGreaterThan(0.8 * c)
+      // chapeau effacé (caméra à moins de HAT_NEAR m) : la couverture estimée tombe
+      expect(towerCoverage(sim, near, aspect, 4, Infinity, HAT_NEAR)).toBeLessThan(0.85 * c)
+    })
+  })
+
+  it('Grande Ombre (vague 3) : aucune tour seule au-delà de ~12 % du cadre visé, ni plan moyen au-delà de 1,8 a', { timeout: 60000 }, () => {
+    for (const map of ['parasols', 'cadran'] as const)
+      for (const seed of [2, 3]) {
+        const f = new FramingRig()
+        f.reset('round')
+        let started = false
+        let worst = 0
+        let n = 0
+        let over = 0
+        const times: number[] = []
+        for (let t = 99; t <= 109.5; t += 0.5) times.push(t)
+        run(4, seed, times, (sim, view) => {
+          view.players[0] = { slot: 0, colorIndex: 0, name: '', kind: 'keyboard', assist: false }
+          if (!started) {
+            f.snap(sim, view, aspect)
+            started = true
+          }
+          // 1 s de caméra (60 i/s) entre deux instants : les ressorts ont le temps d'agir
+          for (let k = 0; k < 30; k++) f.update(1 / 60, sim, view, aspect)
+          expect(foregroundHats(sim)).toBe(true)
+          towerCoverage(sim, f.rig, aspect, 0.5, Infinity, HAT_NEAR)
+          worst = Math.max(worst, towerCoverStats.maxSingle)
+          if (towerCoverStats.maxSingle > 0.13) over++
+          n++
+          expect(f.width).toBeLessThan(1.8 * sim.arena.a)
+        }, map)
+        expect(over / n).toBeLessThan(0.1)
+        expect(worst).toBeLessThan(0.2)
+      }
   })
 
   it('couverture des tours : forte juste au-dessus d’un grand disque, faible de loin', () => {

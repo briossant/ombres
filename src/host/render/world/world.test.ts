@@ -9,6 +9,7 @@ import type { TerritoryGrid } from '../../../sim/types.ts'
 import { hexToLinear, linearToHex, linearToOklab, oklabToLinear } from '../npr/oklab.ts'
 import { gameElevForPalette, paletteColor, paletteElev, sunElevationDeg, updatePalette } from '../npr/palette.ts'
 import { buildTowerGeometries } from './towerGeometry.ts'
+import { createGroundMaterial, createGroundUniforms } from './groundMaterial.ts'
 import { TERR_OLD, TerritoryTexture } from './territoryTexture.ts'
 
 describe('palette', () => {
@@ -224,5 +225,23 @@ describe('texture de territoire', () => {
     tex.update(renderer, g, 0.2)
     expect(edgeUploads).toBe(2)
     expect(at(30, 30)).toBe(0)
+  })
+})
+
+describe('matériau du sol', () => {
+  it('chaque uniform déclaré par le shader a une valeur (leviers de classification du polish 3 compris)', () => {
+    const t = new THREE.DataTexture(new Uint8Array(4), 1, 1)
+    for (const bilinear of [false, true]) {
+      const m = createGroundMaterial(createGroundUniforms(t, t), { bilinear })
+      const declared = new Set<string>()
+      for (const line of m.fragmentShader.split('\n')) {
+        const d = /^\s*uniform\s+(?:highp\s+|mediump\s+|lowp\s+)?\w+\s+([^;]+);/.exec(line)
+        if (d) for (const part of d[1]!.split(',')) declared.add(part.trim().replace(/\[.*$/, ''))
+      }
+      for (const u of ['uTerrSmoothDu', 'uTerrCubicDu', 'uSmoothAniso', 'uTerrEdge']) expect(declared.has(u)).toBe(true)
+      const missing = [...declared].filter(u => !(u in m.uniforms))
+      expect(missing).toEqual([])
+      m.dispose()
+    }
   })
 })

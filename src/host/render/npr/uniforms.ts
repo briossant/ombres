@@ -163,6 +163,16 @@ export const NPR = {
   uPaintCapDark: num(0),
   /** Mètres par pixel sous lesquels le territoire est classé en B-spline 3×3 (sinon 4 taps) : 0,3. */
   uTerrSmoothDu: num(0.3),
+  /** Polish 3 : mètres par pixel sous lesquels la B-spline devient CUBIQUE 4×4 (plans très rapprochés) : 0,16. */
+  uTerrCubicDu: num(0.16),
+  /**
+   * Polish 3 : les lissages B-spline du sol (classification du territoire, bords d'ombre) se décident
+   * aussi sur le petit axe de l'empreinte du pixel, pondéré par ce facteur : taille retenue =
+   * min(k × petit axe, grand axe). En plan rasant, une cellule couvre 5 à 8 px en largeur pour ~1 px
+   * en hauteur : le grand axe seul laissait ces plans en 4 taps (marches de cellules et de texels).
+   * 1e9 = règle d'avant (grand axe seul), levier de mesure.
+   */
+  uSmoothAniso: num(1.5),
   /** 1 = matière de fin de journée du polish 2 (densité d'aquarelle, bande de pigment) ; 0 = rendu d'avant (levier de mesure). */
   uLook2: num(1),
 

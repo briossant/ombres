@@ -5,6 +5,10 @@
 // fenêtres = trous d'encre (éclairées la nuit), côtes d'oignon, cannelures,
 // fissures, jupe de sable aux couleurs du sol, fanions qui flottent.
 import * as THREE from 'three'
+import type { TowerDef } from '../../../sim/types.ts'
+import { cameraState } from '../../camera/cue.ts'
+import { foregroundHats, HAT_NEAR0, HAT_NEAR1, hatCutBase, towerHats, type Hat } from '../../camera/towerCover.ts'
+import { gameView } from '../../view.ts'
 import { NPR_FRAGMENT_PRELUDE } from '../npr/glsl/index.ts'
 import { OBJ_ID } from '../npr/ids.ts'
 import { NPR } from '../npr/uniforms.ts'
@@ -17,11 +21,216 @@ import { DECO } from './geoBuilder.ts'
  */
 export const DISSOLVE_NEAR0 = 30
 export const DISSOLVE_NEAR1 = 38
+/**
+ * Chapeaux (disques des parasols, des piles, du gnomon, des colonnes) effacés EN ENTIER (polish
+ * vague 3) : un disque que le cercle de dégagement d'un oiseau entamait était tranché net en son
+ * milieu (« vue en coupe » au centre de l'image, verify2-eyes §3.1). Quand ce cercle (ou la bande de
+ * proximité de la caméra) atteint un chapeau, la tour disparaît maintenant tout entière AU-DESSUS du
+ * point le plus bas où le cercle touche son axe (ou du bas du chapeau) : ni disque coupé, ni bout de
+ * fût ou lanterne qui flotte ; il reste un fût net qui s'arrête sous l'oiseau. À la Grande Ombre de la
+ * manche, un chapeau à moins de HAT_NEAR0-1 m de la caméra (premier plan, camera/towerCover.ts) s'efface de même : la
+ * caméra de manche compte avec (même règle dans son estimation d'encombrement). Transition : décision
+ * binaire avec hystérésis, puis la même trame fixe à l'écran pendant CUT_FADE s.
+ */
+export const DISC_WHOLE = true
+/** Tours suivies par le matériau (les cartes en ont au plus 11). */
+const MAX_TOWERS = 16
 
 export interface TowerUniforms {
   uBaseId: { value: number }
   /** Dissolution en trame active (0 au podium). */
   uDissolve: { value: number }
+  /** Par tour : (altitude de la coupe (m), part effacée au-dessus (0..1)) ; voir DISC_WHOLE. */
+  uTowerCut: { value: THREE.Vector2[] }
+}
+
+/** Caméra vue par towerCut : position (repère three), projection en NDC, taille du tampon (px), px par unité de tan (h / 2 tan(fov/2)). */
+export interface HatView {
+  pos: { x: number; y: number; z: number }
+  project: (x: number, y: number, z: number, out: { x: number; y: number; z: number }) => void
+  w: number
+  h: number
+  k: number
+}
+
+/** Oiseau à l'écran, comme NPR.uBirdScr : x, y (px, origine en bas à gauche), z rayon de dégagement (px), w distance (m). */
+export type BirdScr = { x: number; y: number; z: number; w: number }
+
+const _c = { x: 0, y: 0, z: 0 }
+
+/** Point de l'axe d'une tour à l'altitude z (inclinaison du gnomon comprise), repère sim. */
+function axisAt(t: TowerDef, z: number, out: { x: number; y: number }): number {
+  let r = t.trunkRadius
+  out.x = t.x
+  out.y = t.y
+  for (const g of t.segments) {
+    if (z < g.z0 || z > g.z1) continue
+    const k = g.z1 > g.z0 ? (z - g.z0) / (g.z1 - g.z0) : 0
+    out.x = t.x + (g.ox0 ?? 0) + ((g.ox1 ?? 0) - (g.ox0 ?? 0)) * k
+    out.y = t.y + (g.oy0 ?? 0) + ((g.oy1 ?? 0) - (g.oy0 ?? 0)) * k
+    r = g.r0 + (g.r1 - g.r0) * k
+    break
+  }
+  return r
+}
+const _ax = { x: 0, y: 0 }
+
+/**
+ * Coupe d'une tour (DISC_WHOLE) : part effacée (0..1) et altitude au-dessus de laquelle elle l'est.
+ * Un chapeau est « atteint » quand le cercle de dégagement d'un oiseau qu'il cache touche son ellipse à
+ * l'écran (la bande 0,9-1,12 × rayon du cercle donne la transition), ou qu'il passe à moins de
+ * DISSOLVE_NEAR0-1 m de la caméra. La coupe descend alors le long de l'axe tant que l'axe reste dans le
+ * cercle (le fût ne reprend pas au-dessus de l'oiseau). 0 sans chapeau atteint : règle par fragment.
+ */
+export function towerCut(
+  t: TowerDef,
+  hats: readonly Hat[],
+  view: HatView,
+  birds: readonly BirdScr[],
+  nBirds: number,
+  out: { z: number; amount: number },
+  near0 = DISSOLVE_NEAR0,
+  near1 = DISSOLVE_NEAR1,
+): void {
+  out.z = 1e4
+  out.amount = 0
+  for (const hat of hats) {
+    const zm = (hat.z0 + hat.z1) / 2
+    // repère three : (x, altitude, −y)
+    const dh = Math.hypot(hat.x - view.pos.x, -hat.y - view.pos.z)
+    const dv = view.pos.y - zm
+    const near = Math.hypot(Math.max(0, dh - hat.r), Math.max(0, Math.abs(dv) - (hat.z1 - hat.z0) / 2))
+    const aNear = 1 - smoothstep(near0, near1, near)
+    const base = hatCutBase(hat)
+    if (aNear > 0) {
+      out.amount = Math.max(out.amount, aNear)
+      out.z = Math.min(out.z, base)
+    }
+    view.project(hat.x, zm, -hat.y, _c)
+    if (_c.z > 1) continue
+    const d = Math.max(1, Math.hypot(dh, dv))
+    // ellipse du disque à l'écran (px, origine en bas à gauche) : demi-axes r·k/d et r·sin(dépression)·k/d + épaisseur
+    const px = ((_c.x + 1) / 2) * view.w
+    const py = ((_c.y + 1) / 2) * view.h
+    const ax = Math.max((hat.r * view.k) / d, 1e-3)
+    const sinD = Math.min(1, Math.abs(dv) / d)
+    const ay = Math.max(ax * sinD + (((hat.z1 - hat.z0) / 2) * Math.sqrt(1 - sinD * sinD) * view.k) / d, 1e-3)
+    for (let i = 0; i < nBirds; i++) {
+      const B = birds[i]!
+      if (B.w <= d) continue
+      // écart (px) entre le centre de l'oiseau et le bord de l'ellipse (négatif dedans), sur 24 points du bord
+      const ux = (B.x - px) / ax
+      const uy = (B.y - py) / ay
+      let gap = -1
+      if (ux * ux + uy * uy > 1) {
+        gap = Infinity
+        for (let k = 0; k < 24; k++) {
+          const th = (k / 24) * Math.PI * 2
+          gap = Math.min(gap, Math.hypot(B.x - px - Math.cos(th) * ax, B.y - py - Math.sin(th) * ay))
+        }
+      }
+      const a = 1 - smoothstep(0.9 * B.z, 1.12 * B.z, gap)
+      if (a <= 0) continue
+      out.amount = Math.max(out.amount, a)
+      // descente le long de l'axe, sous le chapeau (et ses lanternes pendues), tant qu'il reste dans le cercle (fût compris)
+      let zc = base
+      for (let z = base - 1.5; z > 3; z -= 1.5) {
+        const r = axisAt(t, z, _ax)
+        view.project(_ax.x, z, -_ax.y, _c)
+        const dz = Math.max(1, Math.hypot(_ax.x - view.pos.x, z - view.pos.y, -_ax.y - view.pos.z))
+        if (_c.z > 1 || dz >= B.w) break
+        const sx = ((_c.x + 1) / 2) * view.w
+        const sy = ((_c.y + 1) / 2) * view.h
+        if (Math.hypot(sx - B.x, sy - B.y) - (r * view.k) / dz > 1.12 * B.z) break
+        zc = z
+      }
+      out.z = Math.min(out.z, zc)
+    }
+  }
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
+
+const _v = new THREE.Vector3()
+const _vp = new THREE.Matrix4()
+const _cut = { z: 0, amount: 0 }
+const _hatView: HatView = {
+  pos: { x: 0, y: 0, z: 0 },
+  project: (x, y, z, out) => {
+    _v.set(x, y, z).applyMatrix4(_vp)
+    out.x = _v.x
+    out.y = _v.y
+    out.z = _v.z
+  },
+  w: 1,
+  h: 1,
+  k: 1,
+}
+
+/**
+ * Coupe franche dans le temps (pas de trame qui dure) : la décision est binaire, avec hystérésis
+ * (on coupe au-delà de CUT_ON de la part brute, on rend sous CUT_OFF), puis la trame fixe à l'écran
+ * fait la transition en CUT_FADE s. Un oiseau qui reste au bord du cercle ne laisse plus un chapeau
+ * à moitié tramé.
+ */
+const CUT_ON = 0.35
+const CUT_OFF = 0.02
+const CUT_FADE = 0.22
+interface CutState {
+  towers: readonly TowerDef[] | null
+  on: Uint8Array
+  amount: Float32Array
+  z: Float32Array
+  frame: number
+  time: number
+}
+function newCutState(): CutState {
+  return { towers: null, on: new Uint8Array(MAX_TOWERS), amount: new Float32Array(MAX_TOWERS), z: new Float32Array(MAX_TOWERS).fill(1e4), frame: -1, time: 0 }
+}
+
+/** Met à jour uTowerCut pour la caméra du rendu (une fois par image ; ~11 tours × 12 oiseaux). */
+function updateTowerCuts(u: TowerUniforms, st: CutState, frame: number, camera: THREE.Camera): void {
+  if (frame === st.frame) return
+  st.frame = frame
+  const now = performance.now() / 1000
+  const dt = Math.min(0.1, Math.max(0, now - st.time))
+  st.time = now
+  const cuts = u.uTowerCut.value
+  const towers = gameView.sim?.towers ?? null
+  const cam = camera as THREE.PerspectiveCamera
+  if (!towers || u.uDissolve.value < 0.5 || !cam.isPerspectiveCamera || towers !== st.towers) {
+    // nouvelle carte, podium, titre sans manche : aucune coupe en cours
+    st.towers = towers
+    st.on.fill(0)
+    st.amount.fill(0)
+    st.z.fill(1e4)
+    for (const c of cuts) c.set(1e4, 0)
+    if (!towers || u.uDissolve.value < 0.5 || !cam.isPerspectiveCamera) return
+  }
+  const hats = towerHats(towers)
+  // chapeaux de premier plan effacés à la Grande Ombre de la manche seulement (le titre choisit ses plans sans tour proche)
+  const round = cameraState.mode === 'round' && foregroundHats(gameView.sim)
+  _vp.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)
+  cam.getWorldPosition(_v)
+  _hatView.pos.x = _v.x
+  _hatView.pos.y = _v.y
+  _hatView.pos.z = _v.z
+  _hatView.w = NPR.uResolution.value.x
+  _hatView.h = NPR.uResolution.value.y
+  _hatView.k = _hatView.h / (2 * Math.tan((cam.fov * Math.PI) / 360))
+  for (let i = 0; i < Math.min(MAX_TOWERS, towers.length); i++) {
+    if (!hats[i]!.length) continue
+    towerCut(towers[i]!, hats[i]!, _hatView, NPR.uBirdScr.value, NPR.uBirdScrN.value, _cut, round ? HAT_NEAR0 : DISSOLVE_NEAR0, round ? HAT_NEAR1 : DISSOLVE_NEAR1)
+    if (_cut.amount >= CUT_ON) st.on[i] = 1
+    else if (_cut.amount <= CUT_OFF) st.on[i] = 0
+    // la coupe suit l'oiseau tant qu'elle est active ; en s'effaçant, elle garde sa dernière hauteur
+    if (st.on[i]) st.z[i] = st.amount[i]! > 0.01 ? Math.min(_cut.z, st.z[i]! + 6 * dt) : _cut.z
+    st.amount[i] = st.on[i] ? Math.min(1, st.amount[i]! + dt / CUT_FADE) : Math.max(0, st.amount[i]! - dt / CUT_FADE)
+    cuts[i]!.set(st.amount[i]! > 0 ? st.z[i]! : 1e4, st.amount[i]!)
+  }
 }
 
 const VERT = /* glsl */ `
@@ -30,6 +239,8 @@ attribute vec3 albedo;
 attribute vec4 tdeco;
 attribute vec2 tzone;
 uniform float uTime;
+// coupe des tours à chapeau (polish vague 3, DISC_WHOLE) : par tour, (altitude, part effacée au-dessus)
+uniform vec2 uTowerCut[${MAX_TOWERS}];
 varying vec3 vWorld;
 varying vec4 vLoc;
 varying vec3 vNormalW;
@@ -38,7 +249,11 @@ varying float vDist;
 varying vec3 vAlbedo;
 varying vec4 vDeco;
 varying vec2 vZone;
+varying vec2 vCut;
 void main(){
+  // tour du sommet : ID = towerBase + 4 × tour + pièce (npr/ids.ts)
+  float ti = floor((tdeco.x - ${OBJ_ID.towerBase}.0) / 4.0 + 0.01);
+  vCut = ti >= 0.0 && ti < ${MAX_TOWERS}.0 ? uTowerCut[int(ti)] : vec2(1e4, 0.0);
   vec3 p = position;
   vec3 nrm = normal;
   if (abs(tdeco.y - ${DECO.flag}.0) < 0.5) {
@@ -86,6 +301,7 @@ varying float vDist;
 varying vec3 vAlbedo;
 varying vec4 vDeco;
 varying vec2 vZone;
+varying vec2 vCut;
 bool isMode(float m){ return abs(vDeco.y - m) < 0.5; }
 void main(){
   vec3 N = normalize(vNormalW);
@@ -255,6 +471,8 @@ void main(){
       vec4 B = uBirdScr[i];
       if (vDist < B.w) sdoor = max(sdoor, 1.0 - smoothstep(0.9, 1.12, length(gl_FragCoord.xy - B.xy) / B.z));
     }
+    // (vague 3) tour à chapeau atteint : effacée en entier au-dessus de la coupe (DISC_WHOLE)
+    sdoor = max(sdoor, vCut.y * smoothstep(vCut.x - 2.0, vCut.x, vWorld.y));
     if (ign(gl_FragCoord.xy) < sdoor) discard;
   }
   gl_FragColor = vec4(col, 1.0);
@@ -263,12 +481,16 @@ void main(){
 `
 
 export function createTowerMaterial(): THREE.ShaderMaterial & { uniforms: TowerUniforms } {
-  const own: TowerUniforms = { uBaseId: { value: 0 }, uDissolve: { value: 0 } }
-  return new THREE.ShaderMaterial({
+  const own: TowerUniforms = { uBaseId: { value: 0 }, uDissolve: { value: 0 }, uTowerCut: { value: Array.from({ length: MAX_TOWERS }, () => new THREE.Vector2(1e4, 0)) } }
+  const mat = new THREE.ShaderMaterial({
     name: 'world.tower',
     uniforms: { ...NPR, ...own },
     vertexShader: VERT,
     fragmentShader: FRAG,
     side: THREE.FrontSide,
   }) as THREE.ShaderMaterial & { uniforms: TowerUniforms }
+  // coupe des tours à chapeau (vague 3) : décidée pour la caméra de CE rendu (les oiseaux à l'écran viennent de birdScreen.ts)
+  const cutState = newCutState()
+  mat.onBeforeRender = (renderer, _scene, camera) => updateTowerCuts(own, cutState, renderer.info.render.frame, camera)
+  return mat
 }

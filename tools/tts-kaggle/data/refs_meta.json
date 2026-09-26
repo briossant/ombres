@@ -1,8 +1,23 @@
 {
- "bill": {"file": "bill.wav", "source": "kyutai/tts-voices : voice-zero/bill_boerst.wav", "lang": "en",
-          "license": "CC0 (LibriVox, sélection Voice-Zero) — la voix bill_boerst du lot Pocket actuel",
-          "text": "This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit librivox.org."},
- "frm":  {"file": "frm.wav", "source": "kyutai/tts-voices : cml-tts/fr/4193_3103_000004-0001_enhanced.wav", "lang": "fr",
-          "license": "CC-BY-4.0 (CML-TTS, locuteur 4193 ; nettoyé par Kyutai avec ai-coustics) — voix masculine française grave (F0 87 Hz), posée (11,4 car/s)",
-          "text": "Or, si l'eau n'est pas absolument incompressible, elle est du moins très peu compressible."}
+ "bill": {
+  "file": "bill.wav",
+  "source": "kyutai/tts-voices : voice-zero/bill_boerst.wav",
+  "lang": "en",
+  "license": "CC0 (LibriVox, sélection Voice-Zero) — la voix bill_boerst du lot Pocket actuel",
+  "text": "This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit librivox.org."
+ },
+ "frm": {
+  "file": "frm.wav",
+  "source": "kyutai/tts-voices : cml-tts/fr/4193_3103_000004-0001_enhanced.wav",
+  "lang": "fr",
+  "license": "CC-BY-4.0 (CML-TTS, locuteur 4193 ; nettoyé par Kyutai avec ai-coustics) — voix masculine française grave (F0 87 Hz), posée (11,4 car/s)",
+  "text": "Or, si l'eau n'est pas absolument incompressible, elle est du moins très peu compressible."
+ },
+ "qdesign": {
+  "file": "qwen3_design.wav",
+  "source": "tools/tts-kaggle/data/voices/qwen3_design.wav (kernel ombres-tts-qwen3, VoiceDesign 1.7B, graine 22)",
+  "lang": "fr",
+  "license": "sortie de Qwen3-TTS VoiceDesign (Apache-2.0) : voix de synthèse, aucune personne réelle — F0 83 Hz",
+  "text": "Le vent se lève sur les dunes. Personne ne sait d'où viennent les ombres, mais elles finissent toujours par rentrer. Asseyez-vous, et écoutez bien."
+ }
 }

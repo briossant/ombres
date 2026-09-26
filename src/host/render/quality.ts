@@ -166,9 +166,11 @@ export const BENCH_MEDIUM_MAX_MS = 12
 /**
  * Banc court : on rend en 'high' pendant `frames` frames et on mesure le temps
  * GPU (timer queries si disponibles, sinon temps de frame). Choix : high si la
- * médiane est ≤ 8,5 ms (la scène du titre, 6 oiseaux, coûte ~10 % de moins qu'une
- * manche à 12 au climax : il faut de la marge sous le budget de 10 ms), medium si
- * ≤ 12 ms (900p et SMAA medium ≈ 0,7 × High), sinon low.
+ * médiane est ≤ 8,5 ms, medium si ≤ 12 ms (900p ≈ 0,75 × High), sinon low.
+ * Polish 3 (mesuré sur Renoir, High) : la scène du titre (6 oiseaux, plans rapprochés,
+ * territoire lissé partout) coûte maintenant à peu près la médiane d'une manche à 12 au
+ * climax (9,1 ms contre 8,8-9,2 ms), et non plus ~10 % de moins : un titre ≤ 8,5 ms
+ * garde le p90 de manche sous ~9,5 ms, soit la marge voulue sous le budget de 10 ms.
  */
 export class QualityBench {
   private samples: number[] = []

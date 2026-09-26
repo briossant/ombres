@@ -11,7 +11,7 @@ export const hints: StringTable = {
     'hints.holdDive': 'Maintiens {dive} : ombre petite et forte.',
     'hints.releaseClimb': 'Relâche {dive} : tu remontes, ombre grande.',
     'hints.firstLock': '{color} est sous toi. {dive} pour piquer !',
-    'hints.dodge': 'Il plonge sur toi : {flap} !',
+    'hints.dodge': 'Il pique sur toi : {flap} !',
     'hints.paleOnStrong': 'Trop pâle pour ce sable. Descends.',
     'hints.towerShade': 'Ombre de tour : sable figé, et tu es invisible.',
     'hints.aimShadow': 'Vise avec ton ombre.',

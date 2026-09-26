@@ -7,7 +7,7 @@ import type { MatchState, RoundResult, TitleAward } from '../../sim/index.ts'
 import { matchStandings } from '../../sim/index.ts'
 import type { Lang } from '../../shared/protocol.ts'
 import { t } from '../../shared/i18n.ts'
-import { fmtPct, titleStat } from '../ui/format.ts'
+import { fmtNum, fmtPct, titleStat } from '../ui/format.ts'
 import { getSettings } from '../settings.ts'
 import { displayName, titleDisplayValue, uiTitleId, type Player, type Roster } from './players.ts'
 
@@ -167,7 +167,16 @@ export function phoneView(ctx: ViewContext, phone: PhoneInfo): PhoneViewInput | 
         mention: h
           ? {
               key: `host.fact.${h.kind}`,
-              params: { name: hp ? displayName(hp, lang) : '?', value: h.kind === 'hunter' || h.kind === 'dodger' ? String(h.value) : fmtPct(h.value, 1, lang) },
+              // écarts (photo-finish, raz-de-marée) en points, comme sur le PC (RoundResults) : « 0,3 pt », pas « 0,3 % »
+              params: {
+                name: hp ? displayName(hp, lang) : '?',
+                value:
+                  h.kind === 'hunter' || h.kind === 'dodger'
+                    ? String(h.value)
+                    : h.kind === 'landslide' || h.kind === 'photoFinish'
+                      ? t(h.value * 100 < 2 ? 'host.fact.pt' : 'host.fact.pts', { n: fmtNum(h.value * 100, 1, lang) }, lang)
+                      : fmtPct(h.value, 1, lang),
+              },
             }
           : null,
         readyCount: phones.filter(x => x.ready).length,

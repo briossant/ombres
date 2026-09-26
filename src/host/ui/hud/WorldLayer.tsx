@@ -354,6 +354,8 @@ export function WorldLayer({ mode = 'round' }: { mode?: 'round' | 'lobby' }) {
   const cls = ['world', cb ? 'world--cb' : '', crowded ? 'world--crowded' : '', lobby ? 'world--lobby' : ''].filter(Boolean).join(' ')
   return (
     <div className={cls} aria-hidden ref={rootRef}>
+      {/* le mannequin d'abord : son anneau au sol passe SOUS les étiquettes des joueurs (il en masquait une) */}
+      {lobby ? <DummyMark ref={dummyRef} /> : null}
       {slots.map(s => (
         <div key={s.slot} className="anchor" data-mode="none" ref={el => void (els.current[s.slot] = el)}>
           <span className="tag__lead" />
@@ -367,7 +369,6 @@ export function WorldLayer({ mode = 'round' }: { mode?: 'round' | 'lobby' }) {
           <OffArrow colorIndex={s.colorIndex} />
         </div>
       ))}
-      {lobby ? <DummyMark ref={dummyRef} /> : null}
       {hints.map(h => (
         <HintBubble
           key={h.id}

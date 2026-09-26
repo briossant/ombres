@@ -249,3 +249,33 @@ réellement tourné (repli compris), `cameraState.shotFault` = juge de l'image r
 images ratées, rythme, coût), `every.mjs` (une capture par seconde, planches), `blank.mjs` (sonde d'images
 unies). `npx vitest run src/host/camera/cine.test.ts` : cases de l'UI, juge, jumelle, 20 s de démo filmée
 sans image ratée.
+
+## 11. Polish vague 3 (correcteur climax-3 : Grande Ombre, tours, couronne ; détail et mesures : `docs/polish/fix3-climax.md`)
+
+**Tours** (`framingRig.ts`, `towerCover.ts`) — encombrement `obstruction()` = max(part de la **tour seule** la plus
+couvrante (`towerCoverStats.maxSingle`), 2/3 × toutes les tours, 0,35 × largeur de la plus large, **2 × premier plan**
+(tours plantées à moins de 0,8 × la distance au sol caméra → cible, entières), proximité). Seuils 12 / 11 / 8,5 %
+(`COVER_MAX` / `COVER_GOAL` / `COVER_OK`). Parades (`COVER_CANDIDATES`) : relever +5, +8, −5°, **glisser** le cadre
+(`COVER_SHIFTS`, est / ouest / nord / sud, 14 → 42 % de la largeur, ramené dans la marge des boîtes des oiseaux cadrés
+par `clampRigToSets` : jamais un oiseau cadré hors du rectangle utile), reculer × 1,2 / 1,45 (seul, relevé, glissé),
+× 1,8. Choix : cadre visé ET chemin (cadre courant, milieu du trajet) propres ; sinon cadre visé propre au chemin le
+moins encombré. Parade **gardée** tant que cadre visé ≤ 12 % et chemin ≤ 16 % (`COVER_PATH`) ; recherche d'une moins
+coûteuse toutes les 0,5 s (`coverIdx`). Glissement appliqué à la cible visée (`shiftGoalX/Y`, autour de `fitX/Y`),
+lissé par les ressorts de position. Recul décidé : dézoom × 1,6 plus vif (`TOWER_OUT_BOOST`). Recul ≥ × 1,45 à la
+Grande Ombre → `gsSqueeze` resserre le choix des bots cadrés (jusqu'à × 0,7) ; à la Grande Ombre, aucun recul
+au-delà de 250 m (`GS_PARRY_MAX_W`). Punch-in : seuil 12 % (`PUNCH_COVER`).
+`coverTrace` = { base, chosen, pick (indice ; −2 gardée), evals } pour les scripts.
+
+**Chapeaux** (`towerCover.ts`, partagé avec `render/world/towerMaterial.ts`) : `towerHats` (segments larges > 5,3 m et
+courts ≤ 6,5 m, comme `isDisc` de la géométrie), `hatCutBase` (bas du chapeau, − 6 m sous les grands disques à lanternes
+pendues), `foregroundHats(sim)` (de 96,5 s à la fin de la manche) et `HAT_NEAR` (67 m) : à la Grande Ombre, un chapeau
+à moins de 62-72 m de la caméra est effacé par le matériau avec tout ce qui le surmonte ; `towerCover(…, hatNear)`,
+`towerClearance(…, hatNear)` et `towerCoverage(…, maxDist, hatNear)` suivent la même règle (la caméra ne recule plus
+pour une tour qui ne sera pas peinte).
+
+**Couronne** : plafond `lerp(GS_CROWN_CAP_START 1,7 a, GS_CROWN_CAP 1,5 a)` sur la Grande Ombre, borné à
+`GS_CROWN_MAX_W` = 235 m. **Entrée** : `GS_LEAD_IN` = 2 s.
+
+Outils : `tools/polish/climax3/bench.ts` (banc headless 97-110 s : tour seule, premier plan, disques tranchés (modèle
+du matériau), couronne, front, images composées ; `--bots=dev` = bots de la page de dev ; `--trace=carte:n:graine:t0:t1`
+= décisions de parade toutes les 0,1 s), `debug.ts` (parades autour du cadre sans recul), `segs.ts` (segments des tours).

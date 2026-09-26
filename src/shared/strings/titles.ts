@@ -52,7 +52,7 @@ export const titles: StringTable = {
     'titles.rapace.stat': '{n} strikes landed',
     'titles.gibier.name': 'The Quarry',
     'titles.gibier.desc': 'Every talon’s favourite target.',
-    'titles.gibier.stat': 'Knocked down {n} times',
+    'titles.gibier.stat': 'Knocked out {n} times',
     'titles.anguille.name': 'The Eel',
     'titles.anguille.desc': 'Slips through the talons at the last moment.',
     'titles.anguille.stat': '{n} dodges',

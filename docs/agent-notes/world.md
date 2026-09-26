@@ -266,3 +266,32 @@ Détail, preuves, mesures : `docs/polish/fix2-world.md`. Changements d'API et é
   d'une tour (`framingRig.ts`), la trame ne sert qu'aux passages.
 - Coût : même boucle (12 oiseaux) qu'avant ; le cœur effacé réduit le remplissage. Pas de mesure GPU dédiée
   (GPU partagé à 99 % pendant la session).
+
+## Polish vague 3 — correcteur world-3 (bords de territoire de près, budget GPU ; détail : docs/polish/fix3-world.md)
+
+- **Classification B-spline « en flux »** (`groundMaterial.ts`, `territoryBS`) : les 9 texels sont lus en R et G
+  seulement et accumulés aussitôt par candidat (`acc`, `accG`) ; B et A (horodatage, ancien propriétaire) sont
+  relus sur le seul texel retenu. Image identique au pixel (diff 0 hors du Simoun animé), −1,4 ms par image en
+  High à 12 oiseaux (Grande Ombre, A/B entrelacé). Leçon générale pour ce shader : **le coût d'une branche
+  rarement prise se paie partout** (le pic de registres fixe l'occupation du shader du sol entier). A/B sur le
+  code : `tools/polish/world3/abshader.mjs` (variantes de source compilées une fois, alternées dans la même page).
+- **Choix du lissage** : taille du pixel retenue = `min(uSmoothAniso × petit axe, grand axe)` (1,5), pour la
+  classification du territoire ET le lissage des bords d'ombre du sol (`dp0`). 1e9 = règle d'avant (levier).
+- **B-spline cubique 4×4** (`territoryBC`) sous `uTerrCubicDu` (0,16 m/px : titre, plans serrés de la Grande
+  Ombre) ; quadratique jusqu'à `uTerrSmoothDu` (0,3) ; 4 taps au-delà ; Low : 4 taps (`TERR_BILINEAR`). Une
+  cellule isolée disparaît en cubique (poids 0,44) : sans enjeu à cette distance.
+- Test : `world.test.ts` vérifie que chaque uniform déclaré par le shader du sol a une valeur (les deux variantes).
+
+## Polish vague 3 — correcteur climax-3 (`towerMaterial.ts` ; détail : docs/polish/fix3-climax.md)
+
+- **Chapeaux effacés en entier** (`DISC_WHOLE`) : plus de disque tranché par le cercle de dégagement d'un oiseau.
+  `onBeforeRender` du matériau (une fois par image, `renderer.info.render.frame`) appelle `towerCut` pour chaque tour à
+  chapeau (`towerHats`, `camera/towerCover.ts`) : si le cercle d'un oiseau caché (NPR.uBirdScr) touche l'ellipse d'un
+  chapeau à l'écran (bande 0,9-1,12 × rayon), ou si un chapeau passe à moins de 30-38 m de la caméra (62-72 m à la
+  Grande Ombre de la manche : chapeaux de premier plan, `foregroundHats`), la tour est effacée **au-dessus d'une
+  coupe** : bas du chapeau (− 6 m sous les disques à lanternes pendues, `hatCutBase`), descendue le long de l'axe tant
+  qu'il reste dans le cercle. Décision binaire avec hystérésis (0,35 / 0,02), transition de 0,22 s par la trame IGN.
+- Shader : `uniform vec2 uTowerCut[16]` (altitude, part) lu dans le **vertex shader** (tour = (ID − towerBase) / 4),
+  varying `vCut` ; fragment : `sdoor = max(sdoor, vCut.y × smoothstep(z − 2, z, y))`. Le reste de la dissolution
+  (cercle par fragment sur les fûts et bulbes, proximité 30-38 m) est inchangé. Coupée au podium (`uDissolve`).
+- Test : `towerCut.test.ts` (oiseau caché par le chapeau, oiseau devant ou loin, caméra proche).

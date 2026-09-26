@@ -120,8 +120,9 @@ export function KeysReference() {
   const k = (code: string) => <Key>{keyLabel(code, layout)}</Key>
   const arrows = (
     <span className="keys__arrows">
-      <Key>←</Key>
+      {/* même ordre que W A S D (haut, gauche, bas, droite) */}
       <Key>↑</Key>
+      <Key>←</Key>
       <Key>↓</Key>
       <Key>→</Key>
     </span>

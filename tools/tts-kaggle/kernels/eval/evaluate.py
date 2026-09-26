@@ -49,7 +49,34 @@ def inventory():
     OMBRES_SYSTEMS (préfixes séparés par des virgules) restreint aux systèmes voulus (évaluation en tranches)."""
     keep = [p for p in os.environ.get("OMBRES_SYSTEMS", "").split(",") if p]
     items = [it for it in _inventory() if not keep or any(it["system"].startswith(p) for p in keep)]
+    # OMBRES_TEMPO « système=1.12,autre=1.08 » : ajoute des systèmes virtuels « système@1.12 », mêmes prises
+    # accélérées (ffmpeg atempo, comme le lot) pour voir si une voix trop lente tient sous 3 s sans y perdre.
+    names = []
+    for spec in [x for x in os.environ.get("OMBRES_TEMPO", "").split(",") if "=" in x]:
+        name, t = spec.split("=")
+        names.append(name)
+        items += [dict(it, system=f"{name}@{t}", tempo=float(t)) for it in list(items) if it["system"] == name]
+    drop = [x for x in os.environ.get("OMBRES_TEMPO_ONLY", "").split(",") if x]
+    if drop:  # originaux déjà mesurés dans une autre évaluation : seules leurs variantes accélérées
+        items = [it for it in items if it["system"] not in drop]
+    if os.environ.get("OMBRES_SUBSET"):  # « i/n » : reprendre une tranche d'une évaluation interrompue
+        i, n = (int(x) for x in os.environ["OMBRES_SUBSET"].split("/"))
+        items = items[i::n]
     return items
+
+
+def atempo(y, sr, tempo):
+    import shutil
+    if not shutil.which("ffmpeg"):
+        import librosa
+        return librosa.effects.time_stretch(y, rate=tempo)
+    p = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(sr), "-ac", "1", "-i", "pipe:0",
+                        "-af", f"atempo={tempo}", "-f", "f32le", "-ar", str(sr), "-ac", "1", "pipe:1"],
+                       input=np.ascontiguousarray(y, dtype=np.float32).tobytes(), capture_output=True)
+    if p.returncode != 0:
+        import librosa
+        return librosa.effects.time_stretch(y, rate=tempo)
+    return np.frombuffer(p.stdout, dtype=np.float32).copy()
 
 
 def _inventory():
@@ -106,7 +133,7 @@ def measure(items, part):
         if TEST:
             raise RuntimeError("mode test")
         import utmosv2
-        u2 = utmosv2.create_model(pretrained=True)
+        u2 = utmosv2.create_model(pretrained=True, device=dev)
     except Exception as e:  # noqa: BLE001
         print("UTMOSv2 indisponible :", repr(e)[:300], flush=True)
         u2 = None
@@ -144,6 +171,8 @@ def measure(items, part):
         e = corpus[it["id"]]
         lang = it["lang"]
         y, sr = load16(it["path"])
+        if it.get("tempo"):
+            y = atempo(y, sr, it["tempo"])
         ys = B.ship_like(y, sr)  # ce que le lot garderait
         st = B.speech_stats(ys, sr)
         y16 = librosa.resample(ys, orig_sr=sr, target_sr=16000) if sr != 16000 else ys
@@ -175,7 +204,7 @@ def measure(items, part):
             r["utmos"] = round(float(utmos(torch.from_numpy(y16n).unsqueeze(0).to(dev), 16000).item()), 3)
         if u2 is not None:
             try:
-                m2 = u2.predict(data=y16n, sr=16000)
+                m2 = u2.predict(data=y16n, sr=16000, device=dev)  # predict() vise cuda:0 par défaut
                 r["utmosv2"] = round(float(np.asarray(m2.cpu() if hasattr(m2, "cpu") else m2).reshape(-1)[0]), 3)
             except Exception as ex:  # noqa: BLE001
                 r["utmosv2_err"] = repr(ex)[:120]
@@ -326,18 +355,19 @@ def samples(clips):
     os.makedirs(f"{WORK}/samples", exist_ok=True)
     pick = ["fr.golden1", "fr.greatShadow1", "fr.bigSteal.5", "fr.dodge.8", "en.tenSeconds2", "en.leaderChange1.4",
             "en.dodge.3"]
-    items = {(it["system"], it["id"], it["take"]): it["path"] for it in inventory()}
+    items = {(it["system"], it["id"], it["take"]): (it["path"], it.get("tempo")) for it in inventory()}
     for s in sorted({c["system"] for c in clips}):
         for lid in pick:
             takes = [c for c in clips if c["system"] == s and c["id"] == lid]
             if not takes:
                 continue
             best = max(takes, key=lambda c: (c["cer_p"] <= 0.12 and not c["kw_miss_p"], c["utmos"]))
-            src = items[(s, lid, best["take"])]
+            src, tempo = items[(s, lid, best["take"])]
             dst = f"{WORK}/samples/{s}__{lid}.mp3"
             try:
                 subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src, "-af",
-                                "silenceremove=start_periods=1:start_threshold=-50dB,loudnorm=I=-16:TP=-1.5",
+                                (f"atempo={tempo}," if tempo else "")
+                                + "silenceremove=start_periods=1:start_threshold=-50dB,loudnorm=I=-16:TP=-1.5",
                                 "-ac", "1", "-ar", "24000", "-b:a", "48k", dst])
             except FileNotFoundError:
                 print("ffmpeg absent : pas d'échantillons MP3", flush=True)
@@ -362,9 +392,13 @@ SHARD = os.environ.get("OMBRES_SHARD", "")
 
 if __name__ == "__main__":
     if "--merge" in sys.argv:
-        clips = []
+        clips, seen = [], set()
         for f in sorted(glob.glob(f"{INP}/**/metrics_shard*.json", recursive=True)):
-            clips += json.load(open(f))
+            for c in json.load(open(f)):
+                k = (c["system"], c["id"], c["take"])
+                if k not in seen:  # une prise mesurée deux fois (GPU et CPU) : la première lue gagne
+                    seen.add(k)
+                    clips.append(c)
         refemb = {}
         for f in glob.glob(f"{INP}/**/refemb.json", recursive=True):
             refemb.update({k: np.array(v) for k, v in json.load(open(f)).items()})
@@ -385,6 +419,10 @@ if __name__ == "__main__":
         res = measure(items[p::int(os.environ.get("OMBRES_NP", "2"))], p)
         json.dump(res, open(f"{WORK}/metrics_part{p}.json", "w"), ensure_ascii=False)
         sys.exit(0)
+    # le code de SpeechMOS est téléchargé ici une fois : deux processus qui le téléchargent en même temps
+    # se marchent dessus (« Directory not empty » dans torch.hub)
+    import torch
+    torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True)
     procs = []
     n = 1 if TEST else 2
     for i in range(n):
@@ -395,7 +433,11 @@ if __name__ == "__main__":
     clips = []
     for i in range(n):
         clips += json.load(open(f"{WORK}/metrics_part{i}.json"))
-    finish(clips, ref_embeddings())
+    refemb = ref_embeddings()
+    # mesures brutes (avec embeddings) : permettent de fusionner plusieurs évaluations en local (--merge)
+    json.dump(clips, open(f"{WORK}/metrics_shard_gpu.json", "w"), ensure_ascii=False)
+    json.dump({k: v.tolist() for k, v in refemb.items()}, open(f"{WORK}/refemb.json", "w"))
+    finish(clips, refemb)
     samples(clips)
     for f in glob.glob(f"{WORK}/metrics_part*.json") + glob.glob(f"{WORK}/tmp/*"):
         os.remove(f)

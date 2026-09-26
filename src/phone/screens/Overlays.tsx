@@ -38,7 +38,8 @@ export function ReconnectOverlay() {
     <div className="overlay overlay--dim" role="alert">
       <div className="case case--alert panel" style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
         <span className={selfLost ? 'feather-fall' : 'spin'}>{selfLost ? <IconSpinFeather size={44} /> : <IconReconnect size={40} />}</span>
-        <h1 className="t-title" style={{ fontSize: 24 }}>
+        {/* équilibré : « Le vent t'a emporté… » ne laisse pas un mot seul sur la 2e ligne */}
+        <h1 className="t-title" style={{ fontSize: 24, textAlign: 'center', textWrap: 'balance' }}>
           {selfLost ? t('phone.reconnect.title') : t('phone.hostAway.title')}
         </h1>
         <p className="lede">{selfLost ? t('phone.reconnect.body') : t('phone.hostAway.body')}</p>

@@ -77,7 +77,7 @@ uniform vec4 uIllum;
 uniform vec4 uCrack;
 uniform vec4 uFpEllipse[13];
 uniform vec2 uFpDir;
-uniform float uNightSpeed, uPaintCMax, uShadowCool, uLook2, uPaintCapDark, uTerrSmoothDu;
+uniform float uNightSpeed, uPaintCMax, uShadowCool, uLook2, uPaintCapDark, uTerrSmoothDu, uTerrCubicDu, uSmoothAniso;
 uniform vec3 uLipLab;
 #define PALE_DE2 0.0036
 varying vec3 vWorld;
@@ -91,6 +91,14 @@ varying vec2 vCrest;
 // portent cet ID ; le gagnant est l'argmax, m = poids(gagnant) − poids(second) vaut 0 sur la
 // frontière. La B-spline arrondit l'escalier des cellules de la sim (le bilinéaire le laissait
 // visible en gros plan). prev/stamp : texel du bloc le plus proche qui porte le gagnant.
+// Polish 3 : les texels sont lus EN FLUX (R et G seulement, accumulés aussitôt ; B et A relus sur
+// le seul texel retenu). L'ancienne version gardait les 9 texels entiers vivants : cette pression
+// de registres baissait l'occupation du shader du sol ENTIER, même là où la branche ne tournait
+// pas (A/B à 12 oiseaux, Grande Ombre, High : −1,4 ms par image, image identique au pixel).
+// De très près (cellule ≥ ~6 px sur le petit axe : titre, plans serrés rasants de la Grande
+// Ombre), B-spline CUBIQUE 4×4 : l'escalier d'une frontière presque droite (marches d'une cellule
+// tous les 4 à 8 cellules) reste visible avec la quadratique (arrondie sur ~1,5 cellule) ; la
+// cubique l'étale sur ~2 cellules. Une cellule isolée y disparaît (poids 0,44), sans enjeu si près.
 vec4 terrTexel(ivec2 p, ivec2 mx){ return texelFetch(uTerr, clamp(p, ivec2(0), mx), 0); }
 float terrId(vec4 t){ return floor(t.r * 255.0 + 0.5); }
 // classification bilinéaire 4 taps (NPR §4.6) : preset bas, et pixels lointains
@@ -127,54 +135,84 @@ void territoryBS(vec2 xz, out float owner, out float strength, out float m, out 
   ivec2 mx = ivec2(uTerrSize) - 1;
   vec3 wx = vec3(0.5 * (0.5 - f.x) * (0.5 - f.x), 0.75 - f.x * f.x, 0.5 * (0.5 + f.x) * (0.5 + f.x));
   vec3 wy = vec3(0.5 * (0.5 - f.y) * (0.5 - f.y), 0.75 - f.y * f.y, 0.5 * (0.5 + f.y) * (0.5 + f.y));
-  vec4 a0 = terrTexel(ic + ivec2(-1, -1), mx), a1 = terrTexel(ic + ivec2(0, -1), mx), a2 = terrTexel(ic + ivec2(1, -1), mx);
-  vec4 b0 = terrTexel(ic + ivec2(-1, 0), mx),  b1 = terrTexel(ic, mx),                b2 = terrTexel(ic + ivec2(1, 0), mx);
-  vec4 c0 = terrTexel(ic + ivec2(-1, 1), mx),  c1 = terrTexel(ic + ivec2(0, 1), mx),  c2 = terrTexel(ic + ivec2(1, 1), mx);
-  vec3 idA = vec3(terrId(a0), terrId(a1), terrId(a2));
-  vec3 idB = vec3(terrId(b0), terrId(b1), terrId(b2));
-  vec3 idC = vec3(terrId(c0), terrId(c1), terrId(c2));
-  vec3 wA = wx * wy.x, wB = wx * wy.y, wC = wx * wy.z;
+  ivec2 sd = ivec2(f.x < 0.0 ? -1 : 1, f.y < 0.0 ? -1 : 1);
   // candidats : le texel central et ses voisins du côté de f (bloc bilinéaire)
-  int sx = f.x < 0.0 ? 0 : 2;
-  int sy = f.y < 0.0 ? 0 : 2;
-  float cand0 = idB.y;
-  float cand1 = sx == 0 ? idB.x : idB.z;
-  float cand2 = sy == 0 ? idA.y : idC.y;
-  float cand3 = sy == 0 ? (sx == 0 ? idA.x : idA.z) : (sx == 0 ? idC.x : idC.z);
-  vec4 cand = vec4(cand0, cand1, cand2, cand3);
-  vec4 acc;
-  for (int k = 0; k < 4; k++) {
-    float ck = cand[k];
-    acc[k] = dot(wA, vec3(equal(idA, vec3(ck)))) + dot(wB, vec3(equal(idB, vec3(ck)))) + dot(wC, vec3(equal(idC, vec3(ck))));
+  vec4 cand = vec4(terrId(terrTexel(ic, mx)), terrId(terrTexel(ic + ivec2(sd.x, 0), mx)), terrId(terrTexel(ic + ivec2(0, sd.y), mx)), terrId(terrTexel(ic + sd, mx)));
+  // poids B-spline (et niveau pondéré) de chaque candidat : les 9 texels sont lus en flux (R et G
+  // seulement), rien n'est gardé au-delà de l'accumulation (pression de registres, polish 3)
+  vec4 acc = vec4(0.0), accG = vec4(0.0);
+  for (int j = 0; j < 3; j++) {
+    for (int i = 0; i < 3; i++) {
+      vec2 t = terrTexel(ic + ivec2(i - 1, j - 1), mx).rg;
+      vec4 hit = vec4(equal(cand, vec4(floor(t.x * 255.0 + 0.5)))) * (wx[i] * wy[j]);
+      acc += hit;
+      accG += hit * t.y;
+    }
   }
   float best = max(max(acc.x, acc.y), max(acc.z, acc.w));
-  owner = acc.x == best ? cand.x : acc.y == best ? cand.y : acc.z == best ? cand.z : cand.w;
+  int k = acc.x == best ? 0 : acc.y == best ? 1 : acc.z == best ? 2 : 3;
+  owner = cand[k];
   vec4 other = 1.0 - vec4(equal(cand, vec4(owner)));
   m = best - max(max(acc.x * other.x, acc.y * other.y), max(acc.z * other.z, acc.w * other.w));
-  vec3 sA = vec3(equal(idA, vec3(owner))), sB = vec3(equal(idB, vec3(owner))), sC = vec3(equal(idC, vec3(owner)));
-  strength = (dot(wA * sA, vec3(a0.g, a1.g, a2.g)) + dot(wB * sB, vec3(b0.g, b1.g, b2.g)) + dot(wC * sC, vec3(c0.g, c1.g, c2.g))) / max(best, 1e-4);
-  // texel qui porte le gagnant, le plus proche : centre, sinon voisins du bloc
-  vec4 tb = b1;
-  if (idB.y != owner) {
-    vec4 tx = sx == 0 ? b0 : b2;
-    vec4 ty = sy == 0 ? a1 : c1;
-    vec4 txy = sy == 0 ? (sx == 0 ? a0 : a2) : (sx == 0 ? c0 : c2);
-    tb = terrId(tx) == owner ? tx : terrId(ty) == owner ? ty : txy;
+  strength = accG[k] / max(best, 1e-4);
+  // texel qui porte le gagnant, le plus proche : centre, sinon voisins du bloc (relu : horodatage,
+  // ancien propriétaire)
+  ivec2 o = cand.x == owner ? ivec2(0) : cand.y == owner ? ivec2(sd.x, 0) : cand.z == owner ? ivec2(0, sd.y) : sd;
+  vec2 tb = terrTexel(ic + o, mx).ba;
+  prevOwner = floor(tb.y * 255.0 + 0.5);
+  stamp = floor(tb.x * 255.0 + 0.5);
+  vec2 uv = g / uTerrSize;
+  if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { owner = 0.0; m = 1.0; prevOwner = 0.0; stamp = TERR_OLD; }
+}
+// B-spline cubique 4×4 (polish 3, plans très rapprochés) : même structure en flux que territoryBS.
+void territoryBC(vec2 xz, out float owner, out float strength, out float m, out float prevOwner, out float stamp){
+  vec2 sp = vec2(xz.x, -xz.y);
+  vec2 g = (sp - uTerrGrid.xy) * uTerrGrid.zw;
+  vec2 gc = g - 0.5;
+  vec2 c = floor(gc);
+  vec2 t = gc - c;                                // position dans le bloc bilinéaire, [0 ; 1[
+  ivec2 ic = ivec2(c);
+  ivec2 mx = ivec2(uTerrSize) - 1;
+  vec2 t2 = t * t, t3 = t2 * t, u = 1.0 - t;
+  vec4 wx = vec4(u.x * u.x * u.x, 3.0 * t3.x - 6.0 * t2.x + 4.0, -3.0 * t3.x + 3.0 * t2.x + 3.0 * t.x + 1.0, t3.x) / 6.0;
+  vec4 wy = vec4(u.y * u.y * u.y, 3.0 * t3.y - 6.0 * t2.y + 4.0, -3.0 * t3.y + 3.0 * t2.y + 3.0 * t.y + 1.0, t3.y) / 6.0;
+  // candidats : le bloc bilinéaire, du texel le plus proche au plus lointain
+  ivec2 n0 = ivec2(t.x < 0.5 ? 0 : 1, t.y < 0.5 ? 0 : 1);
+  ivec2 n1 = ivec2(1) - n0;
+  vec4 cand = vec4(terrId(terrTexel(ic + n0, mx)), terrId(terrTexel(ic + ivec2(n1.x, n0.y), mx)), terrId(terrTexel(ic + ivec2(n0.x, n1.y), mx)), terrId(terrTexel(ic + n1, mx)));
+  vec4 acc = vec4(0.0), accG = vec4(0.0);
+  for (int j = 0; j < 4; j++) {
+    for (int i = 0; i < 4; i++) {
+      vec2 tt = terrTexel(ic + ivec2(i - 1, j - 1), mx).rg;
+      vec4 hit = vec4(equal(cand, vec4(floor(tt.x * 255.0 + 0.5)))) * (wx[i] * wy[j]);
+      acc += hit;
+      accG += hit * tt.y;
+    }
   }
-  prevOwner = floor(tb.a * 255.0 + 0.5);
-  stamp = floor(tb.b * 255.0 + 0.5);
+  float best = max(max(acc.x, acc.y), max(acc.z, acc.w));
+  int k = acc.x == best ? 0 : acc.y == best ? 1 : acc.z == best ? 2 : 3;
+  owner = cand[k];
+  vec4 other = 1.0 - vec4(equal(cand, vec4(owner)));
+  m = best - max(max(acc.x * other.x, acc.y * other.y), max(acc.z * other.z, acc.w * other.w));
+  strength = accG[k] / max(best, 1e-4);
+  ivec2 o = cand.x == owner ? n0 : cand.y == owner ? ivec2(n1.x, n0.y) : cand.z == owner ? ivec2(n0.x, n1.y) : n1;
+  vec2 tb = terrTexel(ic + o, mx).ba;
+  prevOwner = floor(tb.y * 255.0 + 0.5);
+  stamp = floor(tb.x * 255.0 + 0.5);
   vec2 uv = g / uTerrSize;
   if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { owner = 0.0; m = 1.0; prevOwner = 0.0; stamp = TERR_OLD; }
 }
 
 // B-spline seulement quand une cellule couvre plusieurs pixels (plans rapprochés) : en vue de
-// jeu (≥ 0,3 m/px, cellule ≈ 1,5 px) l'escalier est sous le pixel et 4 taps suffisent.
+// jeu (≥ 0,3 m/px, cellule ≈ 1,5 px) l'escalier est sous le pixel et 4 taps suffisent ; cubique
+// sous uTerrCubicDu (polish 3). du : taille du pixel retenue pour ce choix (voir uSmoothAniso).
 // Branche dynamique sans dérivée dedans : fwidth(m) est pris après, pour tous les pixels.
 void territory(vec2 xz, float du, out float owner, out float strength, out float m, out float prevOwner, out float stamp){
 #ifdef TERR_BILINEAR
   territoryBL(xz, owner, strength, m, prevOwner, stamp);
 #else
-  if (du < uTerrSmoothDu) territoryBS(xz, owner, strength, m, prevOwner, stamp);
+  if (du < uTerrCubicDu) territoryBC(xz, owner, strength, m, prevOwner, stamp);
+  else if (du < uTerrSmoothDu) territoryBS(xz, owner, strength, m, prevOwner, stamp);
   else territoryBL(xz, owner, strength, m, prevOwner, stamp);
 #endif
 }
@@ -318,7 +356,10 @@ void main(){
   vec2 xz = vWorld.xz;
   // ── dérivées et lectures de texture en tête (hors branches) ──
   vec2 dxz = dFdx(xz), dyz = dFdy(xz);
-  float du = max(length(dxz), length(dyz));                      // mètres par pixel
+  float ldx = length(dxz), ldy = length(dyz);
+  float du = max(ldx, ldy);                                      // mètres par pixel (grand axe)
+  // choix de la classification (polish 3) : le petit axe compte aussi (plans rasants, voir uSmoothAniso)
+  float duTerr = min(uSmoothAniso * min(ldx, ldy), du);
   // trois lectures de bruit (texture 256², NPR §4.10) : un bruit ALU par pixel coûterait des ms
   vec4 nz = texture2D(uNoise, xz * (1.0 / 240.0));                 // warp large, rides
   // grain, warp fin, front mouillé et lavis inégal ne servent que dans l'arène (territoire, taches de
@@ -349,12 +390,15 @@ void main(){
   // hors de l'arène (dunes, anneau lointain : 30 à 50 % du cadre de jeu), aucune lecture de la grille
   // (polish W3) ; la marge couvre le warp des bords (≤ 3 m)
   vec2 xzW = xz + (nz.rg - 0.5) * 2.0 * uTerrWarp + (nzf.rg - 0.5) * 0.5 * uTerrWarp;
-  if (rho < 1.06) territory(xzW, du, owner, strength, m, prevOwner, stamp);
+  if (rho < 1.06) territory(xzW, duTerr, owner, strength, m, prevOwner, stamp);
   float mw = max(fwidth(m), 1e-4);
   float borderPx = m / mw;
   // contour d'ombre lissé dès qu'un texel couvre plus d'un pixel (polish W5), 4 taps sinon
+  // (polish 3 : même règle du petit axe que le territoire, sinon les bords d'ombre gardent l'escalier
+  // des texels en plan rasant)
   vec2 p0 = shadowProject(vWorld);
-  float dp0 = max(length(dFdx(p0)), length(dFdy(p0)));
+  float dp0x = length(dFdx(p0)), dp0y = length(dFdy(p0));
+  float dp0 = min(uSmoothAniso * min(dp0x, dp0y), max(dp0x, dp0y));
   // derrière le front de nuit, plus d'ombres portées : aucune lecture (polish W3 : la Grande Ombre
   // était la phase la plus chère) ; la lecture reste faite sur la bande antialiasée du front
   vec4 sh = vec4(0.0);

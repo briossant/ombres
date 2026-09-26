@@ -107,7 +107,7 @@ await sleep(1200)
 await shot(A.page, 'A-landscape-profile')
 log(`A profil : ${await visibleText(A.page)}`)
 // le débutant ouvre « plus de couleurs » puis choisit
-const more = A.page.locator('text=' + (LANG === 'fr' ? 'Plus de couleurs' : 'More colors'))
+const more = A.page.locator('text=' + (LANG === 'fr' ? 'Plus de couleurs' : 'More colours'))
 if (await more.count()) {
   await more.first().click().catch(() => {})
   await sleep(600)
