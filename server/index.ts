@@ -8,6 +8,7 @@ import { gzipSync } from 'node:zlib'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { WS_PATH } from '../src/shared/protocol.ts'
 import { attachHost, attachPhone, roomStats, sweepRooms } from './rooms.ts'
+import { createDeployHandler } from './deploy.ts'
 
 const PROD = process.env.NODE_ENV === 'production'
 const PORT = Number(process.env.PORT ?? (PROD ? 80 : 8787))
@@ -102,7 +103,11 @@ const server = createServer()
 let handler: (req: IncomingMessage, res: ServerResponse) => void
 
 if (PROD) {
+  // Hébergement Magic Deploy : site téléversé dans un volume (voir server/deploy.ts).
+  const deploy = createDeployHandler(DIST, () => cache.clear())
+  if (deploy) console.log('Téléversement du site activé (/__deploy)')
   handler = (req, res) => {
+    if (deploy?.handle(req, res)) return
     if (req.url === '/healthz') {
       res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(roomStats()))
       return

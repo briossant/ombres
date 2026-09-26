@@ -1,28 +1,22 @@
-// Assemble le dossier deploy/ soumis à Magic Deploy : configuration.nix (versionné),
-// server.mjs (bundle esbuild) et public/ (build Vite). Lancer après `pnpm build`.
-import { cpSync, existsSync, rmSync, statSync, readdirSync } from 'node:fs'
+// Prépare le dossier deploy/ soumis à Magic Deploy : configuration.nix (versionné) et
+// server.mjs (bundle esbuild). Le site lui-même est téléversé ensuite par
+// tools/deploy-upload.mjs (le proxy de Magic Deploy limite une requête à ~1 Mio).
+import { cpSync, existsSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 
 const root = new URL('..', import.meta.url).pathname
-const dist = join(root, 'dist')
 const bundle = join(root, 'dist-server/server.mjs')
-if (!existsSync(dist) || !existsSync(bundle)) {
+if (!existsSync(join(root, 'dist')) || !existsSync(bundle)) {
   console.error('Build manquant : lance `pnpm build` d’abord.')
   process.exit(1)
 }
 rmSync(join(root, 'deploy/public'), { recursive: true, force: true })
-cpSync(dist, join(root, 'deploy/public'), { recursive: true })
 cpSync(bundle, join(root, 'deploy/server.mjs'))
+const size = statSync(join(root, 'deploy/server.mjs')).size
+if (size > 700 * 1024) throw new Error(`server.mjs trop gros pour Magic Deploy (${size} o)`)
 
-let bytes = 0
-let files = 0
-const walk = d => {
-  for (const n of readdirSync(d)) {
-    const p = join(d, n)
-    const s = statSync(p)
-    if (s.isDirectory()) walk(p)
-    else { bytes += s.size; files++ }
-  }
-}
-walk(join(root, 'deploy'))
-console.log(`deploy/ prêt : ${files} fichiers, ${(bytes / 1e6).toFixed(1)} Mo`)
+// Jeton de téléversement (secret UPLOAD_TOKEN de la machine), créé une fois, jamais versionné.
+const tokenFile = join(root, '.secrets/upload-token')
+if (!existsSync(tokenFile)) writeFileSync(tokenFile, randomBytes(32).toString('hex') + '\n', { mode: 0o600 })
+console.log(`deploy/ prêt : configuration.nix + server.mjs (${(size / 1024).toFixed(0)} Kio) ; jeton dans .secrets/upload-token`)

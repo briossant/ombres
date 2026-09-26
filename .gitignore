@@ -17,3 +17,4 @@ assets-staging/**
 !assets-staging/**/*.html
 deploy/public/
 deploy/server.mjs
+.secrets/
