@@ -10,6 +10,14 @@ import { OBJ_ID } from '../npr/ids.ts'
 import { NPR } from '../npr/uniforms.ts'
 import { DECO } from './geoBuilder.ts'
 
+/**
+ * Dissolution près de la caméra (polish vague 2) : effacé net à moins de DISSOLVE_NEAR0 m, bande
+ * de transition en trame jusqu'à DISSOLVE_NEAR1 m. La caméra de manche ne s'installe pas à moins de
+ * 45 m d'une tour (src/host/camera/framingRig.ts, COVER_CLEAR) : ceci ne sert qu'aux passages.
+ */
+export const DISSOLVE_NEAR0 = 30
+export const DISSOLVE_NEAR1 = 38
+
 export interface TowerUniforms {
   uBaseId: { value: number }
   /** Dissolution en trame active (0 au podium). */
@@ -230,20 +238,24 @@ void main(){
   col = applyFog(col, fog, n);
   col += (ign(gl_FragCoord.xy) - 0.5) / 255.0;
 
-  // ── dissolution en trame (polish W9, bible §6.8) : au-dessus de 20 m, ce qui est à moins de
-  // 60 m de la caméra ou passe devant un oiseau s'efface en trame IGN fixe à l'écran (jamais un
-  // fondu alpha, qui griserait l'aplat). Les pixels gardés portent l'ID « trame » : l'encre ne
-  // les cerne pas (sinon chaque point de la trame deviendrait un point noir). Après toutes les
-  // dérivées : le discard ne les perturbe pas.
+  // ── dissolution (polish W9, vague 2 ; bible §6.8) : ce qui est à moins de NEAR0 m de la caméra
+  // (au-dessus de 20 m) ou passe devant un oiseau (au-dessus de 3 m) est effacé NET, sans trame
+  // (la trame à 72 % donnait un voile moiré sur 40 % du cadre quand la caméra rasait les tours).
+  // Seule une bande étroite fait la transition en trame IGN, fixe à l'écran : NEAR0 → NEAR1 m, et
+  // 90 → 112 % du rayon du disque de dégagement de l'oiseau (BIRD_CLEAR_R : le cœur net couvre
+  // l'envergure à l'échelle cosmétique maximale, × 1,6 au-delà de 8 oiseaux). Jamais de fondu alpha (il griserait
+  // l'aplat). Les pixels gardés de la bande portent l'ID « trame » : l'encre ne les cerne pas
+  // (sinon chaque point de la trame deviendrait un point noir). Après toutes les dérivées : le
+  // discard ne les perturbe pas.
   float sdoor = 0.0;
-  if (uDissolve > 0.5 && vWorld.y > 20.0) {
-    sdoor = 1.0 - smoothstep(40.0, 60.0, vDist);
+  if (uDissolve > 0.5 && vWorld.y > 3.0) {
+    sdoor = (1.0 - smoothstep(${DISSOLVE_NEAR0.toFixed(1)}, ${DISSOLVE_NEAR1.toFixed(1)}, vDist)) * step(20.0, vWorld.y);
     for (int i = 0; i < 12; i++) {
       if (float(i) >= uBirdScrN) break;
       vec4 B = uBirdScr[i];
-      if (vDist < B.w) sdoor = max(sdoor, 1.0 - smoothstep(0.7, 1.0, length(gl_FragCoord.xy - B.xy) / B.z));
+      if (vDist < B.w) sdoor = max(sdoor, 1.0 - smoothstep(0.9, 1.12, length(gl_FragCoord.xy - B.xy) / B.z));
     }
-    if (ign(gl_FragCoord.xy) < 0.72 * sdoor) discard;
+    if (ign(gl_FragCoord.xy) < sdoor) discard;
   }
   gl_FragColor = vec4(col, 1.0);
   writeGBuffer(vViewN, sdoor > 0.0 ? SCREEN_DOOR_ID : uBaseId + vDeco.x);

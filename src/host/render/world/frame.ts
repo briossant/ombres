@@ -7,7 +7,8 @@ import { frontSpeed } from '../../../sim/night.ts'
 import type { SimState } from '../../../sim/types.ts'
 import { cameraState } from '../../camera/cue.ts'
 import type { GameView } from '../../view.ts'
-import { updateOwnerTables, updatePalette } from '../npr/palette.ts'
+import { smoothstep as smoothstep01 } from '../npr/oklab.ts'
+import { PAINT_C_GOLDEN_MAX, setShadeOverrides, updateOwnerShade, updateOwnerTables, updatePalette } from '../npr/palette.ts'
 import { shadowAreas } from '../npr/shadowMap.ts'
 import { NPR, setNightJag } from '../npr/uniforms.ts'
 import type { WorldView } from '../worldView.ts'
@@ -87,7 +88,17 @@ export function applyWorldFrame(view: GameView, wv: WorldView, camera: THREE.Cam
   sunVector(discElev, az, NPR.uSunDiscDir.value)
   NPR.uShadowDir.value.set(-Math.sin(az), Math.cos(az)).normalize()
 
+  setShadeOverrides(wv.lookPolish2)
   updatePalette({ paletteElevDeg: pe, nightFade: wv.resultsFade, nightAll })
+  if (!wv.lookPolish2) {
+    // rendu d'avant le polish 2 (levier de mesure) : ombre W4, sans plafond de chroma au couchant
+    NPR.uShadowCool.value = 0
+    NPR.uPaintCapDark.value = 0
+    updateOwnerShade(0)
+    NPR.uLook2.value = 0
+    const golden = smoothstep01(34, 25, pe) * smoothstep01(5, 9, pe)
+    NPR.uPaintCMax.value = PAINT_C_GOLDEN_MAX + (1 - golden) * (1 - PAINT_C_GOLDEN_MAX)
+  } else NPR.uLook2.value = 1
 
   if (playersChanged(view)) updateOwnerTables(view.players)
   NPR.uColorblind.value = view.colorblind ? 1 : 0

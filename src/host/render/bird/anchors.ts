@@ -39,6 +39,15 @@ export const birdAnchors = {
   counter: 0,
   /** Couronne affichée : slot porteur (−1 = aucune), centre et haut (three, monde), frame d'écriture. */
   crown: { slot: -1, frame: -1, cx: 0, cy: 0, cz: 0, tx: 0, ty: 0, tz: 0 },
+  /**
+   * Sonde des outils de mesure (?debug) : quand un script y place un Float32Array(MAX_PLAYERS × 6),
+   * <Birds /> y écrit à chaque frame les coordonnées normalisées (NDC x, y) des ancres
+   * `bandL`, `bandR` et `chest` de chaque oiseau. null en jeu : aucun coût.
+   */
+  screen: null as Float32Array | null,
+  /** Sonde des outils : caméra de la dernière frame et racine des oiseaux (écrites seulement quand `screen` est posé). */
+  probeCamera: null as unknown,
+  probeRoot: null as unknown,
 }
 
 export const anchorOffset = (slot: number, name: AnchorName): number => slot * STRIDE + ANCHOR_NAMES.indexOf(name) * 3

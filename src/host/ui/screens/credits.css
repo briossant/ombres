@@ -38,6 +38,11 @@
   line-height: 1.15;
   text-wrap: balance;
 }
+.credits__supervision {
+  margin: 6px 0 0;
+  font-size: 30px;
+  color: var(--ink-80);
+}
 .credits__made-sub {
   margin: 12px 0 0;
   font-size: 28px;

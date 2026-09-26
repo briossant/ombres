@@ -34,12 +34,13 @@ function run(n: number, seed: number, times: number[], visit: (sim: SimState, vi
   }
 }
 
-/** Pire débordement (fractions d'écran, > 0 = dehors) des boîtes d'oiseaux hors d'un rectangle. */
-function worstBox(rig: Rig, sim: SimState, rect: typeof USEFUL_RECT): number {
+/** Pire débordement (fractions d'écran, > 0 = dehors) des boîtes d'oiseaux (du masque de slots) hors d'un rectangle. */
+function worstBox(rig: Rig, sim: SimState, rect: typeof USEFUL_RECT, mask = 0xfff): number {
   const o = { x: 0, y: 0, z: 0 }
   const up = { y: Math.sin(rig.pitch), z: Math.cos(rig.pitch) }
   let worst = -1
   for (const b of sim.birds) {
+    if (!((mask >> b.slot) & 1)) continue
     const W = RULES.wingspan
     const top = sim.crownSlot === b.slot ? Math.max(0.5 * W, crownLift(Math.sin(rig.pitch)) + 1.6) : 0.5 * W
     const bot = 0.74 * W
@@ -57,17 +58,61 @@ function worstBox(rig: Rig, sim: SimState, rect: typeof USEFUL_RECT): number {
 
 describe('FramingRig (manche)', () => {
   for (const n of [2, 6, 12])
-    it(`${n} oiseaux : chaque boîte d'oiseau tient dans le rectangle utile (compte à rebours → Grande Ombre)`, { timeout: 60000 }, () => {
+    it(`${n} oiseaux : chaque boîte d'oiseau cadré tient dans le rectangle utile, l'humain toujours (compte à rebours → Grande Ombre)`, { timeout: 60000 }, () => {
       const rect = n > CROWDED_BIRDS ? USEFUL_RECT_CROWDED : USEFUL_RECT
       run(n, 3, [-2.5, 20, 55, 88, 101], (sim, view) => {
+        view.players[0] = { slot: 0, colorIndex: 0, name: 'J', kind: 'keyboard', assist: false }
         const f = new FramingRig()
         f.reset('round')
         f.snap(sim, view, aspect)
+        // hors de la Grande Ombre, tous les oiseaux sont cadrés ; pendant, les bots loin du front
+        // peuvent sortir (plan serré, vague 2), jamais l'humain
+        if (sim.sun.phase !== 'greatShadow' || n > CROWDED_BIRDS) expect(f.gsMask).toBe(0xfff)
+        expect(f.gsMask & 1).toBe(1)
         // cadre visé (snap) puis cadre suivi (ressorts + garde-fou)
-        if (sim.sun.t >= 0) expect(worstBox(f.rig, sim, rect)).toBeLessThan(0.012)
+        if (sim.sun.t >= 0) expect(worstBox(f.rig, sim, rect, f.gsMask)).toBeLessThan(0.012)
         for (let i = 0; i < 20; i++) f.update(1 / 60, sim, view, aspect)
-        if (sim.sun.t >= 0) expect(worstBox(f.rig, sim, rect)).toBeLessThan(0.012)
+        if (sim.sun.t >= 0) expect(worstBox(f.rig, sim, rect, f.gsMask)).toBeLessThan(0.012)
+        if (sim.sun.t >= 0) expect(worstBox(f.rig, sim, rect, 1)).toBeLessThan(0.012)
       })
+    })
+
+  for (const n of [4, 6])
+    it(`Grande Ombre à ${n} oiseaux : plan serré qui se resserre, front dans le cadre, humain tenu`, { timeout: 60000 }, () => {
+      const widths: number[] = []
+      let frontSeen = 0
+      let samples = 0
+      const sim0 = { f: null as FramingRig | null }
+      run(n, 2, [96, 99, 101, 103, 105, 107, 109], (sim, view) => {
+        view.players[0] = { slot: 0, colorIndex: 0, name: 'J', kind: 'keyboard', assist: false }
+        const f = (sim0.f ??= new FramingRig())
+        if (sim.sun.t < 97) {
+          f.reset('round')
+          f.snap(sim, view, aspect)
+          return
+        }
+        // ressorts entre deux instants (2 s de jeu, pas de 1/60 s ; les oiseaux figés : borne basse)
+        for (let i = 0; i < 120; i++) f.update(1 / 60, sim, view, aspect)
+        widths.push(f.width)
+        expect(worstBox(f.rig, sim, USEFUL_RECT, 1)).toBeLessThan(0.012)
+        if (sim.night.active) {
+          // le front à moins de 60 m derrière l'oiseau cadré le plus à l'ouest doit être dans le cadre
+          const nt = sim.night
+          const framed = sim.birds.filter((b) => (f.gsMask >> b.slot) & 1)
+          const west = Math.min(...framed.map((b) => b.x * nt.dirX + b.y * nt.dirY))
+          if (nt.s < west - 60 || nt.s > west) return
+          samples++
+          const o = { x: 0, y: 0, z: 0 }
+          const yM = framed.reduce((a, b) => a + b.y, 0) / framed.length
+          projectRig(f.rig, aspect, nt.dirX * nt.s - nt.dirY * yM, nt.dirY * nt.s + nt.dirX * yM, 0, o)
+          if (o.x > 0 && o.x < 1 && o.y > 0 && o.y < 1) frontSeen++
+        }
+      })
+      // jamais le plan large (arène entière = 2,2 a) ; le cadre final est plus serré que le premier
+      for (const w of widths) expect(w).toBeLessThan(1.45 * (n > 4 ? 165 : 142))
+      expect(widths[widths.length - 1]!).toBeLessThan(widths[0]!)
+      expect(samples).toBeGreaterThan(0)
+      expect(frontSeen).toBe(samples)
     })
 
   it('12 oiseaux dispersés : arène posée dans le rectangle utile, peu de sable vide en bas', { timeout: 60000 }, () => {

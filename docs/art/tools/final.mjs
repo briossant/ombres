@@ -4,7 +4,7 @@ import { KF, HATCH, PAINT_C } from './keyframes.mjs';
 import { KINDS } from './eval.mjs';
 import { PLAYERS, idColor } from './players.mjs';
 import { tpaint, tmetrics } from './opt_terr.mjs';
-import { wash, shadeOnPaint, nightDim, display, dist, lchOf, toLab as toLabG, paintCMax } from './game.mjs';
+import { wash, shadeOnPaint, nightDim, display, dist, lchOf, toLab as toLabG, paintCMax, paintCapDark } from './game.mjs';
 const T = PLAYERS.map(p => ({ dL: p.dL, cs: p.cs, h: p.h }));
 const ID = PLAYERS.map(idColor);
 const R = {};
@@ -38,30 +38,32 @@ for (const k of KF) { const st = T.map(t => tpaint(t, k.groundFlat, k)); const x
 // Lavis et ombres TELS QUE RENDUS EN JEU (polish world, game.mjs) : garde pâle / sol (W8), chroma des
 // forts plafonnée à 0,12 à l'heure dorée (W12), ombre sur peinture refroidie en OKLCH (W4, amende
 // §4.5 / §5.1), côté nuit de la Grande Ombre assombri et désaturé (W6, amende §4.6).
-const G_ = { paleVsGround: 9, paleVsStrong: 9, strongPair: 9, frozenPair: 9, frozenVsFree: 9, shadowC: 9, shadowCdisplay: 9, olive: [], nightPair: 9, nightPairWho: '' };
+const G_ = { paleVsGround: 9, paleVsStrong: 9, strongPair: 9, frozenPair: 9, frozenPairWho: '', frozenVsFree: 9, shadowC: 9, shadowCdisplay: 9, olive: [], rust: [], nightPair: 9, nightPairWho: '' };
 for (const k of KF) {
-  const G = toLabG(k.groundFlat), cast = toLabG(k.castShadow), cm = paintCMax(k.elev);
-  const S = T.map(t => wash(t, G, k.id, 1, cm)), P = T.map(t => wash(t, G, k.id, 0, cm));
+  const G = toLabG(k.groundFlat), cast = toLabG(k.castShadow), cm = paintCMax(k.elev), dk = paintCapDark(k.elev);
+  const S = T.map(t => wash(t, G, k.id, 1, cm, dk)), P = T.map(t => wash(t, G, k.id, 0, cm, dk));
   const Sd = S.map(display), Pd = P.map(display);
   G_.paleVsGround = Math.min(G_.paleVsGround, ...Pd.map(x => dist(x, G)));
   G_.paleVsStrong = Math.min(G_.paleVsStrong, ...Pd.map((x, i) => dist(x, Sd[i])));
   for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) G_.strongPair = Math.min(G_.strongPair, dist(Sd[i], Sd[j]));
   if (k.elev > 0) {   // ombres portées : seulement côté jour
-    const F = S.map(w => shadeOnPaint(w, cast, G)), FP = P.map(w => shadeOnPaint(w, cast, G));
+    const F = S.map((w, i) => shadeOnPaint(w, cast, G, k.elev, T[i].h)), FP = P.map((w, i) => shadeOnPaint(w, cast, G, k.elev, T[i].h));
     const Fd = F.map(display);
-    for (let i = 0; i < 12; i++) { G_.frozenVsFree = Math.min(G_.frozenVsFree, dist(Fd[i], Sd[i])); for (let j = i + 1; j < 12; j++) G_.frozenPair = Math.min(G_.frozenPair, dist(Fd[i], Fd[j])); }
+    for (let i = 0; i < 12; i++) { G_.frozenVsFree = Math.min(G_.frozenVsFree, dist(Fd[i], Sd[i])); for (let j = i + 1; j < 12; j++) { const v = dist(Fd[i], Fd[j]); if (v < G_.frozenPair) { G_.frozenPair = v; G_.frozenPairWho = `${k.id} ${PLAYERS[i].fr}/${PLAYERS[j].fr}`; } } }
+    // polish 2 : en fin de journée, aucune ombre rouille / brune / olive sur la peinture (glacis violet)
+    if (k.elev < 30) [...F, ...FP].map(display).forEach((f, i) => { const [L, C, h] = lchOf(f); if (h > 25 && h < 110 && L < 0.62 && C > 0.045) G_.rust.push(`${k.id} ${PLAYERS[i % 12].fr}${i < 12 ? '' : ' pâle'}`); });
     G_.shadowC = Math.min(G_.shadowC, ...F.map(f => lchOf(f)[1]));
     G_.shadowCdisplay = Math.min(G_.shadowCdisplay, ...Fd.map(f => lchOf(f)[1]));
     [...F, ...FP].map(display).forEach((f, i) => { const [L, , h] = lchOf(f); if (h > 60 && h < 110 && L < 0.55) G_.olive.push(`${k.id} ${PLAYERS[i % 12].fr}${i < 12 ? '' : ' pâle'}`); });
   } else if (k.id === 'KF-4') {   // côté nuit pendant la Grande Ombre (aux résultats, l'illumination rallume tout)
-    const N = S.map(w => display(nightDim(w)));
+    const N = S.map((w, i) => display(nightDim(w, T[i].h)));
     for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) { const v = dist(N[i], N[j]); if (v < G_.nightPair) { G_.nightPair = v; G_.nightPairWho = `${k.id} ${PLAYERS[i].fr}/${PLAYERS[j].fr}`; } }
   }
 }
 R.game = G_;
 // QA gates (ART_BIBLE §7.7 ; portes « game* » : polish world)
 const gates = { first6: Math.min(...KINDS.map(k => prefix[k][4].min)) >= 0.15, terrNormal: R.kf.every(r => r.normal.min >= 0.085), midChroma: R.midChroma.every(m => m.ratio >= 0.6),
-  gamePaleVsGround: G_.paleVsGround >= 0.05, gameStrongPair: G_.strongPair >= 0.085, gameShadowChroma: G_.shadowC >= 0.08, gameNoOliveShadow: G_.olive.length === 0,
+  gamePaleVsGround: G_.paleVsGround >= 0.05, gameStrongPair: G_.strongPair >= 0.085, gameShadowChroma: G_.shadowC >= 0.06, gameNoOliveShadow: G_.olive.length === 0, gameNoRustShadow: G_.rust.length === 0,
   gameFrozenPair: G_.frozenPair >= 0.059, gameNightPair: G_.nightPair >= 0.05 };
 R.gates = gates;
 fs.writeFileSync('final-metrics.json', JSON.stringify(R, null, 1));

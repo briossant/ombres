@@ -77,6 +77,7 @@ export function Credits() {
               <Logo />
             </div>
             <p className="credits__made t-title">{t('host.credits.made')}</p>
+            <p className="credits__supervision">{t('host.credits.supervision')}</p>
             <p className="credits__made-sub">{t('host.credits.madeSub')}</p>
 
             {CREDIT_GROUPS.map(g => (

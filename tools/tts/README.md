@@ -59,7 +59,7 @@ tools/tts/tts.sh lines.json --out public/audio/narrator --only lead_coral,last_t
 
 **Sortie** :
 
-- `<out>/<lang>/<id>.mp3` : mono, 44,1 kHz, VBR `-q:a 3` (environ 80-90 kb/s, soit ~11 Ko par seconde), loudness **-16 LUFS intégrés** (mesuré : ±0,2 avec `narrator`, pire cas -16,6), true-peak ≤ -1,5 dBTP. Le fichier commence par 40 ms de silence et se termine par 200 ms.
+- `<out>/<lang>/<id>.mp3` (réglages par défaut de `gen.py` ; le lot du narrateur a les siens, voir plus bas) : mono, 44,1 kHz, VBR `-q:a 3` (environ 80-90 kb/s, soit ~11 Ko par seconde), loudness **-16 LUFS intégrés** (mesuré : ±0,2 avec `narrator`, pire cas -16,6), true-peak ≤ -1,5 dBTP. Le fichier commence par 40 ms de silence et se termine par 200 ms.
 - `<out>/manifest.json` :
 
 ```json
@@ -85,7 +85,8 @@ tools/tts/narrator.sh                 # ne régénère que ces clips (la graine 
 ```
 
 - `narrator-lines.ts` lit le catalogue `src/director/lines.ts`, les textes `src/shared/strings/narrator.ts` et les noms de couleur, vérifie les règles d'écriture (`--check` : couleur jamais en dernier mot, jamais d'article, une seule couleur…), et écrit `narrator.lines.json` : ids `<lineId>` et `<lineId>.<colorIndex>`, graphie prononcée (`say` : « Carmain »), mots-clés (le nom de couleur et ses homophones), amorce ASR (la liste des 12 noms).
-- Réglages du lot : preset `narrator`, `--takes 4 --asr`, `--max-pause-ms 420`, `--sample-rate 24000 --bitrate 32k --abr`, `--tail-ms 100`.
+- Réglages du lot : preset `narrator`, `--takes 4 --asr --asr-strict`, `--max-pause-ms 420`, `--max-speech-s 3.0`, `--sample-rate 24000 --bitrate 48k --abr`, `--presence-db 2 --presence-hz 3000`, `--tail-ms 100`, `--asr-bed tools/tts/asr-bed.ogg --asr-bed-snr 6`.
+- `narrator.sh --verify` relit les 722 MP3 (condition P) ; `narrator.sh --verify --asr-strict C` y ajoute la condition « en contexte » (audit, voir plus bas).
 - Manifests : **complet** (notes de prise, UTMOS, transcription, hash) dans `tools/tts/narrator.manifest.json` ; **réduit** (`id`, `lang`, `file`, `duration_s`) dans `public/audio/narrator/manifest.json`, le seul que le jeu charge.
 
 ### Options ajoutées pour ce lot
@@ -94,13 +95,20 @@ tools/tts/narrator.sh                 # ne régénère que ces clips (la graine 
 |---|---|
 | `--max-pause-ms N` | raccourcit à N ms (durée finale, après `tempo`) les pauses internes que le TTS met aux points (Pocket : 0,55 à 1,3 s). Les `[pause N]` explicites restent exactes. |
 | `--sample-rate 24000` | fréquence du MP3 (Pocket produit du 24 kHz : pas de suréchantillonnage inutile). |
-| `--bitrate 32k [--abr]` | débit constant (ou moyen avec `--abr` : plus de bits pour la voix que pour les silences) à la place du VBR `--mp3-quality`. |
+| `--bitrate 48k [--abr]` | débit constant (ou moyen avec `--abr` : plus de bits pour la voix que pour les silences) à la place du VBR `--mp3-quality`. |
 | `--cache DIR` | cache des prises retenues (audio ralenti, rogné, avant padding et encodage) + leurs notes ; défaut `tools/tts/out/cache`. Changer l'encodage, la loudness ou le padding ne re-synthétise rien (`♻` dans le log). `--force` l'ignore. |
 | `--lite-manifest F` | écrit aussi le manifest réduit pour le jeu. |
 | `"asr_prompt"` (entrée) | vocabulaire soufflé à Whisper (`initial_prompt`) : il écrit alors correctement un nom propre bien prononcé ; une prise mâchée reste mâchée. |
 | `--verify` | ne génère rien : re-transcrit les MP3 à jour et met à jour `asr_cer`, `asr_text`, `asr_ok`, `speech_s` dans le manifest. |
 | `--manifest F` / `--merge A B` | un manifest par processus pour générer plusieurs langues en parallèle, puis fusion dans `<out>/manifest.json`. |
 | ids `A-Za-z0-9_.-` | les ids peuvent contenir des points (`leaderChange2.5`) et des majuscules. |
+| `--presence-db D [--presence-hz F]` | plateau de présence (shelf haut, pente 1) de D dB au-dessus de F Hz, appliqué **avant** la normalisation : la sonie reste à −16 LUFS. Le lot : +2 dB au-dessus de 3 kHz (consonnes plus nettes dans le mix). |
+| `--max-speech-s S` | refuse une prise dont la durée parlée dépasse S secondes (règle « moins de 3 s ») ; `--verify` marque aussi `asr_ok: false` au-delà. |
+| `--asr-strict [NC]` | avec `--asr` : en plus de **P** (Whisper avec l'amorce des noms de couleur, CER ≤ `--max-cer`), exige **N** (Whisper **sans** amorce) et **C** (la prise posée dans le fond réel du jeu, `--asr-bed`, avec amorce). Mots-clés exigés partout ; CER ≤ `--max-cer-strict` (0,15) pour N et C. `--asr-strict C` : contexte seul. Les transcriptions vont dans `asr_np_text`/`asr_np_cer` et `asr_ctx_text`/`asr_ctx_cer`. |
+| `--asr-bed F [--asr-bed-snr L]` | fond sonore de la condition C : `asr-bed.ogg` = 110 s de la sortie réelle du jeu (musique, ambiance, bruitages, interface, ducking actif) enregistrées pendant 40 répliques d'une partie à 12 oiseaux (enregistrement `after2` du polish audio). Le clip y est posé après 0,8 s de fond, à +L LU (sonie K de la voix contre celle du fond) : +6 ≈ 10ᵉ centile mesuré en partie (médiane +9,5). Le segment dépend de l'id : toutes les prises d'un clip sont jugées sur le même fond. |
+| `"keywords_np"` (entrée) | mots-clés de la condition N (sans amorce). `[]` : aucun. Absent : ceux de `keywords`. |
+
+**Homophones parfaits.** `AsrChecker.SAME` ramène à une même forme, avant le CER et la recherche des mots-clés, les suites de sons identiques que Whisper ne peut départager qu'au sens : « l'heure dorée » / « leur doré », « son ombre » / « son nombre ». Ce n'est pas une indulgence sur la prononciation : les deux graphies se disent pareil.
 
 Le ralenti `tempo` est désormais appliqué **à chaque prise avant la notation** (UTMOS, ASR) : on juge ce que le joueur entendra. Le manifest note aussi `speech_s` (durée parlée, de la première à la dernière syllabe).
 

@@ -5,13 +5,14 @@
 // Composer : multisampling 0, UnsignedByteType, pas de depth buffer (NPR §2).
 // Il prend la main sur le rendu de R3F (useFrame priorité 1).
 import { useFrame, useThree, type RootState } from '@react-three/fiber'
-import { EffectComposer, EffectPass, SMAAEffect, type Pass } from 'postprocessing'
+import { EdgeDetectionMode, EffectComposer, EffectPass, SMAAEffect, type Pass } from 'postprocessing'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { getSettings } from '../../settings.ts'
 import { feedQualityBench, QUALITY_PRESETS, qualityBenchActive, qualityMonitor, type QualityLevel } from '../quality.ts'
 import { createGBuffer, GBufferPass } from './gbuffer.ts'
 import { InkEffect } from './InkEffect.ts'
+import { DEBUG_RENDER } from '../PerfOverlay.tsx'
 import { GpuTimer } from './perf.ts'
 import { HeightShadowMap, shadowCasters } from './shadowMap.ts'
 import { NPR } from './uniforms.ts'
@@ -82,12 +83,15 @@ interface Passes {
   ink: EffectPass
   inkEffect: InkEffect
   aa: EffectPass | null
+  smaa: SMAAEffect | null
 }
 
 declare global {
   interface Window {
     __timings?: Record<string, number>
     __nprInfo?: { calls: number; triangles: number; programs: number; casters: number }
+    /** ?debug (mesure) seulement : accès des scripts d'A/B de coût GPU (polish 2, tools/polish/world/abperf.mjs). */
+    __npr?: { NPR: typeof NPR; presets: typeof QUALITY_PRESETS; scene: THREE.Scene; gl: THREE.WebGLRenderer; smaa: () => SMAAEffect | null }
   }
 }
 
@@ -132,11 +136,14 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
     composer.addPass(gpass)
     composer.addPass(ink)
     let aa: EffectPass | null = null
+    let smaa: SMAAEffect | null = null
     if (preset.smaa !== null) {
-      aa = new EffectPass(camera, new SMAAEffect({ preset: preset.smaa }))
+      smaa = new SMAAEffect({ preset: preset.smaa, edgeDetectionMode: preset.smaaLuma ? EdgeDetectionMode.LUMA : EdgeDetectionMode.COLOR })
+      if (preset.smaaThreshold !== undefined) smaa.edgeDetectionMaterial.edgeDetectionThreshold = preset.smaaThreshold
+      aa = new EffectPass(camera, smaa)
       composer.addPass(aa)
     }
-    passes.current = { gbuffer: gpass, ink, inkEffect, aa }
+    passes.current = { gbuffer: gpass, ink, inkEffect, aa, smaa }
     return () => {
       composer.removeAllPasses()
       ink.dispose()
@@ -160,6 +167,9 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
 
   // Mesures GPU (debug seulement)
   const timer = useMemo(() => (measure ? new GpuTimer(gl.getContext() as WebGL2RenderingContext) : null), [gl, measure])
+  useEffect(() => {
+    if (measure || DEBUG_RENDER) window.__npr = { NPR, presets: QUALITY_PRESETS, scene, gl, smaa: () => passes.current?.smaa ?? null }
+  }, [measure, scene, gl])
   // Mesure d'une frame entière (hors debug) : banc de qualité automatique au titre, et
   // surveillance des manches (heure dorée → Grande Ombre) lue entre deux manches
   const benchTimer = useMemo(() => new GpuTimer(gl.getContext() as WebGL2RenderingContext, 1), [gl])

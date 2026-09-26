@@ -26,6 +26,12 @@ interface QaLine {
   asr_ok?: boolean
   asr_text?: string
   asr_cer?: number
+  /** Transcription sans amorce des noms de couleur (tools/tts --asr-strict N). */
+  asr_np_text?: string
+  asr_np_cer?: number
+  /** Transcription « en contexte » : clip posé dans le fond réel du jeu (tools/tts --asr-strict C). */
+  asr_ctx_text?: string
+  asr_ctx_cer?: number
   /** Durée parlée (s), première à dernière syllabe. */
   speech_s?: number
 }
@@ -184,6 +190,16 @@ function LinesPanel({ lang, color, qa, onlyProblems }: { lang: Lang; color: numb
                 <div className="txt">
                   <Parts parts={narratorTextParts({ key: `narrator.${line.id}`, colorIndex: ci }, lang)} />
                   {q?.asr_text ? <div className="asr">« {q.asr_text} »{q.utmos ? ` · MOS ${q.utmos}` : ''}</div> : null}
+                  {q?.asr_ctx_text !== undefined && q.asr_ctx_text !== q.asr_text ? (
+                    <div className="asr" title={`CER ${q.asr_ctx_cer ?? '?'} : clip posé dans le fond réel du jeu`}>
+                      en contexte : « {q.asr_ctx_text} »
+                    </div>
+                  ) : null}
+                  {q?.asr_np_text !== undefined && q.asr_np_text !== q.asr_text ? (
+                    <div className="asr" title={`CER ${q.asr_np_cer ?? '?'} : Whisper sans la liste des couleurs`}>
+                      sans amorce : « {q.asr_np_text} »
+                    </div>
+                  ) : null}
                 </div>
                 <code className="id">
                   {line.id}

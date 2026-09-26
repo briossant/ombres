@@ -61,24 +61,35 @@ export interface Spring {
   v: number
 }
 
-export const spring = (x = 0): Spring => ({ x, v: 0 })
+/** Ressort : une classe (forme propre), pas un littéral `{ x, v }` qui partagerait ses transitions
+ *  de forme avec les autres littéraux commençant par `x` (écritures de flottants alors allouées). */
+class SpringState implements Spring {
+  // Initialisés à un nombre (un champ déclaré sans valeur vaut d'abord `undefined`).
+  x = 0
+  v = 0
+  constructor(x: number) {
+    this.x = x
+  }
+}
+
+export const spring = (x = 0): Spring => new SpringState(x)
 
 /**
- * Avance un ressort vers `target`.
+ * Avance un ressort vers `target` ; la nouvelle valeur est `s.x`. Rien n'est renvoyé : un
+ * flottant renvoyé par une fonction non intégrée est mis en boîte, donc alloué (polish vague 2).
  * @param omega pulsation propre (rad/s) : ~temps de réponse 4/ω
  * @param zeta amortissement (1 = critique, < 1 = rebond)
  */
-export function springTo(s: Spring, target: number, omega: number, zeta: number, dt: number): number {
-  if (dt <= 0) return s.x
+export function springTo(s: Spring, target: number, omega: number, zeta: number, dt: number): void {
+  if (dt <= 0) return
   const w2 = omega * omega
   s.v = (s.v + dt * w2 * (target - s.x)) / (1 + 2 * zeta * omega * dt + w2 * dt * dt)
   s.x += dt * s.v
-  return s.x
 }
 
 /** Comme springTo, mais pour un angle (cible ramenée au plus proche). */
-export function springAngle(s: Spring, target: number, omega: number, zeta: number, dt: number): number {
-  return springTo(s, s.x + wrapAngle(target - s.x), omega, zeta, dt)
+export function springAngle(s: Spring, target: number, omega: number, zeta: number, dt: number): void {
+  springTo(s, s.x + wrapAngle(target - s.x), omega, zeta, dt)
 }
 
 /** Lissage exponentiel indépendant du pas de temps. */

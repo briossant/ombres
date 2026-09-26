@@ -1,5 +1,7 @@
 # Crédits — sources des assets servis
 
+*Ombres* a été conçu et réalisé par Claude (Anthropic), sous la supervision de Brieuc Crosson.
+
 Une section par agent. Format : fichier servi | source (URL) | auteur | licence | attribution requise.
 
 ## ui

@@ -188,3 +188,81 @@ Détail, preuves et mesures : `docs/polish/fix-world.md`. Changements d'API et �
   (`perfmatrix.mjs --q=high --n=12 --speed=1`, GPU calme) et n'est probablement pas atteint : le G-buffer passe de
   ~5,9 ms à midi à ~9 ms à la Grande Ombre. Leviers suivants : SMAA LOW en High, seuil B-spline du territoire.
 - High-key : tout passe sauf la Grande Ombre (médiane 0,497 pour 0,50), effet du côté nuit assombri (W6).
+
+## Polish vague 2 — Edits ciblés du correcteur tech (détail : docs/polish/fix2-tech.md)
+
+- `world/prebuild.ts` (nouveau) : `prepareTowers(towers)` construit en tâche de fond (requestIdleCallback, tranches
+  de 4 ms) les géométries des tours de la carte suivante de la démo du titre ; `Towers.tsx` les prend avec
+  `takeTowers(towers)` (même tableau), sinon construction normale. `towerGeometry.ts` : `buildTowerGeometriesSteps`
+  (générateur, une étape par tour) ; `buildTowerGeometries` passe par lui (géométrie identique, test `prebuild.test.ts`).
+- `World.tsx` : même objet `arena` d'une carte à l'autre quand (a, b) ne changent pas → le sol (≈ 40 ms), le rideau
+  et les cailloux ne reconstruisent plus une géométrie identique à chaque carte de la démo.
+- `Pebbles.tsx` : matériaux gardés d'une carte à l'autre (recréés, leur programme était détruit puis recompilé).
+- `npr/perf.ts` `GpuTimer` : après une perte puis un retour du contexte, reprend l'extension de minuterie du nouveau
+  contexte (avant : `INVALID_ENUM` à chaque image, 169 avertissements en 10 s).
+
+## Polish vague 2 (correcteur world : matière de fin de journée, budget GPU)
+
+Détail, preuves, mesures : `docs/polish/fix2-world.md`. Changements d'API et écarts à la bible :
+
+- **Ombre portée sur la peinture en fin de journée** (amende encore §4.5 / §5.1, après W4) : `NPR.uShadowCool`
+  (0 à 40° de l'horloge de palette → 1 à 22°) fait passer l'ombre sur le lavis d'une rotation W4 (vers 290°,
+  0,22 × l'écart, ≤ 40°, C × 0,85) à un **glacis violet** : rotation vers 300°, 0,45 × l'écart côté rouge
+  (≤ 90°), chroma × 1, puis 30 % vers `castShadow` ; sous l'ombre, un lavis plus sombre que le sol l'est × 1,5
+  (c'est ce qui tient deux joueurs gelés à ΔE ≥ 0,059 : au-delà d'un glacis de 0,3, Rose / Lilas et
+  Sarcelle / Jade se confondent). **Safran** a sa cible : mauve 340°, C × 0,75, L × 1,16 (sinon framboise,
+  voisin du Rose). Les teintes sont calculées par couleur sur le CPU (`palette.ts`, `updateOwnerShade`,
+  `NPR.uOwnerShade[13]` = direction ab, facteur de C, facteur de L) : plus d'atan / cos / sin par pixel.
+- **Côté nuit** (§4.6, W6) : même table (`NPR.uOwnerNight[13]`, rotation W4, C × 0,52) ; Safran éteint en
+  mauve 325°, L + 0,06, C × 0,5 (au lieu de l'ocre brun), Corail en lie-de-vin 0°, L + 0,04 (au lieu du brun
+  marron). `gameNightPair` inchangé (0,052, Sarcelle / Jade).
+- **Chroma des forts au couchant** : `PAINT_C_SUNSET_MAX` = 0,12 de KF5 à KF1 (avant : aucun plafond, 0,155
+  pour les couleurs à cs 1,15), pour les lavis CLAIRS seulement (`NPR.uPaintCapDark`, plafond pondéré par
+  smoothstep(0,60 ; 0,68 ; L du fort) : Safran, Anis, Lagon, Rose, Lilas) ; plafonné, un Corail à L 0,59 virait
+  au brun. `PAINT_C_GOLDEN_MAX` reste 0,125 pour tous (0,12 casserait `gameFrozenPair`). `game.mjs` :
+  `wash(t, G, kf, q, cmax, dark)`, `paintCapDark(pe)`.
+- **Aquarelle lisible à distance de jeu** (sol, branche peinture) : densité de pigment (écart au papier,
+  L et C, teinte intacte) modulée par le lavis inégal (± 13 %), le grain (± 8 %) et une ligne de marée d'un
+  pixel sur le fort (« fleurs ») ; **bande de pigment** de ~5 m au bord de chaque lavis (+8 % pâle, +16 %
+  fort) et intérieur des grands aplats forts −7 %, grâce à un **champ de distance aux bords** :
+  `TerritoryTexture.edgeTexture` (R8 filtrée, 1 texel = 4 × 4 cellules, chanfrein, recalculée ≤ 10 Hz,
+  envoyée par `copyTextureToTexture`) → uniform `uTerrEdge` du sol. Le pâle n'est jamais rapproché du sol
+  (densité ≥ 1 : garde W8 intacte). Au couchant, le liseré devient un « plomb de vitrail » (L − 0,035, C × 1,12).
+- **Levier de mesure** : `worldView.lookPolish2` (vrai en jeu) ; faux = rendu d'avant (glacis, plafond du
+  couchant, densité, bande, cibles Safran). `tools/polish/world/cap.mjs --before` capture la même scène
+  avec et sans. `window.__npr = { NPR, presets, scene, gl }` sous `?debug` (scripts d'A/B).
+- **Portes** : `docs/art/tools/game.mjs` suit ces formules (`shadeOnPaint(w, cast, G, pe, hDeg)`,
+  `nightDim(w, hDeg)`, `paintCMax`) ; `final.mjs` : nouvelle porte `gameNoRustShadow` (aucune ombre sur
+  peinture 25° < h < 110°, L < 0,62, C > 0,045 à l'heure dorée et au couchant), `gameShadowChroma` abaissée
+  à C ≥ 0,06 (le glacis retire de la chroma aux verts : Jade 0,064). `tools/polish/art/pale-vs-ground.mjs`
+  suit le nouveau plafond.
+- **Allocations par frame** : `GpuTimer` sans tuple ni `splice` par mesure ; le champ de distance part par
+  `copyTextureToTexture` (pas de `initTexture` ni de clé de cache). Mesuré (compteurs WebGL dans la page, manche
+  à 12) : 22 `uniform3f` par frame en tout (direction du soleil, caméra, oiseaux), inchangé si la palette est
+  repoussée à chaque frame : le `setValueV3f` de la critique tech vient de three et des vecteurs qui bougent
+  vraiment, pas de la palette (aucun uniform `number[]` dans le monde). Les 9 `texSubImage2D` 12 × 12 float par
+  frame (`initTexture` → `join`) sont les textures d'os des oiseaux (skinning), pas le monde.
+- **Coût GPU** (W3, détail et mesures dans `fix2-world.md`) : branche du Simoun au sol limitée à la bande utile
+  (ρ ≈ 0,96-1,18), sortie immédiate des taches de piqué hors de 20 m, transitions du lavis seulement sur les
+  cellules récentes, teintes d'ombre / de nuit par couleur sur le CPU, grain et lavis inégal lus seulement
+  dans l'arène (`textureGrad`), voile du rideau du Simoun sur le CPU (`NPR.uStormVeil`, `uNStormVeil`),
+  SMAA LOW en Medium et High (seuil 0,15, 4 pas ; recadrages × 3 identiques à MEDIUM ; réglages fins possibles
+  par `QualityPreset.smaaThreshold`, `smaaLuma`). Cible p90 ≤ 9,5 ms NON vérifiée au calme (voir fix2-world §2). Leviers de mesure :
+  `NPR.uShadowSmoothPx` (texel d'ombre en px au-delà duquel la B-spline remplace les 4 taps, 1 = W5),
+  `NPR.uTerrSmoothDu` (m/px sous lesquels le territoire est classé en B-spline, 0,3 : à 12 oiseaux l'arène
+  est à 0,15-0,3 m/px, la B-spline tourne donc presque partout ; la baisser à 0,2 montre des marches de
+  cellules de 3 px, gardé), `window.__npr.smaa()`, `tools/polish/world/abperf.mjs` (A/B entrelacé).
+
+## Polish vague 2 — correcteur climax (`towerMaterial.ts`, W9 ; détail : docs/polish/fix2-climax.md)
+
+- **Dissolution franche, plus de moiré à 50 %** : les fragments de tour à moins de `DISSOLVE_NEAR0` = 30 m de
+  la caméra (au-dessus de 20 m) ou devant un oiseau (au-dessus de 3 m, fût compris) sont **effacés en entier**
+  (`discard` si IGN < sdoor, sdoor = 1 au cœur ; avant : au plus 72 % des pixels, voile tramé sur 40 % du cadre
+  quand la caméra rasait les disques du Cadran). Seule une bande étroite fait la transition en trame IGN fixe à
+  l'écran : 30 → 38 m, et 90 → 112 % du rayon de dégagement de l'oiseau (`BIRD_CLEAR_R` de `birdScreen.ts`,
+  inchangé : le cœur net couvre l'envergure à l'échelle cosmétique maximale). Les pixels gardés de la bande
+  gardent l'ID `screenDoor`. Coupée au podium comme avant (`Towers.tsx`, non modifié). Au-delà de 38 m, plus
+  aucune trame « de proximité » (avant : 40 → 60 m) : la caméra de manche ne s'installe plus à moins de 45 m
+  d'une tour (`framingRig.ts`), la trame ne sert qu'aux passages.
+- Coût : même boucle (12 oiseaux) qu'avant ; le cœur effacé réduit le remplissage. Pas de mesure GPU dédiée
+  (GPU partagé à 99 % pendant la session).

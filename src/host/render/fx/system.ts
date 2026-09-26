@@ -224,6 +224,8 @@ export class FxSystem {
   private screenW1080 = 1920
   /** Simulation de la frame précédente : au changement (manche, titre, podium), tout repart de zéro. */
   private lastSim: SimState | null = null
+  /** Point de traînée en cours (x, y, z, tangente x, y, z, abscisse u) : voir drawTrail. */
+  private readonly tp = new Float64Array(7)
 
   constructor(public quality: FxQuality = 'high') {
     const cap = FX_CAPS[quality]
@@ -526,21 +528,13 @@ export class FxSystem {
     return this.pxPerM1 / Math.max(1, p.distanceTo(_camPos)) / this.px1080
   }
 
-  /** Distance à la caméra d'un point (x, y, z). */
-  private camDist(x: number, y: number, z: number): number {
-    return Math.hypot(x - _camPos.x, y - _camPos.y, z - _camPos.z)
-  }
-
-  /** Pixels (1080p) par mètre en (x, y, z), comme les shaders (profondeur de vue, pas distance). */
-  private pxPerMAt(x: number, y: number, z: number): number {
-    const depth = (x - _camPos.x) * _fwd.x + (y - _camPos.y) * _fwd.y + (z - _camPos.z) * _fwd.z
-    return this.pxPerM1 / Math.max(1, depth) / this.px1080
-  }
-
   private updateBird(view: GameView, S: SimState, b: BirdState, dt: number): void {
     const f = this.birds[b.slot]!
     // Saut de plus de TELEPORT_M depuis la frame précédente : pas de segment fantôme.
-    if (f.seen >= 0 && Math.hypot(b.x - f.lastX, b.y - f.lastY, b.z - f.lastZ) > TELEPORT_M) f.resetPaths()
+    const jx = b.x - f.lastX
+    const jy = b.y - f.lastY
+    const jz = b.z - f.lastZ
+    if (f.seen >= 0 && jx * jx + jy * jy + jz * jz > TELEPORT_M * TELEPORT_M) f.resetPaths()
     f.lastX = b.x
     f.lastY = b.y
     f.lastZ = b.z
@@ -842,23 +836,47 @@ export class FxSystem {
     let len = 0
     let used = 0
     const o0 = P.at(first)
-    this.trailPoint(px, py, pz, px - d[o0]!, py - d[o0 + 1]!, pz - d[o0 + 2]!, 0, col)
+    // Chaque point passe par le tableau `tp` (x, y, z, tangente, u) : aucun flottant en argument,
+    // donc aucune boîte allouée par point (polish vague 2, critique tech §17).
+    const T = this.tp
+    T[0] = px
+    T[1] = py
+    T[2] = pz
+    T[3] = px - d[o0]!
+    T[4] = py - d[o0 + 1]!
+    T[5] = pz - d[o0 + 2]!
+    T[6] = 0
+    this.trailPoint(col)
     for (let k = first; k < P.count; k++) {
       const o = P.at(k)
       const nx = d[o]!
       const ny = d[o + 1]!
       const nz = d[o + 2]!
-      const seg = Math.hypot(nx - px, ny - py, nz - pz)
+      const dx = nx - px
+      const dy = ny - py
+      const dz = nz - pz
+      const seg = Math.sqrt(dx * dx + dy * dy + dz * dz)
       if (seg < 1e-4) continue
+      T[3] = -dx
+      T[4] = -dy
+      T[5] = -dz
       if (len + seg >= maxLen) {
         const r = (maxLen - len) / seg
-        this.trailPoint(px + (nx - px) * r, py + (ny - py) * r, pz + (nz - pz) * r, px - nx, py - ny, pz - nz, 1, col)
+        T[0] = px + dx * r
+        T[1] = py + dy * r
+        T[2] = pz + dz * r
+        T[6] = 1
+        this.trailPoint(col)
         used = k + 1
         len = maxLen
         break
       }
       len += seg
-      this.trailPoint(nx, ny, nz, px - nx, py - ny, pz - nz, len / TRAIL_LEN, col)
+      T[0] = nx
+      T[1] = ny
+      T[2] = nz
+      T[6] = len / TRAIL_LEN
+      this.trailPoint(col)
       px = nx
       py = ny
       pz = nz
@@ -870,16 +888,38 @@ export class FxSystem {
   }
 
   /**
-   * Point du ruban : 0,35 m de large mais jamais plus de 6 px à l'écran, effilement
-   * fort sur les 30 % finaux, aminci jusqu'à disparaître près de la caméra (gros plans).
+   * Point du ruban (saisi dans `tp`) : 0,35 m de large mais jamais plus de 6 px à l'écran,
+   * effilement fort sur les 30 % finaux, aminci jusqu'à disparaître près de la caméra (gros plans).
    */
-  private trailPoint(x: number, y: number, z: number, tx: number, ty: number, tz: number, u: number, col: Rgb): void {
-    const uu = clamp01(u)
-    const taper = (1 - 0.15 * uu) * (1 - smoothstep(0.7, 1, uu)) ** 0.8
-    const near = smoothstep(TRAIL_NEAR_M * 0.4, TRAIL_NEAR_M, this.camDist(x, y, z))
-    const ppm = this.pxPerMAt(x, y, z)
-    const w = Math.min(TRAIL_WIDTH, TRAIL_MAX_PX / ppm) * taper * near
-    this.ribbons.point(x, y, z, tx, ty, tz, w, (2.4 * taper + 0.4) * near, 1, col, TRAIL_ALPHA)
+  private trailPoint(col: Rgb): void {
+    const T = this.tp
+    const x = T[0]!
+    const y = T[1]!
+    const z = T[2]!
+    const uu = clamp01(T[6]!)
+    const e = uu <= 0.7 ? 0 : uu >= 1 ? 1 : (uu - 0.7) / 0.3
+    const taper = (1 - 0.15 * uu) * (1 - e * e * (3 - 2 * e)) ** 0.8
+    const cx = x - _camPos.x
+    const cy = y - _camPos.y
+    const cz = z - _camPos.z
+    const dist = Math.sqrt(cx * cx + cy * cy + cz * cz)
+    const n = clamp01((dist - TRAIL_NEAR_M * 0.4) / (TRAIL_NEAR_M * 0.6))
+    const near = n * n * (3 - 2 * n)
+    // px (1080p) par mètre à ce point, comme les shaders (profondeur de vue, pas distance).
+    const depth = cx * _fwd.x + cy * _fwd.y + cz * _fwd.z
+    const ppm = this.pxPerM1 / Math.max(1, depth) / this.px1080
+    const V = this.ribbons.v
+    V[0] = x
+    V[1] = y
+    V[2] = z
+    V[3] = T[3]!
+    V[4] = T[4]!
+    V[5] = T[5]!
+    V[6] = Math.min(TRAIL_WIDTH, TRAIL_MAX_PX / ppm) * taper * near
+    V[7] = (2.4 * taper + 0.4) * near
+    V[8] = 1
+    V[9] = TRAIL_ALPHA
+    this.ribbons.commit(col)
   }
 
   private drawFilament(P: PathBuffer, t: number, k: number): void {
@@ -899,7 +939,20 @@ export class FxSystem {
       const o0 = P.at(Math.max(0, i - 1))
       const age = (t - d[o + 3]!) / FILAMENT_AGE
       const a = 0.8 * k * (1 - age) ** 0.6
-      R.point(d[o]!, d[o + 1]!, d[o + 2]!, d[o0]! - d[o2]!, d[o0 + 1]! - d[o2 + 1]!, d[o0 + 2]! - d[o2 + 2]!, 0, 1.5 * (1 - 0.4 * age), 0, this.cCream, a)
+      {
+        const V = R.v
+        V[0] = d[o]!
+        V[1] = d[o + 1]!
+        V[2] = d[o + 2]!
+        V[3] = d[o0]! - d[o2]!
+        V[4] = d[o0 + 1]! - d[o2 + 1]!
+        V[5] = d[o0 + 2]! - d[o2 + 2]!
+        V[6] = 0
+        V[7] = 1.5 * (1 - 0.4 * age)
+        V[8] = 0
+        V[9] = a
+        R.commit(this.cCream)
+      }
     }
     R.endStrip()
   }
@@ -916,7 +969,10 @@ export class FxSystem {
     for (; n < Math.min(P.count, 24); n++) {
       const a = P.at(n - 1)
       const b = P.at(n)
-      len += Math.hypot(d[b]! - d[a]!, d[b + 1]! - d[a + 1]!, d[b + 2]! - d[a + 2]!)
+      const sx = d[b]! - d[a]!
+      const sy = d[b + 1]! - d[a + 1]!
+      const sz = d[b + 2]! - d[a + 2]!
+      len += Math.sqrt(sx * sx + sy * sy + sz * sz)
       if (len > maxL) break
     }
     if (n < 2) return
@@ -926,7 +982,20 @@ export class FxSystem {
       const o2 = P.at(Math.min(n - 1, i + 1))
       const o0 = P.at(Math.max(0, i - 1))
       const u = i / Math.max(1, n - 1)
-      R.point(d[o]!, d[o + 1]!, d[o + 2]!, d[o0]! - d[o2]!, d[o0 + 1]! - d[o2 + 1]!, d[o0 + 2]! - d[o2 + 2]!, 0.5 * (1 - u) * fade, 3 * (1 - u) * fade, 1, this.cCream, 0.95)
+      {
+        const V = R.v
+        V[0] = d[o]!
+        V[1] = d[o + 1]!
+        V[2] = d[o + 2]!
+        V[3] = d[o0]! - d[o2]!
+        V[4] = d[o0 + 1]! - d[o2 + 1]!
+        V[5] = d[o0 + 2]! - d[o2 + 2]!
+        V[6] = 0.5 * (1 - u) * fade
+        V[7] = 3 * (1 - u) * fade
+        V[8] = 1
+        V[9] = 0.95
+        R.commit(this.cCream)
+      }
     }
     R.endStrip()
   }
@@ -938,7 +1007,7 @@ export class FxSystem {
     let vx = b.vx
     let vy = b.vz
     let vz = -b.vy
-    const l = Math.hypot(vx, vy, vz) || 1
+    const l = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1
     vx /= l
     vy /= l
     vz /= l
@@ -946,7 +1015,7 @@ export class FxSystem {
     let ax = vy * _fwd.z - vz * _fwd.y
     let ay = vz * _fwd.x - vx * _fwd.z
     let az = vx * _fwd.y - vy * _fwd.x
-    const al = Math.hypot(ax, ay, az) || 1
+    const al = Math.sqrt(ax * ax + ay * ay + az * az) || 1
     ax /= al
     ay /= al
     az /= al
@@ -965,18 +1034,19 @@ export class FxSystem {
       const r = (1.8 + 1.4 * h2) * scale
       const L = Math.min((8 + 7 * h1) * k, maxL)
       const s0 = Math.min(3.2 * scale, maxL * 0.3)
-      this.strokes.push(
-        c.x - vx * (s0 + L) + dx * r * 1.5,
-        c.y - vy * (s0 + L) + dy * r * 1.5,
-        c.z - vz * (s0 + L) + dz * r * 1.5,
-        c.x - vx * s0 + dx * r * 0.75,
-        c.y - vy * s0 + dy * r * 0.75,
-        c.z - vz * s0 + dz * r * 0.75,
-        0.6,
-        1.3,
-        this.cInk,
-        0.6 * k,
-      )
+      {
+        const V = this.strokes.v
+        V[0] = c.x - vx * (s0 + L) + dx * r * 1.5
+        V[1] = c.y - vy * (s0 + L) + dy * r * 1.5
+        V[2] = c.z - vz * (s0 + L) + dz * r * 1.5
+        V[3] = c.x - vx * s0 + dx * r * 0.75
+        V[4] = c.y - vy * s0 + dy * r * 0.75
+        V[5] = c.z - vz * s0 + dz * r * 0.75
+        V[6] = 0.6
+        V[7] = 1.3
+        V[8] = 0.6 * k
+        this.strokes.commit(this.cInk)
+      }
     }
   }
 
@@ -1001,11 +1071,23 @@ export class FxSystem {
       const pz = sz * ca * rx + fz * sa * rf
       let nx = sx * (ca / rx) + fx * (sa / rf)
       let nz = sz * (ca / rx) + fz * (sa / rf)
-      const nl = Math.hypot(nx, nz) || 1
+      const nl = Math.sqrt(nx * nx + nz * nz) || 1
       nx /= nl
       nz /= nl
       const L = 2.1 * scale * k
-      this.strokes.push(c.x + px, c.y, c.z + pz, c.x + px + nx * L, c.y + 0.3 * L, c.z + pz + nz * L, 3.2, 1.0, this.cInk, 0.9 * k)
+      {
+        const V = this.strokes.v
+        V[0] = c.x + px
+        V[1] = c.y
+        V[2] = c.z + pz
+        V[3] = c.x + px + nx * L
+        V[4] = c.y + 0.3 * L
+        V[5] = c.z + pz + nz * L
+        V[6] = 3.2
+        V[7] = 1.0
+        V[8] = 0.9 * k
+        this.strokes.commit(this.cInk)
+      }
     }
   }
 
@@ -1029,18 +1111,19 @@ export class FxSystem {
       // Rayons alternés longs/courts, comme une gloire de case de BD.
       const r0 = R * 0.34
       const r1 = r0 + (i % 2 ? 0.42 : 0.56 + 0.1 * hash01(i * 7)) * R * k
-      this.strokes.push(
-        c.x + (_right.x * ca + _up.x * sa) * r0,
-        c.y + (_right.y * ca + _up.y * sa) * r0,
-        c.z + (_right.z * ca + _up.z * sa) * r0,
-        c.x + (_right.x * ca + _up.x * sa) * r1,
-        c.y + (_right.y * ca + _up.y * sa) * r1,
-        c.z + (_right.z * ca + _up.z * sa) * r1,
-        1.3,
-        1.0,
-        this.cInk,
-        GLORY_ALPHA * k,
-      )
+      {
+        const V = this.strokes.v
+        V[0] = c.x + (_right.x * ca + _up.x * sa) * r0
+        V[1] = c.y + (_right.y * ca + _up.y * sa) * r0
+        V[2] = c.z + (_right.z * ca + _up.z * sa) * r0
+        V[3] = c.x + (_right.x * ca + _up.x * sa) * r1
+        V[4] = c.y + (_right.y * ca + _up.y * sa) * r1
+        V[5] = c.z + (_right.z * ca + _up.z * sa) * r1
+        V[6] = 1.3
+        V[7] = 1.0
+        V[8] = GLORY_ALPHA * k
+        this.strokes.commit(this.cInk)
+      }
     }
   }
 
@@ -1105,8 +1188,12 @@ export class FxSystem {
           // rétrécie (jusqu'à disparaître) près de la caméra : pas de « biscuits » en gros plan.
           const grow = 1 - (1 - Math.min(1, u / 0.35)) ** 2
           const shrink = 1 - smoothstep(0.7, 1, u) * 0.6
-          const ppm = this.pxPerMAt(p.x, p.y, p.z)
-          const near = smoothstep(PUFF_NEAR_M * 0.35, PUFF_NEAR_M, this.camDist(p.x, p.y, p.z))
+          // (distance et px/m calculés sur place : pas de flottants en argument, pas de boîtes)
+          const cx = p.x - _camPos.x
+          const cy = p.y - _camPos.y
+          const cz = p.z - _camPos.z
+          const ppm = this.pxPerM1 / Math.max(1, cx * _fwd.x + cy * _fwd.y + cz * _fwd.z) / this.px1080
+          const near = smoothstep(PUFF_NEAR_M * 0.35, PUFF_NEAR_M, Math.sqrt(cx * cx + cy * cy + cz * cz))
           s.size = Math.min(p.size * (0.45 + 0.75 * grow) * shrink, (0.5 * PUFF_MAX_PX) / ppm / 0.92) * near
           s.minPx = 2 * near
           s.shape = SHAPE.puff
@@ -1144,7 +1231,7 @@ export class FxSystem {
           s.size = p.size
           s.minPx = 1.6
           s.shape = SHAPE.clod
-          s.rot = Math.atan2(p.vy, Math.hypot(p.vx, p.vz))
+          s.rot = Math.atan2(p.vy, Math.sqrt(p.vx * p.vx + p.vz * p.vz))
           this.setFill(this.cInk, 0)
           this.setLine(this.cInk, 0.85 * (1 - smoothstep(0.7, 1, u)))
           s.lineW = 0
@@ -1206,18 +1293,19 @@ export class FxSystem {
       const r1 = r0 + len
       const ca = Math.cos(a)
       const sa = Math.sin(a)
-      this.strokes.push(
-        b.x + (_right.x * ca + _up.x * sa) * r0,
-        b.y + (_right.y * ca + _up.y * sa) * r0,
-        b.z + (_right.z * ca + _up.z * sa) * r0,
-        b.x + (_right.x * ca + _up.x * sa) * r1,
-        b.y + (_right.y * ca + _up.y * sa) * r1,
-        b.z + (_right.z * ca + _up.z * sa) * r1,
-        2.4,
-        1.4,
-        this.cInk,
-        1,
-      )
+      {
+        const V = this.strokes.v
+        V[0] = b.x + (_right.x * ca + _up.x * sa) * r0
+        V[1] = b.y + (_right.y * ca + _up.y * sa) * r0
+        V[2] = b.z + (_right.z * ca + _up.z * sa) * r0
+        V[3] = b.x + (_right.x * ca + _up.x * sa) * r1
+        V[4] = b.y + (_right.y * ca + _up.y * sa) * r1
+        V[5] = b.z + (_right.z * ca + _up.z * sa) * r1
+        V[6] = 2.4
+        V[7] = 1.4
+        V[8] = 1
+        this.strokes.commit(this.cInk)
+      }
     }
   }
 
@@ -1235,7 +1323,11 @@ export class FxSystem {
       cz = C.cz
     } else {
       const top = this.anchor(view, b.slot, 'riderTop', _a)
-      const lift = crownLift(_fwd.y) + 0.6
+      // En gros plan, la couronne se pose sur la capuche (controller.updateCrown, envergure
+      // 170-230 px) : l'anneau ne flotte plus 3 m au-dessus du cavalier pendant que l'ancienne
+      // couronne s'efface (verify2-eyes : anneau d'encre seul dans le ciel au titre).
+      const span = birdAnchors.frame[b.slot] === birdAnchors.counter ? birdAnchors.spanPx[b.slot]! : 0
+      const lift = (crownLift(_fwd.y) + 0.6) * (1 - smoothstep(170, 230, span))
       cx = top.x + _up.x * lift
       cy = top.y + _up.y * lift
       cz = top.z + _up.z * lift
@@ -1272,18 +1364,19 @@ export class FxSystem {
       const sa = Math.sin(a)
       const r0 = (20 + 40 * e) * scale
       const r1 = r0 + 16 * scale * (1 - u)
-      this.strokes.push(
-        cx + (_right.x * ca + _up.x * sa) * r0,
-        cy + (_right.y * ca + _up.y * sa) * r0,
-        cz + (_right.z * ca + _up.z * sa) * r0,
-        cx + (_right.x * ca + _up.x * sa) * r1,
-        cy + (_right.y * ca + _up.y * sa) * r1,
-        cz + (_right.z * ca + _up.z * sa) * r1,
-        2,
-        1.5,
-        this.cTmp2,
-        1 - smoothstep(0.7, 1, u),
-      )
+      {
+        const V = this.strokes.v
+        V[0] = cx + (_right.x * ca + _up.x * sa) * r0
+        V[1] = cy + (_right.y * ca + _up.y * sa) * r0
+        V[2] = cz + (_right.z * ca + _up.z * sa) * r0
+        V[3] = cx + (_right.x * ca + _up.x * sa) * r1
+        V[4] = cy + (_right.y * ca + _up.y * sa) * r1
+        V[5] = cz + (_right.z * ca + _up.z * sa) * r1
+        V[6] = 2
+        V[7] = 1.5
+        V[8] = 1 - smoothstep(0.7, 1, u)
+        this.strokes.commit(this.cTmp2)
+      }
     }
   }
 
@@ -1308,7 +1401,7 @@ export class FxSystem {
         const oP = Math.max(0, i - 1) * 4
         let tx = P[oN]! - P[oP]!
         let tz = P[oN + 2]! - P[oP + 2]!
-        const tl = Math.hypot(tx, tz) || 1
+        const tl = Math.sqrt(tx * tx + tz * tz) || 1
         tx /= tl
         tz /= tl
         const w = off + Math.sin(i * 0.7 + wob) * 0.25 * b.r * 0.3
@@ -1316,7 +1409,20 @@ export class FxSystem {
         const z = P[o + 2]! + tx * w
         const v = (i - i0) / Math.max(1, i1 - i0)
         const taper = Math.sin(Math.PI * clamp(v, 0.05, 0.95))
-        R.point(x, GROUND_Y, z, tx, 0, tz, 0, 2.6 * taper + 0.3, 0, this.cInk, 0.7)
+        {
+          const V = R.v
+          V[0] = x
+          V[1] = GROUND_Y
+          V[2] = z
+          V[3] = tx
+          V[4] = 0
+          V[5] = tz
+          V[6] = 0
+          V[7] = 2.6 * taper + 0.3
+          V[8] = 0
+          V[9] = 0.7
+          R.commit(this.cInk)
+        }
       }
       R.endStrip()
     }
@@ -1340,7 +1446,19 @@ export class FxSystem {
         const y = c.y + (tip.y - c.y) * f - 0.3 * scale
         const z = c.z + (tip.z - c.z) * f - hz * back
         const L = (2.2 + k * 0.7) * scale * (1 - u * 0.5)
-        this.strokes.push(x, y, z, x - hx * L, y - 0.2 * scale, z - hz * L, 2.2, 0.6, this.cInk, 0.7 * (1 - u * u))
+        {
+          const V = this.strokes.v
+          V[0] = x
+          V[1] = y
+          V[2] = z
+          V[3] = x - hx * L
+          V[4] = y - 0.2 * scale
+          V[5] = z - hz * L
+          V[6] = 2.2
+          V[7] = 0.6
+          V[8] = 0.7 * (1 - u * u)
+          this.strokes.commit(this.cInk)
+        }
       }
     }
   }
@@ -1356,18 +1474,19 @@ export class FxSystem {
       const sa = Math.sin(a)
       const r0 = (3 + 3 * u) * scale
       const r1 = r0 + 1.6 * scale * (1 - u)
-      this.strokes.push(
-        c.x + (_right.x * ca + _up.x * sa) * r0,
-        c.y + (_right.y * ca + _up.y * sa) * r0,
-        c.z + (_right.z * ca + _up.z * sa) * r0,
-        c.x + (_right.x * ca + _up.x * sa) * r1,
-        c.y + (_right.y * ca + _up.y * sa) * r1,
-        c.z + (_right.z * ca + _up.z * sa) * r1,
-        2.2,
-        1.2,
-        this.cInk,
-        0.9,
-      )
+      {
+        const V = this.strokes.v
+        V[0] = c.x + (_right.x * ca + _up.x * sa) * r0
+        V[1] = c.y + (_right.y * ca + _up.y * sa) * r0
+        V[2] = c.z + (_right.z * ca + _up.z * sa) * r0
+        V[3] = c.x + (_right.x * ca + _up.x * sa) * r1
+        V[4] = c.y + (_right.y * ca + _up.y * sa) * r1
+        V[5] = c.z + (_right.z * ca + _up.z * sa) * r1
+        V[6] = 2.2
+        V[7] = 1.2
+        V[8] = 0.9
+        this.strokes.commit(this.cInk)
+      }
     }
   }
 
@@ -1380,7 +1499,19 @@ export class FxSystem {
       const sa = Math.sin(a)
       const r0 = 0.6 + 3.2 * u
       const r1 = r0 + 1.3 * (1 - u * 0.5)
-      this.strokes.push(b.x + ca * r0, b.y, b.z + sa * r0, b.x + ca * r1, b.y, b.z + sa * r1, 2, 2, this.cInk, 1 - smoothstep(0.7, 1, u))
+      {
+        const V = this.strokes.v
+        V[0] = b.x + ca * r0
+        V[1] = b.y
+        V[2] = b.z + sa * r0
+        V[3] = b.x + ca * r1
+        V[4] = b.y
+        V[5] = b.z + sa * r1
+        V[6] = 2
+        V[7] = 2
+        V[8] = 1 - smoothstep(0.7, 1, u)
+        this.strokes.commit(this.cInk)
+      }
     }
   }
 
@@ -1400,7 +1531,7 @@ export class FxSystem {
     const dz = b.z - c.z
     const sx = dx * _right.x + dy * _right.y + dz * _right.z
     const sy = dx * _up.x + dy * _up.y + dz * _up.z
-    const ang = Math.hypot(sx, sy) > 1e-3 ? Math.atan2(sy, sx) : Math.PI / 2
+    const ang = sx * sx + sy * sy > 1e-6 ? Math.atan2(sy, sx) : Math.PI / 2
     const e = 1 - (1 - u) ** 2
     const half = (RULES.wingspan * this.scaleOf(b.slot) * ppm) / 2
     const r = clamp(half * 1.1, 26, 90) * (0.8 + 0.45 * e)

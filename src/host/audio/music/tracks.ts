@@ -36,8 +36,44 @@ export const RESULTS_STARTS = [0, 43.95, 90.4, 21.85, 67.3] as const
 
 const trackDb = (id: AssetId, db = 0): number => dbToGain(TRACK_DB + (TRACK_TRIM[id] ?? 0) + db)
 
+/**
+ * Lecteur de flux réutilisable : <audio> + sa source WebAudio + son gain (branchés une fois pour
+ * toutes). Fuite corrigée (polish tech, vague 2) : Chrome garde en vie une MediaElementAudioSourceNode
+ * — et son élément — tant que le contexte audio existe, même débranchée ; en créer deux par piste
+ * jouée les accumulait (+14 éléments et nœuds par cycle de 3 parties, salon, titre, crédits). Les
+ * lecteurs libérés retournent dans une réserve par contexte et resservent à la piste suivante.
+ */
+interface StreamVoice {
+  el: HTMLAudioElement
+  g: GainNode
+}
+const voicePool = new WeakMap<AudioEngine, StreamVoice[]>()
+
+function takeVoice(engine: AudioEngine): StreamVoice {
+  const free = voicePool.get(engine)
+  const v = free?.pop()
+  if (v) return v
+  const ctx = engine.ctx as AudioContext
+  const el = new Audio()
+  el.crossOrigin = 'anonymous'
+  const g = ctx.createGain()
+  ctx.createMediaElementSource(el).connect(g)
+  return { el, g }
+}
+
+function releaseVoice(engine: AudioEngine, v: StreamVoice): void {
+  v.el.pause()
+  v.el.removeAttribute('src')
+  v.el.load()
+  v.g.disconnect()
+  let free = voicePool.get(engine)
+  if (!free) voicePool.set(engine, (free = []))
+  free.push(v)
+}
+
 class StreamTrack implements Track {
   private readonly out: GainNode
+  private readonly voices: StreamVoice[] = []
   private readonly els: HTMLAudioElement[] = []
   private readonly gains: GainNode[] = []
   private active = 0
@@ -54,13 +90,14 @@ class StreamTrack implements Track {
     this.out.gain.value = 0
     this.out.connect(engine.buses.music)
     for (let i = 0; i < 2; i++) {
-      const el = new Audio()
-      el.crossOrigin = 'anonymous'
+      const v = takeVoice(engine)
+      const { el, g } = v
       el.preload = i === 0 ? 'auto' : 'none'
       el.src = assetUrl(id)
-      const g = ctx.createGain()
+      g.gain.cancelScheduledValues(0)
       g.gain.value = i === 0 ? 1 : 0
-      ctx.createMediaElementSource(el).connect(g).connect(this.out)
+      g.connect(this.out)
+      this.voices.push(v)
       this.els.push(el)
       this.gains.push(g)
     }
@@ -119,7 +156,8 @@ class StreamTrack implements Track {
       gNew.setValueAtTime(0, t)
       gNew.linearRampToValueAtTime(1, t + this.xfade)
       const old = el
-      setTimeout(() => old.pause(), (this.xfade + 0.5) * 1000)
+      // piste arrêtée entre-temps : l'élément est peut-être déjà reparti dans une autre piste
+      setTimeout(() => !this.stopped && old.pause(), (this.xfade + 0.5) * 1000)
       this.active = next
     }
   }
@@ -134,11 +172,8 @@ class StreamTrack implements Track {
     g.linearRampToValueAtTime(0, t + Math.max(0.05, fadeOut))
     if (this.timer) clearInterval(this.timer)
     setTimeout(() => {
-      for (const el of this.els) {
-        el.pause()
-        el.removeAttribute('src')
-        el.load()
-      }
+      // lecteurs rendus à la réserve (voir StreamVoice) : ni nouvel <audio> ni nouvelle source ensuite
+      for (const v of this.voices) releaseVoice(this.engine, v)
       this.out.disconnect()
     }, (fadeOut + 0.3) * 1000)
   }

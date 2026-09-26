@@ -48,13 +48,21 @@ export function World({ quality }: WorldProps) {
   useEffect(() => () => footprints.dispose(), [footprints])
 
   const lastTowers = useRef<readonly TowerDef[] | null>(null)
+  // même arène (a, b) d'une carte à l'autre (démo du titre : 6 oiseaux, 4 cartes) : même objet,
+  // pour que sol, rideau et cailloux ne reconstruisent pas une géométrie identique (polish tech, vague 2)
+  const lastArena = useRef(EMPTY.arena)
   useNprFrame((state) => {
     const sim = gameView.sim
     // la carte ne change qu'entre deux manches : on ne reconstruit la clé que si les tours changent
     if (sim && sim.towers !== lastTowers.current) {
       lastTowers.current = sim.towers
       const key = mapKey(sim)
-      if (key !== map.key) setMap({ key, arena: { a: sim.arena.a, b: sim.arena.b }, towers: sim.towers })
+      if (key !== map.key) {
+        const prev = lastArena.current
+        const arena = prev.a === sim.arena.a && prev.b === sim.arena.b ? prev : { a: sim.arena.a, b: sim.arena.b }
+        lastArena.current = arena
+        setMap({ key, arena, towers: sim.towers })
+      }
     }
     frame.current = applyWorldFrame(gameView, worldView, state.camera)
     updateBirdScreen(gameView, state.camera, state.gl.domElement.width, state.gl.domElement.height)

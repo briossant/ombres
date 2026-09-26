@@ -21,14 +21,34 @@ import {
 import { GLSL_PRELUDE, GLSL_VERTEX_PRELUDE, nprUniforms } from '../bird/npr.ts'
 import { GLSL_SHAPES } from './glsl.ts'
 
+/** Plage d'envoi unique et permanente de chaque attribut dynamique (mutée à chaque frame). */
+const RANGES = new WeakMap<BufferAttribute, { start: number; count: number }>()
+const keepRanges = (): void => {}
+
 function dyn(attr: BufferAttribute | InstancedBufferAttribute): typeof attr {
   attr.setUsage(DynamicDrawUsage)
+  // Une seule plage, réutilisée : three la vide après chaque envoi (clearUpdateRanges), et
+  // addUpdateRange alloue un objet par appel (polish vague 2 : aucune allocation par frame).
+  const range = { start: 0, count: 0 }
+  RANGES.set(attr, range)
+  attr.updateRanges.length = 0
+  attr.updateRanges.push(range)
+  attr.clearUpdateRanges = keepRanges
   return attr
 }
 
 function upload(attr: BufferAttribute, count: number): void {
-  attr.clearUpdateRanges()
-  if (count > 0) attr.addUpdateRange(0, count * attr.itemSize)
+  // Rien à dessiner : la plage de dessin est vide, inutile d'envoyer quoi que ce soit.
+  if (count <= 0) return
+  const range = RANGES.get(attr)
+  if (!range) {
+    attr.clearUpdateRanges()
+    attr.addUpdateRange(0, count * attr.itemSize)
+    attr.needsUpdate = true
+    return
+  }
+  range.start = 0
+  range.count = count * attr.itemSize
   attr.needsUpdate = true
 }
 
@@ -348,26 +368,49 @@ export class StrokeBatch {
     return this.n
   }
 
-  push(ax: number, ay: number, az: number, bx: number, by: number, bz: number, wA: number, wB: number, color: ArrayLike<number>, alpha: number): boolean {
-    if (this.n >= this.capacity || alpha <= 0.004) return false
+  /**
+   * Segment en cours de saisie : ax, ay, az, bx, by, bz, épaisseur en A et en B (px 1080p), alpha.
+   * L'appelant remplit `v` puis appelle `commit(couleur)` : aucun flottant passé en argument
+   * (chaque flottant passé à une fonction non intégrée est mis en boîte, donc alloué).
+   */
+  readonly v = new Float64Array(9)
+
+  commit(color: ArrayLike<number>): boolean {
+    const v = this.v
+    if (this.n >= this.capacity || v[8]! <= 0.004) return false
     const i = this.n++
     const a = this.A.array as Float32Array
     const b = this.B.array as Float32Array
     const w = this.W.array as Float32Array
     const c = this.C.array as Float32Array
-    a[i * 3] = ax
-    a[i * 3 + 1] = ay
-    a[i * 3 + 2] = az
-    b[i * 3] = bx
-    b[i * 3 + 1] = by
-    b[i * 3 + 2] = bz
-    w[i * 2] = wA
-    w[i * 2 + 1] = wB
+    a[i * 3] = v[0]!
+    a[i * 3 + 1] = v[1]!
+    a[i * 3 + 2] = v[2]!
+    b[i * 3] = v[3]!
+    b[i * 3 + 1] = v[4]!
+    b[i * 3 + 2] = v[5]!
+    w[i * 2] = v[6]!
+    w[i * 2 + 1] = v[7]!
     c[i * 4] = color[0]!
     c[i * 4 + 1] = color[1]!
     c[i * 4 + 2] = color[2]!
-    c[i * 4 + 3] = alpha
+    c[i * 4 + 3] = v[8]!
     return true
+  }
+
+  /** Forme commode (hors boucles chaudes) de `v` + `commit`. */
+  push(ax: number, ay: number, az: number, bx: number, by: number, bz: number, wA: number, wB: number, color: ArrayLike<number>, alpha: number): boolean {
+    const v = this.v
+    v[0] = ax
+    v[1] = ay
+    v[2] = az
+    v[3] = bx
+    v[4] = by
+    v[5] = bz
+    v[6] = wA
+    v[7] = wB
+    v[8] = alpha
+    return this.commit(color)
   }
 
   end(): void {
@@ -505,9 +548,17 @@ export class RibbonBatch {
     this.stripStart = this.nv
   }
 
-  /** Ajoute un point au ruban courant (tangente monde tx, ty, tz non nécessairement unitaire). */
-  point(x: number, y: number, z: number, tx: number, ty: number, tz: number, widthM: number, minPx: number, edgePx: number, color: ArrayLike<number>, alpha: number): boolean {
+  /**
+   * Point en cours de saisie : x, y, z, tangente monde tx, ty, tz (non nécessairement unitaire),
+   * largeur (m), largeur minimale (px 1080p), liseré d'encre (px 1080p), alpha. L'appelant remplit
+   * `v` puis appelle `commit(couleur)` : aucun flottant passé en argument (pas de boîtes allouées).
+   */
+  readonly v = new Float64Array(10)
+
+  /** Ajoute au ruban courant le point saisi dans `v`. */
+  commit(color: ArrayLike<number>): boolean {
     if (this.nv + 2 > this.capacity * 2 || this.stripStart < 0) return false
+    const s = this.v
     const v = this.nv
     const P = this.pos.array as Float32Array
     const T = this.tan.array as Float32Array
@@ -515,19 +566,19 @@ export class RibbonBatch {
     const C = this.color.array as Float32Array
     for (let k = 0; k < 2; k++) {
       const j = v + k
-      P[j * 3] = x
-      P[j * 3 + 1] = y
-      P[j * 3 + 2] = z
-      T[j * 3] = tx
-      T[j * 3 + 1] = ty
-      T[j * 3 + 2] = tz
-      W[j * 3] = widthM
-      W[j * 3 + 1] = minPx
-      W[j * 3 + 2] = edgePx
+      P[j * 3] = s[0]!
+      P[j * 3 + 1] = s[1]!
+      P[j * 3 + 2] = s[2]!
+      T[j * 3] = s[3]!
+      T[j * 3 + 1] = s[4]!
+      T[j * 3 + 2] = s[5]!
+      W[j * 3] = s[6]!
+      W[j * 3 + 1] = s[7]!
+      W[j * 3 + 2] = s[8]!
       C[j * 4] = color[0]!
       C[j * 4 + 1] = color[1]!
       C[j * 4 + 2] = color[2]!
-      C[j * 4 + 3] = alpha
+      C[j * 4 + 3] = s[9]!
     }
     if (v > this.stripStart) {
       const I = this.index.array as Uint16Array
@@ -541,6 +592,22 @@ export class RibbonBatch {
     }
     this.nv += 2
     return true
+  }
+
+  /** Forme commode (hors boucles chaudes) de `v` + `commit`. */
+  point(x: number, y: number, z: number, tx: number, ty: number, tz: number, widthM: number, minPx: number, edgePx: number, color: ArrayLike<number>, alpha: number): boolean {
+    const s = this.v
+    s[0] = x
+    s[1] = y
+    s[2] = z
+    s[3] = tx
+    s[4] = ty
+    s[5] = tz
+    s[6] = widthM
+    s[7] = minPx
+    s[8] = edgePx
+    s[9] = alpha
+    return this.commit(color)
   }
 
   endStrip(): void {

@@ -1,0 +1,220 @@
+[
+ {
+  "id": "fr.golden1",
+  "lang": "fr",
+  "lot_id": "golden1",
+  "text": "C'est l'heure dorée. Les ombres voient grand.",
+  "keywords": [
+   "l'heure dorée"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": "C'est l'heure dorée. Les ombres voient grand.",
+  "pocket_text": "C'est l'heure dorée. Les ombres voient grand."
+ },
+ {
+  "id": "fr.greatShadow1",
+  "lang": "fr",
+  "lot_id": "greatShadow1",
+  "text": "La nuit tombe de la falaise. Elle fige tout.",
+  "keywords": [
+   "fige"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": null,
+  "pocket_text": "La nuit tombe de la falaise. Elle glace tout.",
+  "note": "texte d'origine (le lot Pocket l'a remplacé : « Elle glace tout »)"
+ },
+ {
+  "id": "fr.tenSeconds3",
+  "lang": "fr",
+  "lot_id": "tenSeconds3",
+  "text": "Dix secondes. Tout peut encore basculer.",
+  "keywords": [
+   "dix secondes"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Dix secondes. Tout peut encore basculer."
+ },
+ {
+  "id": "fr.leaderChange1.1",
+  "lang": "fr",
+  "lot_id": "leaderChange1.1",
+  "text": "Lagon prend la tête. Le sable oublie vite.",
+  "keywords": [
+   "Lagon|lagons|lagond"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Lagon prend la tête. Le sable oublie vite."
+ },
+ {
+  "id": "fr.firstCrown.3",
+  "lang": "fr",
+  "lot_id": "firstCrown.3",
+  "text": "Safran porte la couronne. Tout le monde la voit.",
+  "keywords": [
+   "Safran|saffran|safrant"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Safran porte la couronne. Tout le monde la voit."
+ },
+ {
+  "id": "fr.bigSteal.5",
+  "lang": "fr",
+  "lot_id": "bigSteal.5",
+  "text": "Carmin vient d'avaler un morceau de désert.",
+  "keywords": [
+   "Carmin|carmain|carmins|karmin"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": "Carmain vient d'avaler un morceau de désert.",
+  "pocket_text": "Carmin vient d'avaler un morceau de désert.",
+  "note": "graphie normale « Carmin » (le lot Pocket prononce « Carmain » via say)"
+ },
+ {
+  "id": "fr.dodge.8",
+  "lang": "fr",
+  "lot_id": "dodge.8",
+  "text": "Sarcelle esquive. Les serres attrapent du vent.",
+  "keywords": [
+   "Sarcelle|sarcel|sarsel|sarcell"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Sarcelle esquive. Les serres attrapent du vent."
+ },
+ {
+  "id": "fr.huntStreak.4",
+  "lang": "fr",
+  "lot_id": "huntStreak.4",
+  "text": "Azur chasse encore. Surveillez le ciel.",
+  "keywords": [
+   "Azur|azure|azzur"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Azur chasse encore. Surveillez le ciel."
+ },
+ {
+  "id": "fr.roundWin2.10",
+  "lang": "fr",
+  "lot_id": "roundWin2.10",
+  "text": "Le désert s'endort chez Lilas, ce soir.",
+  "keywords": [
+   "Lilas|lila|lilla"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": "Le désert s'endort chez Lilas, ce soir.",
+  "pocket_text": "Le désert s'endort chez Lilas, ce soir."
+ },
+ {
+  "id": "fr.leaderChange4.7",
+  "lang": "fr",
+  "lot_id": "leaderChange4.7",
+  "text": "Anis mène la danse. Les dunes suivent.",
+  "keywords": [
+   "Anis|aniss|annis|anice"
+  ],
+  "asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Anis mène la danse. Les dunes suivent."
+ },
+ {
+  "id": "en.tenSeconds2",
+  "lang": "en",
+  "lot_id": "tenSeconds2",
+  "text": "Ten seconds. The desert holds its breath.",
+  "keywords": [
+   "ten seconds"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Ten seconds. The desert holds its breath."
+ },
+ {
+  "id": "en.golden1",
+  "lang": "en",
+  "lot_id": "golden1",
+  "text": "Golden hour. The shadows are getting ambitious.",
+  "keywords": [
+   "golden hour"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Golden hour. The shadows are getting ambitious."
+ },
+ {
+  "id": "en.leaderChange1.4",
+  "lang": "en",
+  "lot_id": "leaderChange1.4",
+  "text": "Azure takes the lead. Sand forgets.",
+  "keywords": [
+   "Azure|asyour|azur|azhur|ajure"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Azure takes the lead. Sand forgets."
+ },
+ {
+  "id": "en.firstCrown.7",
+  "lang": "en",
+  "lot_id": "firstCrown.7",
+  "text": "Anise wears the crown. Mind the talons.",
+  "keywords": [
+   "Anise|anis|annis|anice|aniseed"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Anise wears the crown. Mind the talons."
+ },
+ {
+  "id": "en.bigSteal.10",
+  "lang": "en",
+  "lot_id": "bigSteal.10",
+  "text": "Lilac just swallowed a piece of the desert.",
+  "keywords": [
+   "Lilac|lilacs|lylac"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Lilac just swallowed a piece of the desert."
+ },
+ {
+  "id": "en.leaderChange2.2",
+  "lang": "en",
+  "lot_id": "leaderChange2.2",
+  "text": "Indigo moves ahead. The sun saw it coming.",
+  "keywords": [
+   "Indigo"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Indigo moves ahead. The sun saw it coming."
+ },
+ {
+  "id": "en.dodge.3",
+  "lang": "en",
+  "lot_id": "dodge.3",
+  "text": "Saffron dodges. Talons close on air.",
+  "keywords": [
+   "Saffron|safran|saffran|safron"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Saffron dodges. Talons close on air."
+ },
+ {
+  "id": "en.lastRay.5",
+  "lang": "en",
+  "lot_id": "lastRay.5",
+  "text": "Carmine stole the last of the light.",
+  "keywords": [
+   "Carmine|carmin|carmines"
+  ],
+  "asr_prompt": "The narrator calls the players by their colour: Coral, Lagoon, Indigo, Saffron, Azure, Carmine, Plum, Anise, Teal, Rose, Lilac, Jade.",
+  "pocket_say": null,
+  "pocket_text": "Carmine stole the last of the light."
+ }
+]

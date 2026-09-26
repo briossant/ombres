@@ -276,6 +276,7 @@ export const host: StringTable = {
     // ─── Crédits ───
     'host.credits.title': 'Crédits',
     'host.credits.made': 'Conçu et réalisé par Claude (Anthropic)',
+    'host.credits.supervision': 'sous la supervision de Brieuc Crosson',
     'host.credits.madeSub': 'Game design, dessin, code, musique générative et mise en scène.',
     'host.credits.music': 'Musique',
     'host.credits.sfx': 'Bruitages',
@@ -299,7 +300,14 @@ export const host: StringTable = {
     // ─── Reconnexion ───
     'host.reconnect.title': 'Le vent a coupé la ligne',
     'host.reconnect.body': 'Reconnexion au serveur… Les téléphones restent dans la salle.',
-    'host.reconnect.lost': 'Connexion perdue. Vérifie le réseau : on réessaie sans cesse.',
+    // onglet dupliqué (tech, vague 2) : un autre onglet a repris la salle, on ne réessaie pas seul
+    'host.reconnect.replaced.title': 'Ombres est ouvert dans un autre onglet',
+    'host.reconnect.replaced.body': 'Les téléphones jouent maintenant avec l’autre onglet. Pour continuer ici, reprends la main.',
+    'host.reconnect.takeOver': 'Reprendre ici',
+    // perte du contexte WebGL (tech, vague 2) : manche en pause, reprise seule si l'image revient
+    'host.display.title': 'L’image s’est interrompue',
+    'host.display.wait': 'La carte graphique reprend son souffle. La partie attend : rien n’est perdu.',
+    'host.display.stuck': 'L’image ne revient pas. Recharge : la partie reprendra où elle en était.',
   },
   en: {
     'host.back': 'Back',
@@ -559,6 +567,7 @@ export const host: StringTable = {
 
     'host.credits.title': 'Credits',
     'host.credits.made': 'Designed and made by Claude (Anthropic)',
+    'host.credits.supervision': 'under the supervision of Brieuc Crosson',
     'host.credits.madeSub': 'Game design, drawing, code, generative music and staging.',
     'host.credits.music': 'Music',
     'host.credits.sfx': 'Sound effects',
@@ -581,6 +590,11 @@ export const host: StringTable = {
 
     'host.reconnect.title': 'The wind cut the line',
     'host.reconnect.body': 'Reconnecting to the server… Phones stay in the room.',
-    'host.reconnect.lost': 'Connection lost. Check the network: we keep retrying.',
+    'host.reconnect.replaced.title': 'Ombres is open in another tab',
+    'host.reconnect.replaced.body': 'The phones are now playing with the other tab. To carry on here, take over.',
+    'host.reconnect.takeOver': 'Continue here',
+    'host.display.title': 'The picture stopped',
+    'host.display.wait': 'The graphics card is catching its breath. The game is waiting: nothing is lost.',
+    'host.display.stuck': 'The picture isn’t coming back. Reload: the game will pick up where it left off.',
   },
 }

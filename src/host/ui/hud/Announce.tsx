@@ -107,15 +107,22 @@ export function withColor(text: string, colorIndex: number | null, label?: strin
   ))
 }
 
+/**
+ * Sous-titre du narrateur. Changement de langue en cours de réplique : une réplique à clé est
+ * retraduite (texte et nom de couleur basculent ensemble) ; un texte figé (réplique voisée) finit
+ * dans sa langue, nom de couleur compris — jamais « Crimson, le désert retiendra cette couleur ».
+ */
 export function Subtitle() {
   const sub = useHud(s => s.subtitle)
   const mode = useSettings(s => s.narrator)
   if (!sub || mode === 'off') return null
   const raw = sub.key ? t(sub.key) : (sub.text ?? '')
+  const pinned = !sub.key && sub.lang ? sub.lang : undefined
+  const label = pinned && sub.colorIndex !== null ? colorName(sub.colorIndex, pinned) : undefined
   return (
     <div className="subtitle-wrap" key={sub.id}>
-      <p className="recitatif wipe" style={{ fontSize: RULES.subtitlePx }}>
-        {withColor(raw, sub.colorIndex)}
+      <p className="recitatif wipe" style={{ fontSize: RULES.subtitlePx }} lang={pinned}>
+        {withColor(raw, sub.colorIndex, label)}
       </p>
     </div>
   )

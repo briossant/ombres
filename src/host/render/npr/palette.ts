@@ -180,6 +180,87 @@ const PATTERN_IDS: Record<string, number> = {
   tirets90: 11,
 }
 
+// ─── Ombre portée sur le lavis (polish 2) ─────────────────────────────────
+//
+// Par couleur de joueur, la teinte de l'ombre sur son lavis est FIXE à une heure donnée (la teinte
+// du lavis l'est) : on la calcule ici, une fois par frame pour 12 couleurs, au lieu d'un atan /
+// cos / sin par pixel. De jour (W4) : rotation vers 290° de 0,22 × l'écart côté rouge, 0,15 côté
+// vert, ≤ 40°, chroma × 0,85. En fin de journée (uShadowCool → 1) : vers 300°, 0,45 × l'écart côté
+// rouge (≤ 90°), chroma × 1 ; le sol ajoute un glacis de 30 % vers l'ombre neutre. Le Safran (89°)
+// a sa propre cible : mauve (340°) un peu plus clair, chroma × 0,75 (sinon framboise, voisin du
+// Rose) ; porte gameFrozenPair de docs/art/tools/final.mjs : ΔE ≥ 0,059 entre joueurs gelés.
+interface ShadeTarget {
+  /** Teinte cible de l'ombre en fin de journée (°), à la place de la rotation par défaut. */
+  h: number
+  cf: number
+  kL: number
+}
+const SHADE_OVERRIDE: ReadonlyArray<ShadeTarget | undefined> = PLAYER_COLORS.map((p) => (p.name.en === 'Saffron' ? { h: 340, cf: 0.75, kL: 1.16 } : undefined))
+/**
+ * Côté nuit (W6) : chroma × 0,52 et rotation W4 ; Safran mauve 325°, L + 0,06, chroma × 0,5 ; Corail
+ * lie-de-vin 0°, L + 0,04 (sinon ocre brun et brun marron sur la moitié gelée ; porte gameNightPair ≥ 0,05).
+ */
+const NIGHT_CHROMA = 0.52
+const NIGHT_TARGETS: Readonly<Record<string, { h: number; cf: number; dL: number }>> = {
+  Saffron: { h: 325, cf: 0.5, dL: 0.06 },
+  Coral: { h: 0, cf: 0.52, dL: 0.04 },
+}
+const NIGHT_OVERRIDE = PLAYER_COLORS.map((p) => NIGHT_TARGETS[p.name.en])
+const ownerColor = new Int8Array(OWNER_CODES).fill(0)
+const DEG = Math.PI / 180
+/** Angle signé (rad) de la teinte h (°) vers la teinte t (°), par le chemin court. */
+function hueDelta(h: number, t: number): number {
+  const d = (t - h) * DEG
+  return Math.atan2(Math.sin(d), Math.cos(d))
+}
+/** Rotation (rad) vers `target` : fraction fr côté rouge (écart négatif), fg côté vert, au plus mx. */
+function shadeRot(h: number, target: number, fr: number, fg: number, mx: number): number {
+  const dh = hueDelta(h, target)
+  return Math.sign(dh) * Math.min(Math.abs(dh) * (dh < 0 ? fr : fg), mx)
+}
+let overridesOn = true
+/**
+ * Levier de mesure (worldView.lookPolish2) : false = teintes d'ombre et de nuit d'avant le polish 2
+ * (aucune cible propre à une couleur). Sans effet si l'état ne change pas.
+ */
+export function setShadeOverrides(on: boolean): void {
+  if (on === overridesOn) return
+  overridesOn = on
+  updateOwnerNight()
+  updateOwnerShade(NPR.uShadowCool.value)
+}
+
+/** Remplit uOwnerNight (fixe tant que les couleurs ne changent pas). */
+function updateOwnerNight(): void {
+  const out = NPR.uOwnerNight.value
+  out[0]!.set(1, 0, NIGHT_CHROMA, 0)
+  for (let code = 1; code < OWNER_CODES; code++) {
+    const ci = ownerColor[code]!
+    const h = (PLAYER_COLORS[ci] ?? PLAYER_COLORS[0]!).terr.h
+    const ov = overridesOn ? NIGHT_OVERRIDE[ci] : undefined
+    const a = ov ? ov.h * DEG : h * DEG + shadeRot(h, 290, 0.22, 0.15, 40 * DEG)
+    out[code]!.set(Math.cos(a), Math.sin(a), ov ? ov.cf : NIGHT_CHROMA, ov ? ov.dL : 0)
+  }
+}
+
+/** Remplit uOwnerShade pour le poids de fin de journée s (0..1). Aucune allocation. */
+export function updateOwnerShade(s: number): void {
+  const out = NPR.uOwnerShade.value
+  out[0]!.set(1, 0, 0.85, 1)
+  for (let code = 1; code < OWNER_CODES; code++) {
+    const ci = ownerColor[code]!
+    const pc = PLAYER_COLORS[ci] ?? PLAYER_COLORS[0]!
+    const h = pc.terr.h
+    const day = shadeRot(h, 290, 0.22, 0.15, 40 * DEG)
+    const ov = overridesOn ? SHADE_OVERRIDE[ci] : undefined
+    const eve = ov ? hueDelta(h, ov.h) : shadeRot(h, 300, 0.45, 0.15, 90 * DEG)
+    const a = h * DEG + day + (eve - day) * s
+    const cfEve = ov ? ov.cf : 1
+    const kLEve = ov ? ov.kL : 1
+    out[code]!.set(Math.cos(a), Math.sin(a), 0.85 + (cfEve - 0.85) * s, 1 + (kLEve - 1) * s)
+  }
+}
+
 const IDENTITY_LIN = PLAYER_COLORS.map((p) => hexToLinear(p.hex))
 const TEXT_LIN = PLAYER_COLORS.map((p) => hexToLinear(p.text))
 
@@ -197,6 +278,7 @@ export function updateOwnerTables(players: ReadonlyArray<PlayerVisual | undefine
     const slot = code - 1
     const ci = players[slot]?.colorIndex ?? slot
     const pc = PLAYER_COLORS[ci] ?? PLAYER_COLORS[0]!
+    ownerColor[code] = PLAYER_COLORS[ci] ? ci : 0
     const h = (pc.terr.h * Math.PI) / 180
     terr[code]!.set(Math.cos(h), Math.sin(h), pc.terr.dL, pc.terr.cs)
     const lin = IDENTITY_LIN[ci] ?? IDENTITY_LIN[0]!
@@ -204,6 +286,8 @@ export function updateOwnerTables(players: ReadonlyArray<PlayerVisual | undefine
     const tl = TEXT_LIN[ci] ?? TEXT_LIN[0]!
     text[code]!.setRGB(tl[0], tl[1], tl[2], THREE.LinearSRGBColorSpace)
   }
+  updateOwnerShade(NPR.uShadowCool.value)
+  updateOwnerNight()
 }
 
 // ─── Mise à jour par frame ─────────────────────────────────────────────────
@@ -224,13 +308,21 @@ const labLight: Vec3 = [0, 0, 0]
  * docs/art/tools/final.mjs (porte gameFrozenPair) le vérifie.
  */
 export const PAINT_C_GOLDEN_MAX = 0.125
+/**
+ * Plafond de chroma des lavis forts au couchant (KF3 → KF1, polish 2) : 0,12 au lieu de 0,155
+ * (paintC 0,135 × cs 1,15), pour les lavis CLAIRS seulement (uPaintCapDark : Safran, Anis, Lagon, Rose,
+ * Lilas, les « néons » sur le sol gris) ; les écarts entre forts restent ≥ 0,088 (porte gameStrongPair).
+ */
+export const PAINT_C_SUNSET_MAX = 0.12
 const labLipTmp: Vec3 = [0, 0, 0]
 
 /** Pousse la palette de la frame dans les uniforms partagés. Aucune allocation. */
 export function updatePalette(frame: PaletteFrame): void {
   const pe = frame.paletteElevDeg
+  const fade = clamp01(frame.nightFade ?? 0)
+  const all = clamp01(frame.nightAll ?? 0)
   sampleDay(day, pe)
-  sampleNight(night, clamp01(frame.nightFade ?? 0))
+  sampleNight(night, fade)
 
   const L = day.lab
   setColor(NPR.uSkyTop, L.skyTop)
@@ -287,16 +379,27 @@ export function updatePalette(frame: PaletteFrame): void {
   setLab(NPR.uNLabCast, N.castShadow)
   setLab(NPR.uNLabBirdLight, N.sandLit)
   NPR.uNTintK.value.set(0.6, 0.7, 0.55, 0.6)
-  NPR.uNightAll.value = clamp01(frame.nightAll ?? 0)
+  NPR.uNightAll.value = all
+
+  // Rideau du Simoun (StormCurtain) : voile = mix OKLab (sandShade, haze, 0,3), jour et nuit
+  mixInto(labLipTmp, L.sandShade, L.haze, 0.3)
+  setColor(NPR.uStormVeil, labLipTmp)
+  mixInto(labLipTmp, N.sandShade, N.haze, 0.3)
+  setColor(NPR.uNStormVeil, labLipTmp)
 
   // Lèvre de dernière lumière : le sandLit du jour courant, jamais plus froid que KF1.
   mixInto(labLipTmp, L.sandLit, KF_FALAISE.lab.sandLit, smoothstep(10, 1, pe))
   setColor(NPR.uLipColor, labLipTmp)
   setLab(NPR.uLipLab, labLipTmp)
   // Heure dorée (≈ KF25 → KF10) : chroma des lavis forts plafonnée (polish W12 : les grandes zones
-  // Safran / Carmin se lisaient comme des aplats vectoriels) ; le couchant garde son vitrail.
-  const golden = smoothstep(34, 25, pe) * smoothstep(5, 9, pe)
-  NPR.uPaintCMax.value = PAINT_C_GOLDEN_MAX + (1 - golden) * (1 - PAINT_C_GOLDEN_MAX)
+  // Safran / Carmin se lisaient comme des aplats vectoriels). Couchant (polish 2) : plafond un peu
+  // plus haut (vitrail) mais plus de chroma 0,155 : à 12 joueurs, KF3 faisait « tapis de Twister ».
+  const late = smoothstep(34, 25, pe)
+  const cap = PAINT_C_GOLDEN_MAX + (PAINT_C_SUNSET_MAX - PAINT_C_GOLDEN_MAX) * smoothstep(9, 5, pe)
+  NPR.uPaintCMax.value = cap * late + (1 - late)
+  NPR.uPaintCapDark.value = smoothstep(9, 5, pe)
+  NPR.uShadowCool.value = smoothstep(40, 22, pe)
+  updateOwnerShade(NPR.uShadowCool.value)
 }
 
 /** Couleur de palette (jour) interpolée, en RGB linéaire, pour les consommateurs CPU (HUD…). */

@@ -20,6 +20,10 @@ export interface QualityPreset {
   /** Hauteur de rendu visée (px) : le dpr est plafonné pour ne jamais la dépasser. */
   targetHeight: number
   smaa: SMAAPreset | null
+  /** Seuil de détection des bords du SMAA (défaut : celui du preset SMAA). */
+  smaaThreshold?: number
+  /** Détection des bords sur la luminance (défaut : couleur). */
+  smaaLuma?: boolean
   shadowRes: number
   farShadowRes: number
   hatching: boolean
@@ -62,7 +66,11 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
   medium: {
     level: 'medium',
     targetHeight: 900,
-    smaa: SMAAPreset.MEDIUM,
+    // SMAA LOW (polish 2, W3) : seuil 0,15 et 4 pas de recherche. Les traits d'encre (contraste > 0,3)
+    // restent lissés ; le grain et les liserés du lavis, les bords d'ombre (déjà antialiasés dans le shader)
+    // ne passent plus dans la passe de poids. Recadrages × 3 identiques à MEDIUM au couchant
+    // (shots/polish2/world/smaa3/cmp.png) ; A/B entrelacé ≈ −0,5 ms à 12 oiseaux (GPU partagé).
+    smaa: SMAAPreset.LOW,
     shadowRes: 2048,
     farShadowRes: 1024,
     hatching: true,
@@ -81,8 +89,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
   high: {
     level: 'high',
     targetHeight: 1080,
-    // SMAA MEDIUM (polish W3 : −0,3 ms à 1080p ; l'encre porte déjà les contours)
-    smaa: SMAAPreset.MEDIUM,
+    // SMAA LOW (polish W3 : MEDIUM, −0,3 ms à 1080p ; polish 2 : LOW, voir Medium)
+    smaa: SMAAPreset.LOW,
     shadowRes: 2048,
     farShadowRes: 1024,
     hatching: true,

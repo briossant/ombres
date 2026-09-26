@@ -82,6 +82,7 @@ ${GLSL.palette}
 ${GLSL.night}
 ${GLSL.fog}
 uniform float uVisible;
+uniform vec3 uStormVeil, uNStormVeil;
 uniform vec4 uBirdScr[12];
 uniform float uBirdScrN;
 varying vec2 vUv;
@@ -98,7 +99,7 @@ void main(){
   float n = nightMask(nd, nw);
   // sommet festonné qui ondule doucement : découpe nette (pas d'alpha), l'encre cerne le feston
   float top = 0.62 + 0.22 * abs(sin(arc / 9.0 + uTime * 0.4)) + 0.1 * sin(arc / 3.7 - uTime * 0.9);
-  vec3 veil = mixLab(mix(uSandShade, uNSandShade, n), palHaze(n), 0.3);
+  vec3 veil = mix(uStormVeil, uNStormVeil, n);   // mix OKLab (sandShade, haze, 0,3) calculé sur le CPU (palette.ts)
   float streak = lineCov(y + 0.35 * sin(arc * 0.11 + y), 1.7, dy, 1.0 * uPx)
                * step(0.6, fract((arc - uTime * 6.0) / 19.0 + 0.37 * floor(y / 1.7)));
   float f = fogAt(vDist);

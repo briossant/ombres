@@ -21,16 +21,16 @@ export const narrator: StringTable = {
 
     // Piqués
     'narrator.firstHit': '{color} ouvre les hostilités.',
-    'narrator.hitHunter': '{color} tombe du ciel. Pile sur quelqu’un.',
+    'narrator.hitHunter': '{color} tombe du ciel. Quelqu’un a mal.',
     'narrator.hitVictim': '{color} en voit de toutes les couleurs.',
     'narrator.doubleHit': 'Deux d’un coup. {color} a de l’appétit.',
     'narrator.huntStreak': '{color} chasse encore. Surveillez le ciel.',
-    'narrator.dodge': '{color} esquive. Les serres attrapent du vent.',
-    'narrator.miss': '{color} mord la poussière. On n’a rien vu.',
+    'narrator.dodge': '{color} esquive. Le chasseur n’attrape que du vent.',
+    'narrator.miss': '{color} finit dans le sable. On n’a rien vu.',
 
     // Couronne et meneur
-    'narrator.firstCrown': '{color} porte la couronne. Tout le monde la voit.',
-    'narrator.leaderChange1': '{color} prend la tête. Le sable oublie vite.',
+    'narrator.firstCrown': 'La couronne est à {color}. Elle se voit de loin.',
+    'narrator.leaderChange1': '{color} prend la tête. Le désert oublie vite.',
     'narrator.leaderChange2': '{color} passe devant. Le soleil s’en doutait.',
     'narrator.leaderChange3': 'Le désert passe à {color}. Pour l’instant.',
     'narrator.leaderChange4': '{color} mène la danse. Les dunes suivent.',
@@ -38,24 +38,24 @@ export const narrator: StringTable = {
 
     // Territoire
     'narrator.bigSteal': '{color} vient d’avaler un morceau de désert.',
-    'narrator.bigStealVictim': 'Une ombre passe. {color} perd gros.',
+    'narrator.bigStealVictim': 'Une ombre passe, et {color} perd du terrain.',
     'narrator.trailSteal': 'Toute une traînée passe à {color}, sans discuter.',
     'narrator.hugeSweep': 'Une ombre, et tout le désert change d’avis.',
-    'narrator.runaway': '{color} s’installe. Qui s’en occupe ?',
+    'narrator.runaway': '{color} s’installe. Quelqu’un va réagir ?',
 
     // Comportements
-    'narrator.hiddenLong': '{color} reste à l’ombre, sagement.',
-    'narrator.storm': '{color} défie la tempête. Pari perdu.',
+    'narrator.hiddenLong': '{color} reste à l’abri. C’est plus prudent.',
+    'narrator.storm': '{color} défie la tempête. Mauvaise idée.',
     'narrator.idle': '{color} admire la vue. Une stratégie.',
 
     // Horloge solaire
-    'narrator.golden1': 'L’heure dorée. Les ombres ont de l’ambition.',
+    'narrator.golden1': 'C’est l’heure dorée. Les ombres voient grand.',
     'narrator.golden2': 'Le soleil descend. Vos ombres grandissent.',
     'narrator.golden3': 'Le soleil fatigue. Les ombres, jamais.',
     'narrator.sunset1': 'Les ombres s’étirent. Visez avec elles.',
     'narrator.sunset2': 'Le couchant. Les ombres traversent le désert.',
     'narrator.sunset3': 'Le soleil baisse. Les ombres s’allongent.',
-    'narrator.greatShadow1': 'La nuit tombe de la falaise. Elle fige tout.',
+    'narrator.greatShadow1': 'La nuit tombe de la falaise. Elle glace tout.',
     'narrator.greatShadow2': 'La nuit avance. Elle ne rend rien.',
     'narrator.greatShadow3': 'La falaise lâche son ombre. Dépêchez-vous.',
     'narrator.tenSeconds1': 'Dix secondes. Ensuite, plus rien ne bouge.',
@@ -91,7 +91,7 @@ export const narrator: StringTable = {
     'narrator.firstHit': '{color} opens the hunt.',
     'narrator.hitHunter': '{color} falls from the sky, right on someone.',
     'narrator.hitVictim': '{color} gets a taste of sand.',
-    'narrator.doubleHit': 'Two in one dive. {color} is hungry.',
+    'narrator.doubleHit': 'Two birds, one strike. {color} is hungry.',
     'narrator.huntStreak': '{color} is hunting. Look up.',
     'narrator.dodge': '{color} dodges. Talons close on air.',
     'narrator.miss': '{color} eats sand. We saw nothing.',
@@ -139,7 +139,7 @@ export const narrator: StringTable = {
     'narrator.roundWin2': 'The desert sleeps at {color}’s tonight.',
     'narrator.roundWin3': 'Last word to {color}. And the desert.',
 
-    'narrator.matchWin': '{color} wins. Remember that color.',
+    'narrator.matchWin': '{color} wins. Remember that colour.',
     'narrator.matchTie': 'The desert refuses to choose. Share it.',
     'narrator.rematch': 'The sun comes back. So do you, apparently.',
   },

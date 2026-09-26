@@ -753,15 +753,30 @@ export interface TowerGeometries {
 }
 
 export function buildTowerGeometries(towers: readonly TowerDef[]): TowerGeometries {
+  const steps = buildTowerGeometriesSteps(towers)
+  let r = steps.next()
+  while (!r.done) r = steps.next()
+  return r.value
+}
+
+/**
+ * Même construction, découpée : une étape par tour, puis une par géométrie (polish tech, vague 2 :
+ * préparation de la carte suivante pendant les temps morts, world/prebuild.ts).
+ */
+export function* buildTowerGeometriesSteps(towers: readonly TowerDef[]): Generator<void, TowerGeometries, void> {
   const body = new GeoBuilder()
   const decor = new GeoBuilder()
-  towers.forEach((t, index) => {
-    if (t.segments.length === 0) return
+  for (let index = 0; index < towers.length; index++) {
+    const t = towers[index]!
+    if (t.segments.length === 0) continue
     const pts = profileOf(t.segments)
     const segs = analyseBody(t, pts)
     const idBase = towerId(index)
     buildBody({ b: body, tx: t.x, ty: t.y, seed: t.seed, idBase }, segs)
     buildDecor({ b: decor, tx: t.x, ty: t.y, seed: t.seed, idBase, pts }, t, segs)
-  })
-  return { body: body.build(), decor: decor.build() }
+    yield
+  }
+  const bodyGeo = body.build()
+  yield
+  return { body: bodyGeo, decor: decor.build() }
 }

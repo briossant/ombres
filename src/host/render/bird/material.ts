@@ -1,10 +1,11 @@
 // Matériaux de l'oiseau : corps (os deux tons, ventre hachuré, couleur du joueur
 // sur bande/cape/selle/fanion, cavalier en cuir hachuré, œil, visage creux de la
 // capuche, bouts d'ailes « prêts »), et coque inversée d'encre (1,2 px, épaisseur
-// constante à l'écran ; 0,5 px au loin). Au loin (< 70 px d'envergure), la bande
-// d'aile s'élargit (38 % de la demi-aile), cape et selle grossissent et les pièces
-// colorées ne sont plus cernées (le cerne mangeait la couleur). La coque porte
-// aussi le liseré de lumière (contre-jour du podium, oiseau caché au soleil bas).
+// constante à l'écran ; 0,2 px au loin). Au loin (< 70 px d'envergure), la bande
+// d'aile s'élargit (52 % de la demi-aile), cape et selle doublent, ni les pièces
+// colorées ni le cavalier ne sont plus cernés (le cerne mangeait la couleur) et la
+// couleur d'identité garde tout son chroma. La coque porte aussi le liseré de lumière
+// (contre-jour du podium, lumière rasante du soleil bas sur tous les oiseaux).
 // Chunks, palette jour/nuit, ombres et brume : cadre NPR
 // de l'agent world (via ./npr.ts). L'âme de l'ombre est le même SkinnedMesh
 // inscrit dans la height shadow map (même squelette → même déformation).
@@ -33,22 +34,28 @@ export interface BirdUniforms {
   uBand: { value: Vector2 }
   /** 1 = pièces colorées cernées (ID propre), 0 = même ID que le corps (loin : pas de cerne interne). */
   uAccentOn: { value: number }
-  /** Agrandissement de la cape et de la selle (1 → 1,6 au loin). */
+  /** Agrandissement de la cape et de la selle (1 → 2 au loin). */
   uAccentScale: { value: number }
   /** Épaisseur de la coque d'encre (px 1080p). */
   uHullWidth: { value: number }
   /** Posture perchée (podium) 0..1 : liseré de contre-jour et remplissage de face. */
   uPerch: { value: number }
+  /** Traitement « loin » (0..1, envergure affichée < 98 px) : couleur d'identité renforcée. */
+  uFar: { value: number }
 }
 
 /** Épaisseur de la coque d'encre (px 1080p) : gros plans et distance moyenne… */
 export const HULL_WIDTH_PX = 1.2
-/** …et au loin (le post-traitement ajoute ~1 px : cerne total ≈ 1,5 px). */
-export const HULL_WIDTH_FAR_PX = 0.5
-/** Bande d'aile élargie au loin : 38 % de la demi-aile (fractions de la demi-envergure). */
-export const BAND_FAR: readonly [number, number] = [0.38, 0.76]
+/** …et au loin (le post-traitement ajoute ~1 px : cerne total ≈ 1,2 px). */
+export const HULL_WIDTH_FAR_PX = 0.2
+/**
+ * Bande d'aile élargie au loin : 52 % de la demi-aile (fractions de la demi-envergure), du coude
+ * à 0,2 m des bouts d'ailes (qui gardent le signal « coup d'aile prêt »). Polish vague 2 : à 38 %,
+ * à 55-65 px d'envergure, la bande ne faisait que 3 à 5 px de corde et ne se lisait pas à 1:1.
+ */
+export const BAND_FAR: readonly [number, number] = [0.3, 0.82]
 /** Agrandissement maximal de la cape et de la selle au loin. */
-export const ACCENT_SCALE_FAR = 1.6
+export const ACCENT_SCALE_FAR = 2.0
 
 const LEATHER = hexToLinear('#8A5A3C')
 const POLE = hexToLinear('#4A3328')
@@ -122,7 +129,9 @@ float partId(int part, float ax, float fw){
   float band = part == P_WING ? smoothstep(uBand.x - fw, uBand.x + fw, ax) * (1.0 - smoothstep(uBand.y - fw, uBand.y + fw, ax)) : 0.0;
   bool colored = part == P_CAPE || part == P_SADDLE || part == P_FLAG || band > 0.5;
   bool rider = part == P_LEATHER || part == P_POLE;
-  return colored && uAccentOn > 0.5 ? uId + 40.0 : rider ? uRiderId : uId;
+  // Au loin (uAccentOn = 0), ni les pièces colorées ni le cavalier n'ont de cerne propre :
+  // le double trait d'encre mangeait la couleur et faisait un nœud noir au milieu de l'oiseau.
+  return uAccentOn < 0.5 ? uId : colored ? uId + 40.0 : rider ? uRiderId : uId;
 }
 `
 
@@ -130,7 +139,7 @@ const FRAG = /* glsl */ `
 ${GLSL_PRELUDE}
 ${PARTS_GLSL}
 uniform vec3 uPlayer;
-uniform float uId, uRiderId, uHidden, uTipCharge, uTipFlash, uDetail, uGlyph, uAccentOn, uPerch;
+uniform float uId, uRiderId, uHidden, uTipCharge, uTipFlash, uDetail, uGlyph, uAccentOn, uPerch, uFar;
 uniform vec2 uBand;
 uniform vec3 uEye;
 uniform vec4 uFace;
@@ -147,16 +156,17 @@ ${ID_GLSL}
 
 // Couleur d'identité : garde au moins minK × le chroma de l'albédo du joueur (OKLab),
 // quelle que soit la lumière (couchant qui tire tout vers l'orange, oiseau caché, nuit) ;
-// teinte à mi-chemin entre la teinte éclairée et celle de l'albédo ; luminance ramenée
-// de lPull vers celle de l'albédo (la lumière chaude délavait les bandes en pastel).
-vec3 keepChroma(vec3 c, vec3 ref, float minK, float lPull){
+// teinte à mi-chemin entre la teinte éclairée et celle de l'albédo (hueK = 0), ou ramenée
+// jusqu'à celle de l'albédo (hueK = 1) ; luminance ramenée de lPull vers celle de l'albédo
+// (la lumière chaude délavait les bandes en pastel).
+vec3 keepChroma(vec3 c, vec3 ref, float minK, float lPull, float hueK){
   vec3 a = lin2oklab(max(c, vec3(0.0)));
   vec3 r = lin2oklab(max(ref, vec3(0.0)));
   float ca = length(a.yz);
   float cr = length(r.yz);
   if (cr < 1e-4) return c;
   vec2 hr = r.yz / cr;
-  vec2 h = ca > 1e-4 ? normalize(a.yz / ca + hr) : hr;
+  vec2 h = ca > 1e-4 ? normalize(a.yz / ca * (1.0 - hueK) + hr) : hr;
   return oklab2lin(vec3(mix(a.x, min(a.x, r.x), lPull), h * max(ca, minK * cr)));
 }
 
@@ -268,17 +278,24 @@ void main(){
     col = mix(col, birdShadeOf(uPlayer, n), hem * 0.7 * smoothstep(0.2, 0.5, uDetail));
   }
 
-  // Les pièces colorées gardent 80 % du chroma du joueur (60 % dans la nuit), éclairées,
-  // à l'ombre ou cachées : au couchant, la lumière tirait toutes les bandes vers l'orange.
-  float minC = mix(0.8, 0.6, n);
-  if (accent > 0.001) col = mix(col, keepChroma(col, uPlayer, minC, 0.5 * (1.0 - n)), accent);
+  // Les pièces colorées gardent le chroma du joueur, éclairées, à l'ombre ou cachées : 80 % de
+  // jour de près, 100 % au soleil bas (paletteElev < 10 → 16) et au loin, +12 % au loin (une petite
+  // tache de couleur paraît plus terne qu'un aplat : effet de petit champ), 85 % dans la nuit
+  // (polish vague 2 : à la Grande Ombre, les bandes des oiseaux côté nuit tombaient à C ≈ 0,05).
+  float lowSun = 1.0 - smoothstep(10.0, 16.0, uPaletteElev);
+  float minC = mix(mix(0.8, 1.0, max(lowSun, uFar)) * (1.0 + 0.12 * uFar), 0.85, n);
+  // Au soleil bas et au loin, la teinte revient vers celle du joueur (le corail tirait Lilas vers le rose).
+  float hueK = 0.7 * max(lowSun, uFar);
+  if (accent > 0.001) col = mix(col, keepChroma(col, uPlayer, minC, 0.5 * (1.0 - n), hueK), accent);
   // Oiseau caché : 55 % vers l'ombre portée (ART_BIBLE §5.3), 35 % au soleil bas
-  // (paletteElev < 10) — polish B5 : au couchant, la moitié des oiseaux est cachée.
+  // (paletteElev < 10) — polish B5 : au couchant, la moitié des oiseaux est cachée. L'os
+  // s'assombrit (lecture « à l'ombre ») ; les pièces colorées gardent leur chroma.
   if (uHidden > 0.001) {
     col = mix(col, palCast(n), uHidden * mix(0.35, 0.55, smoothstep(9.0, 12.0, uPaletteElev)));
-    if (accent > 0.001) col = mix(col, keepChroma(col, uPlayer, minC, 0.0), accent);
+    if (accent > 0.001) col = mix(col, keepChroma(col, uPlayer, minC, 0.0, hueK), accent);
   }
-  col = applyFog(col, fogAt(vDist), n);
+  // Brume : 60 % de moins sur les pièces colorées (l'identité reste lisible au fond de l'arène).
+  col = applyFog(col, fogAt(vDist) * (1.0 - 0.6 * accent), n);
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
   writeGBuffer(vViewN, partId(part, ax, fw));
@@ -317,18 +334,25 @@ void main(){
   vec2 nc = (projectionMatrix * vec4(nV, 0.0)).xy;
   float l = length(nc);
   vec2 dir = l > 1e-5 ? nc / l : vec2(0.0);
-  // Liseré : podium (contre-jour, 2 px), ou oiseau caché au soleil bas hors de la nuit (1,5 px).
+  // Liseré : podium (contre-jour, 2 px), ou lumière rasante du soleil bas hors de la nuit
+  // (1,5 px, tous les oiseaux : polish vague 2, au couchant en plan large les oiseaux n'étaient
+  // plus que des silhouettes grises ; caché ou non, le bord côté soleil s'allume).
   float lowSun = 1.0 - smoothstep(10.0, 16.0, uPaletteElev);
   float day = nightDist(wp.xz) > 0.0 ? 0.0 : 1.0;
-  float rimK = max(uPerch, uHidden * lowSun * day);
+  float rimK = max(uPerch, lowSun * day);
   vec3 sunV = (viewMatrix * vec4(uSunDir, 0.0)).xyz;
   float sl = length(sunV.xy);
   // Côté soleil à l'écran ; soleil derrière le sujet (contre-jour) : tout le contour s'allume, le haut d'abord.
-  float side = sl > 1e-3 ? smoothstep(-0.1, 0.45, dot(dir, sunV.xy / sl)) : 0.0;
-  side = max(side, smoothstep(0.2, 0.8, -sunV.z) * (0.55 + 0.45 * smoothstep(-0.6, 0.4, dir.y)));
+  // En vol (ni caché, ni perché), seul le bord franchement tourné vers le soleil s'allume : un
+  // liseré tout autour de l'oiseau se lisait comme un contour orange (confusion avec Corail).
+  float sd = sl > 1e-3 ? dot(dir, sunV.xy / sl) : -1.0;
+  float wide = max(uPerch, uHidden);
+  float side = mix(smoothstep(0.3, 0.8, sd), smoothstep(-0.1, 0.45, sd), wide);
+  side = max(side, wide * smoothstep(0.2, 0.8, -sunV.z) * (0.55 + 0.45 * smoothstep(-0.6, 0.4, dir.y)));
   vRim = rimK * side;
-  // Le trait d'encre du post-traitement couvre ~1,5 px du bord extérieur : 3 px → liseré de 1,5 px, 4 px → 2,5 px.
-  float w = max(uHullWidth, mix(uHullWidth, mix(3.0, 4.0, uPerch), vRim));
+  // Le trait d'encre du post-traitement couvre ~1,5 px du bord extérieur : 2,6 px → liseré de
+  // ≈ 1 px (vol), 3 px → 1,5 px (caché), 4 px → 2,5 px (podium).
+  float w = max(uHullWidth, mix(uHullWidth, mix(mix(2.6, 3.0, uHidden), 4.0, uPerch), vRim));
   // Épaisseur constante en pixels ; nulle là où la normale fait face à la caméra.
   clip.xy += dir * w * uPx * 2.0 / uResolution * clip.w;
   vViewN = nV;
@@ -358,8 +382,8 @@ void main(){
   float ax = abs(vBind.x);
   float fw = max(fwidth(ax), 1e-4);
   float f = fogAt(vDist);
-  // Liseré de lumière : dernière lumière (sandLit KF1), plus claire au podium.
-  vec3 rimC = mix(uLipColor, uCream, 0.55 * uPerch);
+  // Liseré de lumière : dernière lumière (sandLit KF1) éclaircie vers la crème, plus claire au podium.
+  vec3 rimC = mix(uLipColor, uCream, 0.4 + 0.15 * uPerch);
   vec3 c = mix(palInk(n), rimC, smoothstep(0.25, 0.6, vRim) * (1.0 - n));
   gl_FragColor = vec4(mix(c, fogColor(f, n), f * 0.8), 1.0);
   #include <colorspace_fragment>
@@ -389,6 +413,7 @@ export function createBirdMaterials(model: BirdModel): BirdMaterials {
     uAccentScale: { value: 1 },
     uHullWidth: { value: HULL_WIDTH_PX },
     uPerch: { value: 0 },
+    uFar: { value: 0 },
   }
   const riderId = { value: 44 }
   const uAccentPivot = { value: new Vector3(...model.bind.rider) }

@@ -13,6 +13,12 @@
 // texSubImage2D (renderer.copyTextureToTexture depuis les données CPU).
 // Chaque plage est ré-encodée ~1,5 s plus tard pour passer ses horodatages à
 // « ancien » (sinon le modulo les rendrait « fraîches » 12,5 s plus tard).
+//
+// Champ de distance aux bords (polish 2) : `edgeTexture`, R8 filtrée, au quart de la résolution
+// (un texel = 4 × 4 cellules ≈ 2,6 m) : distance (chanfrein, en texels, bornée à EDGE_MAX) au plus
+// proche changement de propriétaire. Le sol s'en sert pour la bande de pigment qui s'accumule au
+// bord d'un lavis (lisible à distance de jeu, là où le liseré de 3 px ne suffit plus). Recalculée
+// entièrement (≈ 11 000 texels, deux passes) au plus 10 fois par seconde quand les propriétaires changent.
 import * as THREE from 'three'
 import { RULES } from '../../../sim/rules.ts'
 import { clearDirty } from '../../../sim/territory.ts'
@@ -26,6 +32,11 @@ const EXPIRE_AFTER = 1.5
 const LEVEL_BYTE = [0, 90, 255]
 const TILE = 16
 const QUEUE = 4096
+/** Taille (en cellules) d'un texel du champ de distance aux bords. */
+export const EDGE_BLOCK = 4
+/** Distance maximale codée (texels du champ) : 255 = EDGE_MAX texels ou plus. */
+export const EDGE_MAX = 8
+const EDGE_HZ = 10
 
 export class TerritoryTexture {
   readonly texture: THREE.DataTexture
@@ -56,6 +67,18 @@ export class TerritoryTexture {
   private readonly pos = new THREE.Vector2()
   /** Statistiques (debug) : tuiles envoyées à la dernière mise à jour. */
   lastTiles = 0
+  /** Distance aux bords de territoire (voir l'en-tête), lue en bilinéaire par le sol. */
+  readonly edgeTexture: THREE.DataTexture
+  readonly edgeCols: number
+  readonly edgeRows: number
+  private readonly edgeData: Uint8Array
+  private readonly blockOwner: Uint8Array
+  private readonly edgeDist: Uint16Array
+  private edgeDirty = true
+  private lastEdge = -Infinity
+  /** Transit du champ de distance (même mémoire CPU) : envoi par texSubImage2D, sans initTexture. */
+  private readonly edgeStaging: THREE.DataTexture
+  private edgeUpload = false
 
   constructor(cols: number = RULES.gridCols, rows: number = RULES.gridRows) {
     this.cols = cols
@@ -74,6 +97,101 @@ export class TerritoryTexture {
     t.needsUpdate = true
     this.texture = t
     this.staging = new THREE.DataTexture(this.data, cols, rows, THREE.RGBAFormat, THREE.UnsignedByteType)
+    this.edgeCols = Math.ceil(cols / EDGE_BLOCK)
+    this.edgeRows = Math.ceil(rows / EDGE_BLOCK)
+    const ne = this.edgeCols * this.edgeRows
+    this.edgeData = new Uint8Array(ne).fill(255)
+    this.blockOwner = new Uint8Array(ne)
+    this.edgeDist = new Uint16Array(ne)
+    const e = new THREE.DataTexture(this.edgeData, this.edgeCols, this.edgeRows, THREE.RedFormat, THREE.UnsignedByteType)
+    e.minFilter = THREE.LinearFilter
+    e.magFilter = THREE.LinearFilter
+    e.generateMipmaps = false
+    e.flipY = false
+    e.name = 'territory-edges'
+    e.needsUpdate = true
+    this.edgeTexture = e
+    this.edgeStaging = new THREE.DataTexture(this.edgeData, this.edgeCols, this.edgeRows, THREE.RedFormat, THREE.UnsignedByteType)
+  }
+
+  /**
+   * Champ de distance aux bords : un bloc est un « bord » si ses coins n'ont pas tous le propriétaire
+   * de son centre, ou si un voisin (4-connexité) a un autre propriétaire ; puis chanfrein 10 / 14 en
+   * deux passes. Aucune allocation.
+   */
+  private computeEdges(grid: TerritoryGrid): void {
+    const W = this.edgeCols
+    const H = this.edgeRows
+    const cols = this.cols
+    const rows = this.rows
+    const owner = grid.owner
+    const bo = this.blockOwner
+    const d = this.edgeDist
+    const B = EDGE_BLOCK
+    for (let by = 0; by < H; by++) {
+      const y0 = by * B
+      const y1 = Math.min(rows - 1, y0 + B - 1)
+      const yc = Math.min(rows - 1, y0 + (B >> 1))
+      for (let bx = 0; bx < W; bx++) {
+        const x0 = bx * B
+        const x1 = Math.min(cols - 1, x0 + B - 1)
+        const c = owner[yc * cols + Math.min(cols - 1, x0 + (B >> 1))]!
+        bo[by * W + bx] = c
+        const mixed = owner[y0 * cols + x0] !== c || owner[y0 * cols + x1] !== c || owner[y1 * cols + x0] !== c || owner[y1 * cols + x1] !== c
+        d[by * W + bx] = mixed ? 0 : 0xffff
+      }
+    }
+    for (let by = 0; by < H; by++)
+      for (let bx = 0; bx < W; bx++) {
+        const i = by * W + bx
+        const c = bo[i]
+        if ((bx > 0 && bo[i - 1] !== c) || (bx < W - 1 && bo[i + 1] !== c) || (by > 0 && bo[i - W] !== c) || (by < H - 1 && bo[i + W] !== c)) d[i] = 0
+      }
+    // chanfrein 10 / 14 (texels × 10)
+    for (let by = 0; by < H; by++)
+      for (let bx = 0; bx < W; bx++) {
+        const i = by * W + bx
+        let v = d[i]!
+        if (v === 0) continue
+        if (bx > 0) v = Math.min(v, d[i - 1]! + 10)
+        if (by > 0) {
+          v = Math.min(v, d[i - W]! + 10)
+          if (bx > 0) v = Math.min(v, d[i - W - 1]! + 14)
+          if (bx < W - 1) v = Math.min(v, d[i - W + 1]! + 14)
+        }
+        d[i] = v
+      }
+    const out = this.edgeData
+    const scale = 255 / (EDGE_MAX * 10)
+    for (let by = H - 1; by >= 0; by--)
+      for (let bx = W - 1; bx >= 0; bx--) {
+        const i = by * W + bx
+        let v = d[i]!
+        if (v !== 0) {
+          if (bx < W - 1) v = Math.min(v, d[i + 1]! + 10)
+          if (by < H - 1) {
+            v = Math.min(v, d[i + W]! + 10)
+            if (bx < W - 1) v = Math.min(v, d[i + W + 1]! + 14)
+            if (bx > 0) v = Math.min(v, d[i + W - 1]! + 14)
+          }
+          d[i] = v
+        }
+        out[i] = Math.min(255, Math.round(v * scale))
+      }
+    this.edgeUpload = true
+  }
+
+  /** Recalcule le champ de distance aux bords s'il a changé (≤ 10 Hz) et l'envoie. */
+  private updateEdges(renderer: THREE.WebGLRenderer, grid: TerritoryGrid, now: number): void {
+    if (this.edgeDirty && !(now - this.lastEdge < 1 / EDGE_HZ && now >= this.lastEdge)) {
+      this.computeEdges(grid)
+      this.edgeDirty = false
+      this.lastEdge = now
+    }
+    if (this.edgeUpload) {
+      this.edgeUpload = false
+      renderer.copyTextureToTexture(this.edgeStaging, this.edgeTexture)
+    }
   }
 
   /** Horloge (en « tics » d'horodatage) à passer au shader : (temps × 20) mod 250. */
@@ -162,6 +280,9 @@ export class TerritoryTexture {
     this.lastVersion = grid.version
     this.lastUpload = now
     this.needsFull = false
+    this.computeEdges(grid)
+    this.edgeDirty = false
+    this.lastEdge = now
     // les cellules encore « fraîches » seront vieillies par une passe complète plus tard
     for (let ty = 0; ty < this.tilesY; ty++) {
       const k = (this.qHead + this.qLen) % QUEUE
@@ -180,10 +301,12 @@ export class TerritoryTexture {
   update(renderer: THREE.WebGLRenderer, grid: TerritoryGrid, now: number, maxHz = 20): void {
     if (this.needsFull || grid !== this.boundGrid || grid.cols !== this.cols || grid.rows !== this.rows) {
       this.full(grid, now)
+      this.updateEdges(renderer, grid, now)
       return
     }
     if (now < this.lastUpload - 0.5) {
       this.full(grid, now) // temps de sim revenu en arrière (nouvelle manche, reprise)
+      this.updateEdges(renderer, grid, now)
       return
     }
     if (now - this.lastUpload < 1 / maxHz) return
@@ -197,6 +320,7 @@ export class TerritoryTexture {
       if (d) clearDirty(grid)
       this.lastVersion = grid.version
       if (any) {
+        this.edgeDirty = true
         for (let ty = 0; ty < this.tilesY; ty++) {
           let tx = 0
           while (tx < this.tilesX) {
@@ -221,9 +345,11 @@ export class TerritoryTexture {
       touched = true
     }
     if (touched) this.lastUpload = now
+    this.updateEdges(renderer, grid, now)
   }
 
   dispose(): void {
     this.texture.dispose()
+    this.edgeTexture.dispose()
   }
 }

@@ -9,8 +9,9 @@ import { simEvents, type Emitter } from '../bus.ts'
 import { illuminateTerritory, worldView } from '../render/worldView.ts'
 import { getSettings } from '../settings.ts'
 import type { GameView } from '../view.ts'
-import { CineShot, CREDITS_LAYOUT, CREDITS_SEQUENCE, rigPose, shotFault, stormNear, TITLE_LAYOUT, TITLE_SEQUENCE, type ShotKind } from './cine.ts'
+import { CineShot, cineDebug, CREDITS_LAYOUT, CREDITS_SEQUENCE, rigPose, TITLE_LAYOUT, TITLE_PREPARE, TITLE_SEQUENCE, type ShotKind } from './cine.ts'
 import { cameraBeats, cameraCue, cameraState, type CameraMode } from './cue.ts'
+import { demoFuture } from './demoFuture.ts'
 import { copyRig, fitPoints, makeRig, projectRig, type FitResult, type Rig, type ScreenRect } from './framing.ts'
 import { FramingRig } from './framingRig.ts'
 import { blendPose, clamp01, copyPose, DEG, guardPosition, lerp, makePose, poseDistance, smoother, smoothstep, yawPitchQuat, type Pose } from './math.ts'
@@ -46,6 +47,12 @@ export const MAP_FOV = 18
 /** Durées des plans du titre : fraction du soleil de la démo (voir TITLE_SEQUENCE). */
 const CREDITS_BLEND = 3.2
 
+/** Titre : index du plan préparé pour le rebouclage (première prise de la démo suivante). */
+const LOOP_SPARE = 1000
+/** Titre : index (+ plan de la séquence) du plan préparé pendant le chargement ; crédits : plan suivant. */
+const LOAD_SPARE = 2000
+const CREDITS_SPARE = 3000
+
 /** Une sim neuve posée moins de 0,5 s avant un changement de mode : la transition est une coupe. */
 const SIM_CUT_WINDOW = 0.5
 
@@ -66,7 +73,12 @@ export class CameraDirector {
   private first = true
   private modeTime = 0
   readonly framing = new FramingRig()
-  private readonly shot = new CineShot()
+  private shot = new CineShot()
+  /** Titre : plan suivant de la séquence, préparé avant sa coupe (index, −1 = aucun) — polish 2. */
+  private spare = new CineShot()
+  private spareIndex = -1
+  /** Vue de la démo suivante (pas encore à l'écran : état initial, sans interpolation). */
+  private readonly upcomingView: GameView = { sim: null, prevBirds: [], alpha: 0, realTime: 0, timeScale: 1, players: [], colorblind: false }
   private shotIndex = -1
   private shotSeed = 1
   private lastSunT = 0
@@ -196,6 +208,9 @@ export class CameraDirector {
 
   private enter(mode: CameraMode, view: GameView, cut: boolean): void {
     const prev = this.mode
+    // titre : toujours une coupe franche (la première prise est choisie et validée ; un fondu depuis
+    // les crédits passait par des poses non vérifiées, parfois dans une tour) — polish 2
+    if (mode === 'title') cut = true
     this.mode = mode
     this.modeTime = 0
     const sim = view.sim
@@ -218,6 +233,8 @@ export class CameraDirector {
     }
     if (mode === 'title' || mode === 'credits' || mode === 'loading') {
       this.shotIndex = -1
+      // plan préparé pour la démo qui arrive (rebouclage du titre) ou pendant le chargement : gardé
+      if (!(mode === 'title' && sim && (this.spare.preSim === sim || (prev === 'loading' && this.spareIndex >= LOAD_SPARE)))) this.spareIndex = -1
       this.creditsNext = 0
       this.lastSunT = sim?.sun.t ?? 0
     }
@@ -234,9 +251,14 @@ export class CameraDirector {
   }
 
   /** Démarre un plan de cinéma ; `blend` > 0 = fondu depuis la pose courante, 0 = coupe, < 0 = garde le fondu en cours. */
-  private startShot(kind: ShotKind, dur: number, blend: number, credits: boolean): void {
+  private startShot(kind: ShotKind, dur: number, blend: number, credits: boolean, prepared = false): void {
     this.shotSeed++
-    this.shot.start(kind, dur, this.shotSeed, credits ? CREDITS_LAYOUT : TITLE_LAYOUT)
+    if (prepared) {
+      // plan préparé d'avance sur le plan de réserve (sa première prise est déjà choisie)
+      const prev = this.shot
+      this.shot = this.spare
+      this.spare = prev
+    } else this.shot.start(kind, dur, this.shotSeed, credits ? CREDITS_LAYOUT : TITLE_LAYOUT)
     this.shotFresh = true
     if (blend < 0) {
       // garde le fondu en cours (entrée dans le mode)
@@ -279,7 +301,10 @@ export class CameraDirector {
       case 'credits':
         return this.credits(dt, view)
       default:
-        return this.cine(dt, view, 'still')
+        this.cine(dt, view, 'still')
+        // la démo tourne derrière l'écran de chargement : la première prise du titre s'y prépare
+        if (this.mode === 'loading') this.prepareTitle(dt, view)
+        return
     }
   }
 
@@ -292,48 +317,146 @@ export class CameraDirector {
   }
 
   /** Titre : plans calés sur le soleil de la démo ; coupe franche à chaque plan et au rebouclage. */
-  private title(dt: number, view: GameView): void {
+  private title(dtReal: number, view: GameView): void {
     const sim = view.sim
-    if (!sim) return this.cine(dt, view, 'still')
+    if (!sim) return this.cine(dtReal, view, 'still')
+    // horloge des plans = temps de la démo (ralenti de la dernière seconde compris, arrêt si la démo
+    // est figée) : les prises sont validées sur l'avenir de la sim, seconde de sim pour seconde de plan
+    const dt = dtReal * Math.max(0, Math.min(1, view.timeScale))
     const u = clamp01(sim.sun.t / sim.sun.T)
     const looped = sim.sun.t < this.lastSunT - 1
     this.lastSunT = sim.sun.t
     let idx = 0
     for (let i = 0; i < TITLE_SEQUENCE.length; i++) if (u >= TITLE_SEQUENCE[i]!.at) idx = i
     if (looped) idx = 0
+    // la prise en cours finit sur un défaut juste avant la coupe prévue : le plan suivant, déjà
+    // préparé, commence tout de suite (plutôt qu'une prise de quelques dixièmes)
+    if (!looped && this.shotIndex > idx && this.shotIndex < TITLE_SEQUENCE.length) idx = this.shotIndex
+    if (!looped && this.shotIndex === idx && this.spareIndex === idx + 1 && this.shot.endsEarly) idx++
+    // le dernier plan dure jusqu'au rebouclage (nuit, pause, nouvelle démo) : un défaut prévu après
+    // lui ne fait pas couper
+    const loopAt = sim.sun.T + RULES.nightHoldSeconds + RULES.demoLoopPauseSeconds
+    const durOf = (i: number) => (TITLE_SEQUENCE[i + 1] ? TITLE_SEQUENCE[i + 1]!.at * sim.sun.T : loopAt) - TITLE_SEQUENCE[i]!.at * sim.sun.T
     if (idx !== this.shotIndex || looped) {
-      const next = TITLE_SEQUENCE[idx + 1]?.at ?? 1.1
-      const dur = (next - TITLE_SEQUENCE[idx]!.at) * sim.sun.T
       // premier plan : on garde le fondu (ou la coupe) de l'entrée dans le mode
       const firstShot = this.shotIndex === -1
       this.shotIndex = idx
-      this.startShot(TITLE_SEQUENCE[idx]!.kind, dur, firstShot ? -1 : 0, false)
+      const loopReady = (looped || firstShot) && idx === 0 && this.spareIndex === LOOP_SPARE && this.spare.preSim === sim
+      if (cineDebug.log && (looped || firstShot)) cineDebug.log(`titre : début ${looped ? 'boucle' : 'premier'} idx=${idx} spare=${this.spareIndex} pre=${this.spare.preSim === sim} jobFrom=${this.spare.jobFrom.toFixed(2)} t=${this.spare.t.toFixed(2)} → ${loopReady ? 'préparé' : 'immédiat'}`)
+      // fin du chargement : prise préparée derrière l'écran de chargement (même plan de la séquence)
+      const bootReady = firstShot && !looped && this.spareIndex === LOAD_SPARE + idx && this.spare.preSim === null && this.spare.jobFrom - this.spare.t < 1.3
+      if ((!looped && !firstShot && this.spareIndex === idx) || loopReady || bootReady) {
+        // plan préparé d'avance (sa première prise est déjà choisie sur l'avenir exact) : coupe franche
+        this.spare.preSim = null
+        const prev = this.shot
+        this.shot = this.spare
+        this.spare = prev
+        // (horloge du plan gardée : négative s'il commence avant sa coupe prévue)
+        if (loopReady) this.shot.t = Math.max(0, this.shot.t)
+        this.shotFresh = true
+        this.blendT = this.blendDur = 0
+        // (au rebouclage, l'entrée dans la nouvelle sim a déjà émis la coupe)
+        if (!firstShot) cameraBeats.emit({ type: 'cut', mode: this.mode || 'loading' })
+        cameraState.shot = this.shot.kind
+      } else this.startShot(TITLE_SEQUENCE[idx]!.kind, durOf(idx), firstShot ? -1 : 0, false)
+      this.spareIndex = -1
+    }
+    // plan suivant (pas au rebouclage : nouvelle sim) : préparé pendant les dernières secondes de celui-ci
+    const ni = idx + 1
+    const toCut = ni < TITLE_SEQUENCE.length ? TITLE_SEQUENCE[ni]!.at * sim.sun.T - sim.sun.t : Infinity
+    if (toCut > 0 && toCut < TITLE_PREPARE) {
+      if (this.spareIndex !== ni) {
+        this.shotSeed++
+        this.spare.start(TITLE_SEQUENCE[ni]!.kind, durOf(ni), this.shotSeed, TITLE_LAYOUT)
+        this.spare.t = -toCut
+        this.spareIndex = ni
+      }
+      this.spare.prepare(dt, sim, view, this.aspect, this.shot.handOverAt)
+    }
+    // rebouclage : la démo suivante est déjà construite (et sa jumelle en avance) ; la première prise
+    // de la boucle suivante se choisit pendant la nuit, sur son avenir exact
+    const next = demoFuture.upcoming
+    const toLoop = loopAt - sim.sun.t
+    if (ni >= TITLE_SEQUENCE.length && next && toLoop > 0 && toLoop < TITLE_PREPARE) {
+      if (this.spareIndex !== LOOP_SPARE || this.spare.preSim !== next) {
+        this.shotSeed++
+        const n0 = TITLE_SEQUENCE[1]!.at * next.sun.T
+        this.spare.start(TITLE_SEQUENCE[0]!.kind, n0, this.shotSeed, TITLE_LAYOUT)
+        this.spare.preSim = next
+        this.spare.t = -toLoop
+        this.spareIndex = LOOP_SPARE
+      }
+      this.upcomingView.sim = next
+      this.upcomingView.realTime = view.realTime
+      this.spare.prepare(dt, next, this.upcomingView, this.aspect)
     }
     const recuts = this.shot.recuts
+    this.shot.nextReady = this.spareIndex === this.shotIndex + 1
     this.shot.update(dt, sim, view, this.aspect, this.desired)
-    // rideau du Simoun trop proche (< 120 m dans le champ) : masqué pour tout le plan, décidé à la
-    // coupe (jamais au milieu d'un plan : pas de saut)
-    if (this.shotFresh || this.shot.recuts !== recuts) this.titleHideStorm = stormNear(sim, this.desired, this.aspect)
+    // rideau du Simoun trop proche (< 120 m dans le champ, sur la durée prédite de la prise) : masqué
+    // pour toute la prise, décidé à la coupe (jamais au milieu d'une prise : pas de saut) — polish 2
+    if (this.shotFresh || this.shot.recuts !== recuts) {
+      this.titleHideStorm = this.shot.hideStorm
+      cameraState.shot = this.shot.actualKind
+    }
     this.shotFresh = false
-    // défaut de composition de l'image montrée (4 Hz ; debug et scripts de vérification)
+    // défaut de composition de l'image montrée (juge strict de cine.ts, 4 Hz ; debug et scripts)
     this.faultClock -= dt
     if (this.faultClock <= 0) {
       this.faultClock = 0.25
-      cameraState.shotFault = shotFault(sim, this.desired, this.aspect, TITLE_LAYOUT, this.titleHideStorm, this.shot.subjectDistance(sim, this.desired))
+      cameraState.shotFault = this.shot.judge(sim, view, this.desired, this.aspect, this.titleHideStorm)
     }
+  }
+
+  /**
+   * Chargement (la démo tourne déjà) : prépare la prise d'ouverture du titre pour « dans 0,6 s »,
+   * relancée chaque seconde ; à la fin du chargement, la coupe prend cette prise si elle tombe dans sa
+   * fenêtre (sinon choix immédiat, comme avant).
+   */
+  private prepareTitle(dt: number, view: GameView): void {
+    const sim = view.sim
+    if (!sim || sim.config.mode !== 'demo') return
+    const u = clamp01(sim.sun.t / sim.sun.T)
+    let idx = 0
+    for (let i = 0; i < TITLE_SEQUENCE.length; i++) if (u >= TITLE_SEQUENCE[i]!.at) idx = i
+    if (this.spareIndex !== LOAD_SPARE + idx || this.spare.t > 0.8 || this.spare.preSim !== null) {
+      this.shotSeed++
+      const end = TITLE_SEQUENCE[idx + 1] ? TITLE_SEQUENCE[idx + 1]!.at * sim.sun.T : sim.sun.T + RULES.nightHoldSeconds + RULES.demoLoopPauseSeconds
+      this.spare.start(TITLE_SEQUENCE[idx]!.kind, Math.max(1, end - sim.sun.t), this.shotSeed, TITLE_LAYOUT)
+      this.spareIndex = LOAD_SPARE + idx
+    }
+    this.spare.prepare(dt, sim, view, this.aspect, 0.6)
   }
 
   /** Crédits : longue suite de plans lents enchaînés par fondus de caméra. */
   private credits(dt: number, view: GameView): void {
     const sim = view.sim
     if (!sim) return this.cine(dt, view, 'still')
+    // horloge des plans = temps de la démo (comme au titre)
+    const sdt = dt * Math.max(0, Math.min(1, view.timeScale))
     if (this.shotIndex < 0 || this.modeTime >= this.creditsNext) {
-      this.shotIndex = (this.shotIndex + 1) % CREDITS_SEQUENCE.length
-      const e = CREDITS_SEQUENCE[this.shotIndex]!
+      const ni = (this.shotIndex + 1) % CREDITS_SEQUENCE.length
+      const prepared = this.shotIndex >= 0 && this.spareIndex === CREDITS_SPARE + ni
+      this.shotIndex = ni
+      const e = CREDITS_SEQUENCE[ni]!
       this.creditsNext = this.modeTime + e.at
-      this.startShot(e.kind, e.at + CREDITS_BLEND, this.shotIndex === 0 && this.modeTime < 0.2 ? -1 : CREDITS_BLEND, true)
+      this.startShot(e.kind, e.at + CREDITS_BLEND, ni === 0 && this.modeTime < 0.2 ? -1 : CREDITS_BLEND, true, prepared)
+      this.spareIndex = -1
     }
-    this.shot.update(dt, sim, view, this.aspect, this.desired)
+    // plan suivant préparé pendant les dernières secondes de celui-ci : pas d'à-coup au début du fondu
+    const toNext = this.creditsNext - this.modeTime
+    if (toNext > 0 && toNext < TITLE_PREPARE) {
+      const ni = (this.shotIndex + 1) % CREDITS_SEQUENCE.length
+      if (this.spareIndex !== CREDITS_SPARE + ni) {
+        this.shotSeed++
+        const e = CREDITS_SEQUENCE[ni]!
+        this.spare.start(e.kind, e.at + CREDITS_BLEND, this.shotSeed, CREDITS_LAYOUT)
+        this.spare.t = -toNext
+        this.spareIndex = CREDITS_SPARE + ni
+      }
+      this.spare.prepare(sdt, sim, view, this.aspect)
+    }
+    this.shot.update(sdt, sim, view, this.aspect, this.desired)
   }
 
   /** Résultats de manche : pause de nuit, montée à la verticale, carte à gauche. */

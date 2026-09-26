@@ -5,15 +5,17 @@
 // dans les marges du GDD ; la boîte de chaque oiseau réel (envergure, couronne, étiquette) est une
 // CONTRAINTE DURE : elle tient toujours dans le rectangle utile, sous la bande du HUD (polish S1).
 // Dramatisation : zoom vers un piqué engagé, « punch-in » sur les touches qui comptent (S6),
-// tremblement de touche, Grande Ombre (front borné, poussée lente, S2), travelling d'ouverture du
-// compte à rebours ; le tangage remonte quand des tours bouchent le cadre (S3).
+// tremblement de touche, Grande Ombre (plan serré sur le front, les humains et les bots proches du
+// front, poussée, tangage abaissé si les tours le permettent ; S2, vague 2), travelling d'ouverture
+// du compte à rebours ; le tangage remonte, puis le cadre recule, quand des tours bouchent le cadre
+// ou frôlent la caméra (S3, vague 2).
 import { RULES } from '../../sim/rules.ts'
 import type { SimEvent, SimState } from '../../sim/types.ts'
 import { birdAnchors, crownLift } from '../render/bird/anchors.ts'
 import { gameView, type GameView } from '../view.ts'
 import { clampRigToSets, fitSets, makeRig, makeSetsFit, projectRig, type FitSet, type Rig, type ScreenRect } from './framing.ts'
 import { clamp, clamp01, DEG, lerp, smoother, Spring } from './math.ts'
-import { FULL_SCREEN, towerCover } from './towerCover.ts'
+import { FULL_SCREEN, towerClearance, towerCover, towerCoverStats } from './towerCover.ts'
 
 export type FramingKind = 'round' | 'lobby' | 'rules'
 
@@ -45,11 +47,52 @@ const RULES_PITCH = 54 * DEG
 const LOBBY_MIN_RECT_WIDTH = 72
 /** Décalage vers l'est pendant la Grande Ombre (fraction de la largeur cadrée). */
 const GREAT_SHADOW_EAST = 0.06
-/** Grande Ombre : le front n'est cadré qu'à cette distance à l'ouest de l'oiseau le plus à l'ouest (m). */
-const GS_FRONT_BACK = 40
-/** Grande Ombre : poussée lente (largeur −10 %) et tangage abaissé de 3° sur toute la phase. */
+/**
+ * Grande Ombre : le front n'est cadré qu'à cette distance à l'ouest de l'oiseau cadré le plus à
+ * l'ouest (m) : 90 m au début (le mur de nuit se voit arriver), 40 m à la fin (plan serré).
+ */
+const GS_FRONT_BACK_START = 90
+const GS_FRONT_BACK_END = 40
+/** Grande Ombre : poussée lente (le sujet occupe jusqu'à 10 % de plus de l'écran). */
 const GS_PUSH = 0.1
-const GS_PITCH = 3 * DEG
+/**
+ * Grande Ombre : tangage abaissé de 5° sur la phase (plan plus rasant, le mur de nuit se lit), mais
+ * seulement tant que les tours ne bouchent pas le cadre abaissé (au-delà de 15 %, on garde le
+ * tangage du GDD ; polish vague 2).
+ */
+const GS_PITCH = 5 * DEG
+/**
+ * Grande Ombre, plan serré (polish vague 2) : à 8 oiseaux ou moins, le cadre ne suit plus toute la
+ * dispersion de l'arène. Il cadre le front, les humains (toujours), le porteur de la couronne (sous
+ * GS_CROWN_CAP), puis les bots les plus proches du front tant que la largeur reste sous la largeur visée,
+ * qui se resserre de 1,2 a à 0,8 a (a : demi-grand axe de l'arène) ; les autres bots peuvent sortir
+ * (flèche hors champ du HUD, GDD §13.1).
+ */
+const GS_WIDTH_START = 1.2
+const GS_WIDTH_END = 0.8
+/** Hystérésis du choix (un bot déjà cadré le reste jusqu'à 1,15 × la largeur visée) et période (s). */
+const GS_KEEP = 1.15
+const GS_SELECT_PERIOD = 0.2
+/**
+ * Porteur de la couronne (bot) cadré en premier tant que le cadre reste sous GS_CROWN_CAP × a (× GS_KEEP
+ * s'il l'était déjà) : non-régression vague 2. Banc (tools/polish/verify2/crownbench.ts), part de la
+ * Grande Ombre où la couronne est hors champ ou coupée : 4 oiseaux / 1 humain 49 → 28 %, 4 / 2 : 48 → 35 %,
+ * 6 / 1 : 57 → 17 %, 4 / 3 : 81 → 26 % ; envergure médiane −2 à −5 %, tours inchangées. Plus haut, la
+ * couronne reste mieux cadrée mais les oiseaux rapetissent (1,6 : −11 % ; toujours cadrée : −25 % au début
+ * et des cadres jusqu'à 1,8 a) : choix de DA laissé ouvert (docs/polish/verify2-regression.md).
+ */
+const GS_CROWN_CAP = 1.4
+/** Au-delà de cette distance (m) de son oiseau, une ombre n'est pas cadrée à la Grande Ombre (soleil rasant). */
+const GS_SHADOW_NEAR = 45
+/**
+ * Le plan serré part GS_LEAD_IN s avant la Grande Ombre (le soleil touche la Falaise) et le zoom avant
+ * y est GS_ZOOM_BOOST fois plus vif pendant les GS_ENTRY premières secondes : à l'annonce, la caméra
+ * pousse déjà vers le front au lieu de montrer l'arène entière.
+ */
+const GS_LEAD_IN = 1.2
+const GS_ENTRY = 3
+const GS_ZOOM_BOOST = 1.8
+const ALL_SLOTS = 0xfff
 /** Enveloppe du zoom de piqué : montée, tenue, retour (s réelles). */
 const DIVE_IN = RULES.camDiveZoomSeconds * 0.6
 const DIVE_OUT = 0.9
@@ -91,15 +134,32 @@ const PUNCH_CENTER_Y = 0.19
 /** Essais de rapprochements moindres quand un humain empêche le plan idéal. */
 const PUNCH_TRIES = 3
 
-/** Tours (S3) : part de l'écran couverte par les parties au-dessus de COVER_MIN_Z au-delà de laquelle on relève le tangage. */
-const COVER_MIN_Z = 20
+/**
+ * Tours (S3) : part de l'écran couverte par les parties au-dessus de COVER_MIN_Z au-delà de laquelle on
+ * relève le tangage. Vague 2 : 4 m (tour presque entière ; le critère est « aucune tour ne couvre plus
+ * de 15 % du cadre ») et, à moins de COVER_CLEAR m d'une tour, le cadre compte comme bouché.
+ */
+const COVER_MIN_Z = 4
+const COVER_CLEAR = 45
+/** Une tour seule compte pour 0,45 × sa largeur à l'écran (fraction) : au-delà de ~33 % de large, le cadre est bouché. */
+const COVER_WIDTH_K = 0.45
 const COVER_MAX = 0.15
 /** Hystérésis : le tangage ne redescend que sous cette part. */
 const COVER_OK = 0.11
+/** Une parade n'est retenue que si elle ramène sous cette part (marge sous le seuil : pas de cadre posé à 15 %). */
+const COVER_GOAL = 0.12
 const COVER_BOOSTS = [5 * DEG, 8 * DEG] as const
 /** Si relever de 8° ne suffit pas (caméra juste au-dessus d'un disque, cadre serré) : on recule. */
 const COVER_WIDEN = [1.2, 1.45, 1.8] as const
 const COVER_PERIOD = 0.1
+/** Au plus tant de parades évaluées par estimation (10 Hz) : borne le coût (~0,07 ms l'une, au cadre visé). */
+const COVER_EVALS = 12
+/** Parades candidates (recul, relèvement) dans l'ordre d'essai : relever d'abord, reculer en dernier. */
+const COVER_CANDIDATES: readonly (readonly [number, number])[] = (() => {
+  const out: [number, number][] = []
+  for (let wi = 0; wi <= COVER_WIDEN.length; wi++) for (let bi = wi === 0 ? 1 : 0; bi <= COVER_BOOSTS.length; bi++) out.push([wi, bi])
+  return out
+})()
 
 const MAX_PTS = 64
 const MAX_HARD = 32
@@ -171,7 +231,8 @@ export class FramingRig {
   private punchGoalY = 0
   private punchGoalW = 0
   private punchValid = false
-  /** Punch-in refusé à la dernière touche qui comptait : '' , 'large' ou 'décentré' (debug). */
+  private punchCheck = 0
+  /** Punch-in refusé à la dernière touche qui comptait : '' , 'large', 'décentré' ou 'tours' (debug). */
   punchReject = ''
   /** Punch-in : nombre lancé depuis la création, enveloppe courante (0..1). Pour le debug et les scripts. */
   punchCount = 0
@@ -182,9 +243,20 @@ export class FramingRig {
   /** Recul (log de la largeur) quand le tangage ne suffit pas à dégager les tours. */
   private readonly widen = new Spring()
   private widenGoal = 0
+  /** Dernière estimation des tours (debug, scripts) : encombrement sans parade, prévu avec la parade choisie. */
+  readonly coverTrace = { base: 0, chosen: 0 }
   private coverClock = 0
-  /** Part de l'écran couverte par les tours au-dessus de 20 m (dernière estimation, au tangage courant). */
+  /** Part de l'écran couverte par les tours au-dessus de 4 m (COVER_MIN_Z) (dernière estimation, au tangage courant). */
   towerCover = 0
+  // Grande Ombre (polish vague 2)
+  /** Oiseaux cadrés (masque de slots) ; tous hors de la Grande Ombre. */
+  gsMask = ALL_SLOTS
+  private gsClock = 0
+  /** Tangage abaissé de la Grande Ombre autorisé (1) ou bloqué par les tours (0), lissé. */
+  private readonly gsLow = new Spring()
+  private gsLowGoal = 1
+  private readonly gsOrder: number[] = []
+  private readonly gsKey = new Float64Array(12)
   kind: FramingKind = 'round'
 
   reset(kind: FramingKind): void {
@@ -202,6 +274,10 @@ export class FramingRig {
     this.widen.snap(0)
     this.widenGoal = 0
     this.coverClock = 0
+    this.gsMask = ALL_SLOTS
+    this.gsClock = 0
+    this.gsLow.snap(1)
+    this.gsLowGoal = 1
   }
 
   /** Piqué engagé (clac) : zoom vers la paire si les deux sont dans le champ (vérifié par l'appelant) et à découvert. */
@@ -278,7 +354,14 @@ export class FramingRig {
       if (!this.punchReject) break
     }
     if (this.punchReject) return false
+    // tours (vague 2) : le plan serré ne frôle aucune tour et n'en est pas bouché (ex. : plongée sur
+    // le Cadran à la hauteur des disques du gnomon)
+    if (punchBlocked(sim, pr, aspect)) {
+      this.punchReject = 'tours'
+      return false
+    }
     this.punchT = 0
+    this.punchCheck = 0
     this.lastPunchSim = sim.time
     this.punchCount++
     return true
@@ -347,8 +430,10 @@ export class FramingRig {
     let tx = fit.tx
     let ty = fit.ty
     // recul d'évitement des tours (S3) : les points convergent vers le centre, tout reste cadré
-    const w = kind === 'round' ? fit.width * Math.exp(this.widen.x) : fit.width
-    if (kind === 'round' && sim.sun.phase === 'greatShadow') {
+    // (vague 2) un recul décidé s'applique tout de suite au cadre visé (le ressort de zoom le lisse
+    // déjà) ; seul le retour passe par le ressort du recul, lent
+    const w = kind === 'round' ? fit.width * Math.exp(Math.max(this.widen.x, this.widenGoal)) : fit.width
+    if (kind === 'round' && isClimax(sim)) {
       // décalage vers l'est (GDD §13.1), sans pousser le cadre au-delà du bord est de l'arène
       // ni sortir un oiseau du rectangle utile
       const room = Math.max(0, Math.min(fit.slackRight, a * 1.06 - w / 2 - tx))
@@ -389,14 +474,7 @@ export class FramingRig {
     this.hardSet.rect = crowded ? USEFUL_RECT_CROWDED : USEFUL_RECT
     this.softSet.alignY = 0.5
     // Grande Ombre : poussée lente = le sujet peut occuper un peu plus de l'écran (les oiseaux restent tenus)
-    const push = sim.sun.phase === 'greatShadow' ? GS_PUSH * greatShadowProgress(sim) : 0
-    const k = 1 / (1 - push)
-    const R = this.pushRect
-    R.x0 = 0.5 - (0.5 - ROUND_RECT.x0) * k
-    R.x1 = 0.5 + (ROUND_RECT.x1 - 0.5) * k
-    R.y0 = 0.5 - (0.5 - ROUND_RECT.y0) * k
-    R.y1 = 0.5 + (ROUND_RECT.y1 - 0.5) * k
-    this.softSet.rect = R
+    this.softSet.rect = this.updatePushRect(sim)
     this.softSet.count = this.collectSoft(sim, view, false)
     fitSets(this.sets2, 0, pitch, FOV, aspect, minDist, 1e5, fit)
     if (this.farShadows > 0) {
@@ -426,6 +504,18 @@ export class FramingRig {
     }
   }
 
+  /** Rectangle du sujet : marges du GDD, élargies par la poussée lente de la Grande Ombre (le sujet occupe plus de l'écran). */
+  private updatePushRect(sim: SimState): ScreenRect {
+    const push = isClimax(sim) ? GS_PUSH * greatShadowProgress(sim) : 0
+    const k = 1 / (1 - push)
+    const R = this.pushRect
+    R.x0 = 0.5 - (0.5 - ROUND_RECT.x0) * k
+    R.x1 = 0.5 + (ROUND_RECT.x1 - 0.5) * k
+    R.y0 = 0.5 - (0.5 - ROUND_RECT.y0) * k
+    R.y1 = 0.5 + (ROUND_RECT.y1 - 0.5) * k
+    return R
+  }
+
   /** L'ellipse de l'arène (dézoom maximal : l'arène entière à l'écran). */
   private arenaPoints(sim: SimState): void {
     const P = this.pts
@@ -442,6 +532,7 @@ export class FramingRig {
    * dans LEAD s. `dropFar` : sans les oiseaux dont l'ombre est dans le Simoun (ρ > 1,0).
    */
   private collectSoft(sim: SimState, view: GameView, dropFar: boolean): number {
+    if (this.gsOn(sim)) return this.collectGsSoft(sim, view, this.gsMask)
     const P = this.pts
     let n = 0
     const push = (x: number, y: number, z: number) => {
@@ -493,13 +584,13 @@ export class FramingRig {
     if (!dropFar) this.farShadows = far
     if (round && sim.sun.phase === 'greatShadow' && sim.night.active && sim.birds.length) {
       // le front de nuit à la hauteur de chaque oiseau (la « lèvre dorée » entre dans le cadre), mais
-      // jamais plus de GS_FRONT_BACK m à l'ouest de l'oiseau le plus à l'ouest : pas de plan large imposé
+      // jamais plus de GS_FRONT_BACK_END m à l'ouest de l'oiseau le plus à l'ouest : pas de plan large imposé
       const nt = sim.night
       const px = -nt.dirY
       const py = nt.dirX
       let west = Infinity
       for (const b of sim.birds) west = Math.min(west, b.x * nt.dirX + b.y * nt.dirY)
-      const s = Math.max(nt.s, -sim.arena.a * 1.05, west - GS_FRONT_BACK)
+      const s = Math.max(nt.s, -sim.arena.a * 1.05, west - GS_FRONT_BACK_END)
       for (const b of sim.birds) {
         const q = b.x * px + b.y * py
         push(nt.dirX * s + px * q, nt.dirY * s + py * q, 0)
@@ -520,8 +611,140 @@ export class FramingRig {
     return n
   }
 
+  /**
+   * Grande Ombre, plan serré (vague 2) : les oiseaux cadrés (et leur position dans LEAD s), leur
+   * ombre si elle est proche (au soleil rasant, elle file au bord est et n'est pas cadrée), et le front
+   * à leur hauteur, au plus 90 → 40 m à l'ouest du plus à l'ouest d'entre eux.
+   */
+  private collectGsSoft(sim: SimState, view: GameView, mask: number): number {
+    const P = this.pts
+    let n = 0
+    const push = (x: number, y: number, z: number) => {
+      if (n >= MAX_PTS) return
+      P[n * 3] = x
+      P[n * 3 + 1] = y
+      P[n * 3 + 2] = z
+      n++
+    }
+    const alpha = view.alpha
+    const nt = sim.night
+    let west = Infinity
+    for (const b of sim.birds) {
+      if (!((mask >> b.slot) & 1)) continue
+      const p = view.prevBirds[b.slot] ?? b
+      const x = p.x + (b.x - p.x) * alpha
+      const y = p.y + (b.y - p.y) * alpha
+      const z = p.z + (b.z - p.z) * alpha
+      push(x, y, z)
+      push(x + b.vx * LEAD, y + b.vy * LEAD, z)
+      const scx = p.shadow.cx + (b.shadow.cx - p.shadow.cx) * alpha
+      const scy = p.shadow.cy + (b.shadow.cy - p.shadow.cy) * alpha
+      if (Math.hypot(scx - x, scy - y) < GS_SHADOW_NEAR && Math.hypot(scx / sim.arena.a, scy / sim.arena.b) <= SHADOW_RHO_DROP) push(scx, scy, 0)
+      west = Math.min(west, x * nt.dirX + y * nt.dirY)
+    }
+    this.farShadows = 0
+    if (nt.active && n > 0) {
+      const px = -nt.dirY
+      const py = nt.dirX
+      const back = lerp(GS_FRONT_BACK_START, GS_FRONT_BACK_END, smoother(greatShadowProgress(sim)))
+      const s = Math.max(nt.s, -sim.arena.a * 1.05, west - back)
+      for (const b of sim.birds) {
+        if (!((mask >> b.slot) & 1)) continue
+        const q = b.x * px + b.y * py
+        push(nt.dirX * s + px * q, nt.dirY * s + py * q, 0)
+      }
+    }
+    return n
+  }
+
+  /** Plan serré de la Grande Ombre actif : manche lancée, Grande Ombre (ou GS_LEAD_IN s avant), 8 oiseaux ou moins. */
+  private gsOn(sim: SimState): boolean {
+    if (this.kind !== 'round' || sim.sun.t < 0 || sim.birds.length === 0 || sim.birds.length > CROWDED_BIRDS) return false
+    return isClimax(sim) || (sim.sun.phase === 'sunset' && sim.sun.t >= gsStart(sim) - GS_LEAD_IN)
+  }
+
+  /** Largeur visée à la Grande Ombre (m) : de 1,2 a au début à 0,8 a à la nuit, jamais sous camMinWidth. */
+  private gsTargetWidth(sim: SimState): number {
+    return Math.max(RULES.camMinWidth, sim.arena.a * lerp(GS_WIDTH_START, GS_WIDTH_END, smoother(greatShadowProgress(sim))))
+  }
+
+  /**
+   * Choix des oiseaux cadrés à la Grande Ombre (5 Hz) : les humains toujours ; puis les bots, des
+   * voisins des humains aux plus lointains (sans humain : du plus proche du front au plus lointain ;
+   * ceux déjà dans la nuit en dernier), chacun gardé si le cadre reste sous la largeur visée
+   * (× GS_KEEP pour un bot déjà cadré : pas de va-et-vient).
+   */
+  private updateGsMask(dt: number, sim: SimState, view: GameView, aspect: number): void {
+    if (!this.gsOn(sim)) {
+      this.gsMask = ALL_SLOTS
+      this.gsClock = 0
+      return
+    }
+    this.gsClock -= dt
+    if (this.gsClock > 0 && this.gsMask !== ALL_SLOTS) return
+    // pause de la nuit : le choix est figé (les oiseaux planent, la montée part de ce cadre)
+    if (sim.sun.phase === 'night' && this.gsMask !== ALL_SLOTS) return
+    this.gsClock = GS_SELECT_PERIOD
+    const prev = this.gsMask
+    const target = this.gsTargetWidth(sim)
+    const nt = sim.night
+    const order = this.gsOrder
+    const key = this.gsKey
+    order.length = 0
+    let mask = 0
+    for (const b of sim.birds) if (isHuman(view, b.slot)) mask |= 1 << b.slot
+    const humans = mask
+    // le porteur de la couronne (bot) d'abord, sous GS_CROWN_CAP × a (le narrateur dit « elle se voit de loin »)
+    const cs = sim.crownSlot
+    if (cs >= 0 && sim.bySlot[cs] && !((mask >> cs) & 1)) {
+      const m2 = mask | (1 << cs)
+      const keep = prev !== ALL_SLOTS && (prev >> cs) & 1 ? GS_KEEP : 1
+      if (mask === 0 || this.gsWidth(sim, view, aspect, m2) <= Math.max(target, GS_CROWN_CAP * sim.arena.a) * keep) mask = m2
+    }
+    for (const b of sim.birds) {
+      if ((mask >> b.slot) & 1) continue
+      // distance devant le front (m) ; avant la nuit, depuis le bord ouest
+      const d = nt.active ? b.x * nt.dirX + b.y * nt.dirY - nt.s : b.x + sim.arena.a
+      // avec des humains : d'abord leurs voisins (plan compact autour du joueur), le front départage ;
+      // sans humain (démo, page de dev) : les plus menacés par le front
+      let near = 0
+      if (humans) {
+        near = Infinity
+        for (const h of sim.birds) if ((humans >> h.slot) & 1) near = Math.min(near, Math.hypot(h.x - b.x, h.y - b.y))
+      }
+      key[b.slot] = (d >= -8 ? 0 : 1e4) + near + 0.35 * Math.abs(d)
+      // tri par insertion (≤ 12 oiseaux, sans allocation)
+      let i = order.length
+      order.push(b.slot)
+      while (i > 0 && key[order[i - 1]!]! > key[b.slot]!) {
+        order[i] = order[i - 1]!
+        i--
+      }
+      order[i] = b.slot
+    }
+    for (const s of order) {
+      const m2 = mask | (1 << s)
+      const keep = prev !== ALL_SLOTS && (prev >> s) & 1 ? GS_KEEP : 1
+      if (mask === 0 || this.gsWidth(sim, view, aspect, m2) <= target * keep) mask = m2
+    }
+    this.gsMask = mask
+  }
+
+  /** Largeur du cadre (m) qui tient les oiseaux du masque et le front, au tangage courant. */
+  private gsWidth(sim: SimState, view: GameView, aspect: number, mask: number): number {
+    const pitch = this.pitchFor(sim)
+    const tanH = Math.tan((FOV * DEG) / 2) * aspect
+    this.hardSet.count = this.collectHard(sim, view, pitch, mask)
+    this.hardSet.rect = USEFUL_RECT
+    this.softSet.rect = this.updatePushRect(sim)
+    this.softSet.alignY = 0.5
+    this.softSet.count = this.collectGsSoft(sim, view, mask)
+    fitSets(this.sets2, 0, pitch, FOV, aspect, RULES.camMinWidth / (2 * tanH), 1e5, this.fit2)
+    return this.fit2.width
+  }
+
   /** Boîtes des oiseaux réels (contrainte dure) : maintenant et dans LEAD s ; la boucle entière au compte à rebours. */
-  private collectHard(sim: SimState, view: GameView, pitch: number): number {
+  private collectHard(sim: SimState, view: GameView, pitch: number, mask = this.gsOn(sim) ? this.gsMask : ALL_SLOTS): number {
     const P = this.hard
     const E = this.hardExt
     let n = 0
@@ -531,6 +754,7 @@ export class FramingRig {
     this.nowSet.count = 0
     for (const b of sim.birds) {
       if (n + 2 > MAX_HARD) break
+      if (!((mask >> b.slot) & 1)) continue
       boxOf(sim, b.slot, sinP, _box)
       if (countdown) {
         const R = loopCenter(b, _loop)
@@ -567,22 +791,21 @@ export class FramingRig {
     return n
   }
 
-  /** Tangage : GDD (58° → 42°), Grande Ombre −3°, + relèvement quand des tours bouchent le cadre (S3). */
+  /** Tangage : GDD (58° → 42°), Grande Ombre −5° (si les tours le permettent), + relèvement quand des tours bouchent le cadre (S3). */
   private pitchFor(sim: SimState): number {
     if (this.kind === 'lobby') return LOBBY_PITCH
     if (this.kind === 'rules') return RULES_PITCH
     return this.basePitch(sim) + this.boost.x
   }
 
+  /** Tangage du GDD (58° → 42°) moins l'abaissement de la Grande Ombre, s'il est autorisé (lissé). */
   private basePitch(sim: SimState): number {
-    const u = clamp(sim.sun.u, 0, 1)
-    let p = lerp(RULES.camPitchStartDeg, RULES.camPitchEndDeg, u) * DEG
-    if (sim.sun.phase === 'greatShadow') p -= GS_PITCH * greatShadowProgress(sim)
-    return p
+    return gddPitch(sim) - gsDrop(sim) * this.gsLow.x
   }
 
   /**
-   * Estime la part d'écran bouchée par les tours (au-dessus de 20 m) et choisit la parade (10 Hz) :
+   * Estime l'encombrement du cadre par les tours (obstruction : au-dessus de 4 m, tour trop large,
+   * caméra trop proche) et choisit la parade (10 Hz) :
    * relever le tangage de 5 puis 8°, puis reculer (× 1,2, × 1,45, × 1,8) — une caméra qui passe
    * juste au-dessus d'un grand disque ne s'en dégage qu'en reculant. Chaque essai est évalué au
    * cadre courant ET au cadre visé (qui a de l'avance) : la parade part avant que la tour n'entre.
@@ -594,45 +817,61 @@ export class FramingRig {
       const tanH2 = 2 * Math.tan((FOV * DEG) / 2) * aspect
       // largeurs sans le recul d'évitement (sinon il ne redescendrait jamais)
       const wNow = Math.exp(this.sw.x - this.widen.x)
-      const wGoal = this.goalW
-      const base = this.basePitch(sim)
-      const cover = (boost: number, k: number) => {
+      // (vague 2) le cadre visé contient lui aussi le recul courant : on l'en retire, sinon chaque
+      // parade était évaluée sur un cadre déjà reculé et la prévision était trop optimiste
+      const wGoal = this.goalW / Math.exp(Math.max(this.widen.x, this.widenGoal))
+      const gdd = gddPitch(sim)
+      const drop = gsDrop(sim)
+      let base = gdd - drop * this.gsLowGoal
+      // encombrement au cadre visé (qui a de l'avance) et, sauf `goalOnly`, au cadre courant
+      const cover = (boost: number, k: number, goalOnly = false) => {
         const r = _probeRig
         r.tz = 0
         r.yaw = 0
         r.fov = FOV
         r.pitch = base + boost
-        r.tx = this.sx.x
-        r.ty = this.sy.x
-        r.dist = (wNow * k) / tanH2
-        const a = towerCoverage(sim, r, aspect)
         r.tx = this.goalX
         r.ty = this.goalY
         r.dist = (wGoal * k) / tanH2
-        return Math.max(a, towerCoverage(sim, r, aspect))
+        const g = obstruction(sim, r, aspect)
+        if (goalOnly) return g
+        r.tx = this.sx.x
+        r.ty = this.sy.x
+        r.dist = (wNow * k) / tanH2
+        return Math.max(g, obstruction(sim, r, aspect))
       }
+      // Grande Ombre (vague 2) : le tangage abaissé n'est gardé que si les tours ne bouchent pas le
+      // cadre abaissé (> 15 %) ; il revient sous 11 % (hystérésis). Sinon, tangage du GDD.
+      if (drop > 0) {
+        base = gdd - drop
+        const cLow = cover(0, 1)
+        if (cLow > COVER_MAX) this.gsLowGoal = 0
+        else if (cLow < COVER_OK) this.gsLowGoal = 1
+        base = gdd - drop * this.gsLowGoal
+      } else this.gsLowGoal = 1
       const c0 = cover(0, 1)
       let goal = 0
       let widen = 0
       if (c0 > COVER_MAX) {
+        // parades dans l'ordre (relever, puis reculer) : la première sous COVER_GOAL, sinon la meilleure ;
+        // tri au cadre visé, confirmation au cadre courant
         let best = c0
-        let found = false
-        for (let wi = 0; wi <= COVER_WIDEN.length && !found; wi++) {
+        let budget = COVER_EVALS
+        for (const [wi, bi] of COVER_CANDIDATES) {
+          if (budget-- <= 0) break
           const k = wi === 0 ? 1 : COVER_WIDEN[wi - 1]!
-          for (let bi = wi === 0 ? 1 : 0; bi <= COVER_BOOSTS.length; bi++) {
-            const b = bi === 0 ? 0 : COVER_BOOSTS[bi - 1]!
-            const c = cover(b, k)
-            if (c < best - 0.01) {
-              best = c
-              goal = b
-              widen = Math.log(k)
-            }
-            if (c <= COVER_MAX) {
-              goal = b
-              widen = Math.log(k)
-              found = true
-              break
-            }
+          const b = bi === 0 ? 0 : COVER_BOOSTS[bi - 1]!
+          let c = cover(b, k, true)
+          if (c <= COVER_GOAL) c = cover(b, k)
+          if (c < best - 0.01) {
+            best = c
+            goal = b
+            widen = Math.log(k)
+          }
+          if (c <= COVER_GOAL) {
+            goal = b
+            widen = Math.log(k)
+            break
           }
         }
       } else if (c0 > COVER_OK) {
@@ -642,6 +881,8 @@ export class FramingRig {
       }
       this.boostGoal = goal
       this.widenGoal = widen
+      this.coverTrace.base = c0
+      this.coverTrace.chosen = c0 > COVER_OK ? cover(goal, Math.exp(widen)) : c0
       const r = _probeRig
       r.tx = this.sx.x
       r.ty = this.sy.x
@@ -650,7 +891,10 @@ export class FramingRig {
       this.towerCover = towerCoverage(sim, r, aspect)
     }
     this.boost.step(this.boostGoal, 2.2, dt)
-    this.widen.step(this.widenGoal, this.widenGoal > this.widen.x ? 2.4 : 1.0, dt)
+    // (vague 2) retour du recul plus vif (1,6 au lieu de 1,0) : le plan serré revient dès que la tour est passée
+    this.widen.step(this.widenGoal, this.widenGoal > this.widen.x ? 2.4 : 1.6, dt)
+    // remonter vite (une tour entre), redescendre lentement
+    this.gsLow.step(this.gsLowGoal, this.gsLowGoal < this.gsLow.x ? 2.6 : 1.2, dt)
   }
 
   /**
@@ -697,6 +941,20 @@ export class FramingRig {
     this.punchGoalY = this.pfit.ty
     this.punchGoalW = Math.min(this.pfit.width, this.punchW0)
     this.punchValid = true
+    // la paire file vers une tour : le plan serré se relâche plus tôt (10 Hz)
+    this.punchCheck -= dt
+    if (this.punchT < PUNCH_IN + PUNCH_HOLD && this.punchCheck <= 0) {
+      this.punchCheck = COVER_PERIOD
+      const pr = _probeRig
+      pr.tx = this.pfit.tx
+      pr.ty = this.pfit.ty
+      pr.tz = 0
+      pr.yaw = 0
+      pr.pitch = this.pitchFor(sim)
+      pr.dist = this.pfit.dist
+      pr.fov = FOV
+      if (punchBlocked(sim, pr, aspect)) this.punchT = PUNCH_IN + PUNCH_HOLD
+    }
     if (this.punchT < PUNCH_IN + PUNCH_HOLD) {
       const e = smoother(this.punchT / PUNCH_IN)
       this.punchE.x = Math.max(this.punchE.x, e)
@@ -715,6 +973,10 @@ export class FramingRig {
     this.punchT = -1
     this.punchE.snap(0)
     this.punchLevel = 0
+    if (this.kind === 'round') {
+      this.gsClock = 0
+      this.updateGsMask(0, sim, view, aspect)
+    }
     this.desired(sim, view, aspect)
     this.goalX = this.fit.tx
     this.goalY = this.fit.ty
@@ -728,14 +990,19 @@ export class FramingRig {
 
   update(dt: number, sim: SimState, view: GameView, aspect: number): Rig {
     this.drift += dt
-    if (this.kind === 'round') this.updateTowers(dt, sim, aspect)
+    if (this.kind === 'round') {
+      this.updateGsMask(dt, sim, view, aspect)
+      this.updateTowers(dt, sim, aspect)
+    }
     // compte à rebours : les oiseaux bouclent sur place ; le cadre (centres et cercles des boucles) ne bouge pas
     this.desired(sim, view, aspect)
     this.sx.step(this.goalX, RULES.camPosOmega, dt)
     this.sy.step(this.goalY, RULES.camPosOmega, dt)
     // dézoomer plus vite que zoomer : on ne perd jamais un oiseau au bord du cadre
     const lw = Math.log(this.goalW)
-    this.sw.step(lw, lw > this.sw.x ? RULES.camZoomOmega * ZOOM_OUT_BOOST : RULES.camZoomOmega, dt)
+    // entrée dans la Grande Ombre : poussée plus vive vers le plan serré
+    const zin = this.gsOn(sim) && sim.sun.t < gsStart(sim) + GS_ENTRY ? GS_ZOOM_BOOST : 1
+    this.sw.step(lw, lw > this.sw.x ? RULES.camZoomOmega * ZOOM_OUT_BOOST : RULES.camZoomOmega * zin, dt)
     if (this.kind === 'round' && sim.sun.t >= 0) this.guard(sim, aspect)
     if (this.kind === 'round') {
       this.updatePunch(dt, sim, view, aspect)
@@ -829,9 +1096,29 @@ function copyFit(dst: ReturnType<typeof makeSetsFit>, src: ReturnType<typeof mak
   dst.slackRight = src.slackRight
 }
 
+/** Tangage du GDD : 58° → 42° linéaire sur la manche. */
+function gddPitch(sim: SimState): number {
+  return lerp(RULES.camPitchStartDeg, RULES.camPitchEndDeg, clamp(sim.sun.u, 0, 1)) * DEG
+}
+
+/** Abaissement du tangage de la Grande Ombre (rad), avant blocage par les tours. */
+function gsDrop(sim: SimState): number {
+  return isClimax(sim) ? GS_PITCH * greatShadowProgress(sim) : 0
+}
+
+/** Grande Ombre ou pause de la nuit qui la suit (le cadrage du climax y est gardé tel quel). */
+function isClimax(sim: SimState): boolean {
+  return sim.sun.phase === 'greatShadow' || sim.sun.phase === 'night'
+}
+
+/** Instant de soleil (s) du début de la Grande Ombre. */
+function gsStart(sim: SimState): number {
+  return (RULES.greatShadowAt * sim.sun.T) / RULES.roundSunSeconds
+}
+
 /** Avancée de la Grande Ombre (0 à son début, 1 à la nuit). */
 export function greatShadowProgress(sim: SimState): number {
-  const t0 = (RULES.greatShadowAt * sim.sun.T) / RULES.roundSunSeconds
+  const t0 = gsStart(sim)
   return clamp01((sim.sun.t - t0) / Math.max(1, sim.sun.T - t0))
 }
 
@@ -910,6 +1197,37 @@ export function towerCoverage(sim: SimState, r: Rig, aspect: number, minZ = COVE
   const camX = r.tx + Math.sin(r.yaw) * cp * r.dist
   const camY = r.ty - Math.cos(r.yaw) * cp * r.dist
   return towerCover(sim, camX, camY, camZ, rigProjector, tanV * aspect, tanV, minZ, FULL_SCREEN)
+}
+
+/**
+ * Encombrement d'un cadre par les tours, comparé à COVER_MAX : part d'écran couverte (au-dessus de
+ * COVER_MIN_Z), une seule tour trop large (plus de COVER_MAX / COVER_WIDTH_K de la largeur, soit
+ * ~33 % : un disque qui barre le cadre même vu par la tranche), ou caméra trop près d'une tour.
+ */
+function obstruction(sim: SimState, r: Rig, aspect: number): number {
+  const c = towerCoverage(sim, r, aspect)
+  return Math.max(c, COVER_WIDTH_K * towerCoverStats.maxWidth, clearPenalty(sim, r))
+}
+
+/**
+ * Caméra à moins de COVER_CLEAR m d'une tour (au-dessus de 20 m) : pénalité qui compte comme une
+ * couverture au-delà du seuil (et croît en s'approchant), sinon 0. La trame du matériau des tours
+ * efface ces fragments proches, mais le cadre ne doit pas s'y installer.
+ */
+function clearPenalty(sim: SimState, r: Rig): number {
+  const cp = Math.cos(r.pitch)
+  const d = towerClearance(sim, r.tx + Math.sin(r.yaw) * cp * r.dist, r.ty - Math.cos(r.yaw) * cp * r.dist, r.tz + Math.sin(r.pitch) * r.dist)
+  return d < COVER_CLEAR ? COVER_MAX + 0.02 + (COVER_CLEAR - d) * 0.01 : 0
+}
+
+/** Distance minimale (m) entre la caméra d'un punch-in et une tour (au-dessus de 20 m). */
+const PUNCH_CLEAR = 42
+
+/** Le rig d'un plan serré est-il bouché par les tours (au-delà de COVER_GOAL, avec marge) ou trop près de l'une d'elles ? */
+function punchBlocked(sim: SimState, r: Rig, aspect: number): boolean {
+  if (obstruction(sim, r, aspect) > COVER_GOAL) return true
+  const cp = Math.cos(r.pitch)
+  return towerClearance(sim, r.tx + Math.sin(r.yaw) * cp * r.dist, r.ty - Math.cos(r.yaw) * cp * r.dist, r.tz + Math.sin(r.pitch) * r.dist) < PUNCH_CLEAR
 }
 
 /** Point interpolé d'un oiseau (repère sim) — commodité pour les autres plans. */

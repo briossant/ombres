@@ -25,13 +25,14 @@ for (const a of process.argv.slice(2)) { const [x, y] = a.split(':'); console.lo
 const sst = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
 const PALE_DE = 0.06
 const PAINT_C_GOLDEN_MAX = 0.125
-function paleWash(t, G, paintC, cmax) {
+function paleWash(t, G, paintC, cmax, dark = 0) {
   const Lg = G[0]
   let Ls = 0.5 * Lg + 0.35 + t.dL
   Ls = Ls + (Math.min(Ls, Lg - 0.05) - Ls) * sst(0.66, 0.8, Lg)
   let Lp = Lg < 0.66 ? Lg + (Ls - Lg) * 0.45 : Lg - 0.03
   const h = (t.h * Math.PI) / 180, dir = [Math.cos(h), Math.sin(h)]
-  const C0 = Math.min(paintC * t.cs, cmax)
+  const capK = 1 + (sst(0.6, 0.68, Ls) - 1) * dark // au couchant, plafond pour les lavis clairs seulement (polish 2)
+  const C0 = Math.min(paintC * t.cs, 1 + (cmax - 1) * capK)
   let Cp = 0.55 * C0
   let dl = Lp - Lg
   const dab = [dir[0] * Cp - G[1], dir[1] * Cp - G[2]], dd = dab[0] ** 2 + dab[1] ** 2
@@ -48,8 +49,9 @@ console.log('— en jeu (garde pâle / sol ≥ 0,06) —')
 let worst = { v: 9, who: '' }
 for (const k of palette.keyframes) {
   const G = lab(k.hex.groundFlat), pe = k.paletteElevDeg
-  const cmax = PAINT_C_GOLDEN_MAX + (1 - sst(34, 25, pe) * sst(5, 9, pe)) * (1 - PAINT_C_GOLDEN_MAX)
-  const row = palette.players.map(p => ({ n: p.fr, v: dist(paleWash(p.terr, G, k.derived.paintChroma, cmax), G) }))
+  // plafond de chroma des forts (palette.ts) : 0,125 à l'heure dorée, 0,12 au couchant (polish 2)
+  const late = sst(34, 25, pe), cmax = (PAINT_C_GOLDEN_MAX + (0.12 - PAINT_C_GOLDEN_MAX) * sst(9, 5, pe)) * late + (1 - late)
+  const row = palette.players.map(p => ({ n: p.fr, v: dist(paleWash(p.terr, G, k.derived.paintChroma, cmax, sst(9, 5, pe)), G) }))
   const m = row.reduce((a, b) => (b.v < a.v ? b : a))
   if (m.v < worst.v) worst = { v: m.v, who: `${k.id} ${m.n}` }
   console.log(k.id.padEnd(6), row.map(r => `${r.n.slice(0, 4)} ${r.v.toFixed(3)}`).join(' '), `| min ${m.v.toFixed(3)} (${m.n})`)

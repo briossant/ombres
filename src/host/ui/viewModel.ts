@@ -16,6 +16,7 @@ import { RULES } from '../../sim/rules.ts'
 import type { PlayerKind } from '../view.ts'
 import { simEvents, type Emitter } from '../bus.ts'
 import { t } from '../../shared/i18n.ts'
+import type { Lang } from '../../shared/protocol.ts'
 
 // ─── Écrans ────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,14 @@ export type ScreenId =
 /** Surcouche par-dessus l'écran courant. La pause est un état à part (`paused`). */
 export type OverlayId = 'settings' | null
 
-export type HostLink = 'ok' | 'reconnecting' | 'lost'
+/**
+ * Lien PC ↔ serveur : 'reconnecting' (réseau, redéploiement : on réessaie seul) ;
+ * 'replaced' (un autre onglet a repris la salle : on ne réessaie pas, « Reprendre ici »).
+ */
+export type HostLink = 'ok' | 'reconnecting' | 'replaced'
+
+/** Image du jeu : 'lost' = contexte WebGL perdu (pilote réinitialisé, GPU saturé), manche en pause. */
+export type DisplayState = 'ok' | 'lost'
 
 export interface UiState {
   screen: ScreenId
@@ -48,6 +56,8 @@ export interface UiState {
   pausedBy: number
   /** Lien PC ↔ serveur : 'reconnecting' affiche la surcouche « reconnexion ». */
   hostLink: HostLink
+  /** Image du jeu : 'lost' affiche la surcouche « L'image s'est interrompue ». */
+  display: DisplayState
 }
 
 export const useUi = create<UiState>(() => ({
@@ -58,6 +68,7 @@ export const useUi = create<UiState>(() => ({
   paused: false,
   pausedBy: -1,
   hostLink: 'ok',
+  display: 'ok',
 }))
 
 // ─── Joueurs (salon, HUD, résultats) ───────────────────────────────────────
@@ -199,6 +210,12 @@ export interface SubtitleVM {
   text?: string
   /** Couleur désignée par la réplique (index PLAYER_COLORS), null si aucune. */
   colorIndex: number | null
+  /**
+   * Langue d'un `text` figé (réplique voisée) : le nom de couleur s'écrit dans cette langue, même
+   * après un changement de langue en cours de réplique (elle finit comme elle a commencé, sans
+   * mélange). Absente : langue courante (`key` est alors retraduite).
+   */
+  lang?: Lang
 }
 
 export interface HintVM {
@@ -492,6 +509,11 @@ export interface UiActions {
 
   /** Plein écran (touche F). Défaut : API Fullscreen du navigateur. */
   toggleFullscreen(): void
+
+  /** Onglet remplacé par un autre onglet (même salle) : reprendre la salle ici. */
+  takeOver(): void
+  /** Image perdue pour de bon : sauvegarde immédiate puis rechargement (la partie reprend). */
+  reloadPage(): void
 }
 
 const setScreen = (screen: ScreenId): void => useUi.setState({ screen, overlay: null })
@@ -534,6 +556,8 @@ const defaultActions: UiActions = {
       // plein écran refusé (iframe, navigateur) : sans effet
     }
   },
+  takeOver: () => useUi.setState({ hostLink: 'ok' }),
+  reloadPage: () => location.reload(),
 }
 
 /** Actions courantes. L'UI appelle toujours `uiActions.x()` (jamais une copie). */
@@ -580,9 +604,9 @@ export function showBanner(
  * Sous-titre du narrateur (cartouche « récitatif »), RULES.subtitleSeconds par
  * défaut ; passer la durée du clip audio si elle est plus longue.
  */
-export function showSubtitle(sub: { key?: string; text?: string; colorIndex?: number | null; seconds?: number }): void {
+export function showSubtitle(sub: { key?: string; text?: string; colorIndex?: number | null; seconds?: number; lang?: Lang }): void {
   const id = nextId++
-  useHud.setState({ subtitle: { id, key: sub.key, text: sub.text, colorIndex: sub.colorIndex ?? null } })
+  useHud.setState({ subtitle: { id, key: sub.key, text: sub.text, colorIndex: sub.colorIndex ?? null, ...(sub.lang ? { lang: sub.lang } : {}) } })
   later((sub.seconds ?? RULES.subtitleSeconds) * 1000, () => {
     if (useHud.getState().subtitle?.id === id) useHud.setState({ subtitle: null })
   })

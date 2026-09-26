@@ -10,7 +10,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { NARRATOR_LINES, lineHasColor } from '../../src/director/lines.ts'
+import { KIND_SPECS, NARRATOR_LINES, lineHasColor, type NarratorKind } from '../../src/director/lines.ts'
 import { narrator } from '../../src/shared/strings/narrator.ts'
 import { PLAYER_COLORS } from '../../src/shared/players.ts'
 import type { Lang } from '../../src/shared/protocol.ts'
@@ -30,8 +30,44 @@ const SAY: Partial<Record<Lang, Record<number, string>>> = {
  * Texte prononcé imposé pour un clip précis (`<lang>/<id>`), quand un nom se soude au mot suivant :
  * une virgule sépare le nom sans changer le sous-titre.
  */
+// (« Rose mord la poussière », dit « Osmore », a été réécrit en vague 2)
 const SAY_CLIP: Record<string, string> = {
-  'fr/miss.9': 'Rose, mord la poussière. On n\'a rien vu.', // « Rose mord » → « Osmore »
+  'fr/hiddenLong.9': 'Rôse reste à l\'abri. C\'est plus prudent.', // « Rose » seul en tête : « Orze », « Ours »
+  'fr/huntStreak.0': 'Corail, chasse encore. Surveillez le ciel.', // « Corail chasse » : « Chasanto », « Shazam »
+}
+
+/**
+ * Texte prononcé imposé pour un modèle entier (`<lang>/<lineId>`, avec `{color}`), mêmes mots que le
+ * sous-titre à la ponctuation et à la graphie britannique près.
+ */
+const SAY_TPL: Record<string, string> = {
+  // la virgule fait marquer une pause à Pocket : 3,0-3,3 s parlées au lieu de 2,4-2,7 (règle < 3 s)
+  'en/doubleHit': 'Two birds one strike. {color} is hungry.',
+  // sous-titre en anglais britannique (« colour », comme l'interface) ; la voix, identique, est gardée
+  'en/matchWin': '{color} wins. Remember that color.',
+}
+
+/**
+ * Mots qui doivent être entendus par l'ASR dans une réplique précise (en plus du nom de couleur),
+ * quand c'est le mot qui porte le sens et que Pocket l'a déjà mal dit.
+ */
+const LINE_KEYWORDS: Record<string, string[]> = {
+  'fr/golden1': ['l’heure dorée'], // « Leur doré » : homophone, ramené à la même forme par gen.py
+  'fr/greatShadow1': ['glace'], // l'ancien « elle fige tout » était entendu « elle fiche tout »
+  'en/doubleHit': ['strike'], // glossaire EN : l'attaque se dit « strike »
+}
+
+/**
+ * Condition N de `--asr-strict` (Whisper SANS la liste des couleurs) : le nom n'y est exigé que pour
+ * les deux couleurs que les critiques ont entendues de travers (« La gomme » pour Lagon, « Saffron »,
+ * « Le franc » pour Safran). Sans amorce, Whisper écrit « Corée » pour un « Corail » bien dit, « sa
+ * forme » pour « Safran porte » : on n'exige alors que le reste de la phrase (CER).
+ */
+const HEARD_NP: Partial<Record<Lang, Record<number, string>>> = {
+  fr: {
+    1: 'Lagon|lagons|lagond|lagoon',
+    3: 'Safran|saffran|safrant|saffron|safron',
+  },
 }
 
 /**
@@ -69,12 +105,22 @@ const HEARD: Record<Lang, Record<number, string>> = {
   },
 }
 
+/**
+ * Écart voix / fond (LU) de la condition « en contexte » (`gen.py --asr-strict C`), mesuré en partie
+ * à 12 oiseaux (docs/polish/fix2-narrator.md) : en manche, 10ᵉ centile +6 LU (défaut de narrator.sh) ;
+ * sur les écrans de résultats et au podium, la voix n'est jamais descendue sous +7,8 LU → +8.
+ */
+const QUIET_KINDS: ReadonlySet<NarratorKind> = new Set(['lastRound', 'matchWin', 'matchTie', 'rematch'])
+const bedSnrOf = (kind: NarratorKind) => (KIND_SPECS[kind].scope === 'results' || QUIET_KINDS.has(kind) ? { asr_bed_snr: 8 } : {})
+
 interface TtsLine {
   id: string
   lang: Lang
   text: string
   say?: string
   keywords?: string[]
+  keywords_np?: string[]
+  asr_bed_snr?: number
   asr_prompt?: string
   seed?: number
 }
@@ -117,9 +163,17 @@ function lint(key: string, lang: Lang, tpl: string, withColor: boolean): string[
   return errs.map(e => `${lang}/${key}: ${e}`)
 }
 
-/** Une graphie imposée doit dire le même texte que le sous-titre, à la ponctuation près. */
+/** Une graphie imposée doit dire le même texte que le sous-titre, à la ponctuation et à « colour » près. */
 function sameWords(a: string, b: string): boolean {
-  const w = (s: string) => forVoice(s).toLowerCase().replace(/[^\p{L}' ]/gu, ' ').replace(/\s+/g, ' ').trim()
+  const w = (s: string) =>
+    forVoice(s)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '') // « Rôse » (graphie prononcée) = « Rose »
+      .replace(/colour/g, 'color')
+      .replace(/[^\p{L}' ]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
   return w(a) === w(b)
 }
 
@@ -138,8 +192,20 @@ function build(): { lines: TtsLine[]; errors: string[] } {
       const withColor = lineHasColor(def)
       errors.push(...lint(key, lang, tpl, withColor))
       const seedOf = (id: string) => (SEEDS[`${lang}/${id}`] !== undefined ? { seed: SEEDS[`${lang}/${id}`] } : {})
+      const lineKw = LINE_KEYWORDS[`${lang}/${def.id}`] ?? []
+      const sayTpl = SAY_TPL[`${lang}/${def.id}`] ?? tpl
+      if (SAY_TPL[`${lang}/${def.id}`] && !sameWords(sayTpl, tpl)) errors.push(`${lang}/${key}: SAY_TPL ne dit plus le texte`)
       if (!withColor) {
-        lines.push({ id: def.id, lang, text: tpl, ...(forVoice(tpl) !== tpl ? { say: forVoice(tpl) } : {}), ...seedOf(def.id) })
+        const say = forVoice(sayTpl)
+        lines.push({
+          id: def.id,
+          lang,
+          text: tpl,
+          ...(say !== tpl ? { say } : {}),
+          ...(lineKw.length ? { keywords: lineKw, asr_prompt: ASR_PROMPT[lang] } : {}),
+          ...bedSnrOf(def.kind),
+          ...seedOf(def.id),
+        })
         continue
       }
       for (const color of PLAYER_COLORS) {
@@ -147,16 +213,19 @@ function build(): { lines: TtsLine[]; errors: string[] } {
         const spoken = SAY[lang]?.[color.index] ?? name
         const text = tpl.replace('{color}', name)
         const id = `${def.id}.${color.index}`
-        const say = SAY_CLIP[`${lang}/${id}`] ?? forVoice(tpl.replace('{color}', spoken))
+        const say = SAY_CLIP[`${lang}/${id}`] ?? forVoice(sayTpl.replace('{color}', spoken))
         if (SAY_CLIP[`${lang}/${id}`] && !sameWords(SAY_CLIP[`${lang}/${id}`], text.replace(name, spoken))) {
           errors.push(`${lang}/${id}: la graphie imposée ne dit plus le texte (« ${text} »)`)
         }
+        const np = HEARD_NP[lang]?.[color.index]
         lines.push({
           id,
           lang,
           text,
           ...(say !== text ? { say } : {}),
-          keywords: [HEARD[lang][color.index] ?? name],
+          keywords: [HEARD[lang][color.index] ?? name, ...lineKw],
+          keywords_np: [...(np ? [np] : []), ...lineKw],
+          ...bedSnrOf(def.kind),
           asr_prompt: ASR_PROMPT[lang],
           ...seedOf(id),
         })

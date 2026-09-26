@@ -75,7 +75,7 @@ export const RULES = {
   stickDeadzone: 0.2,
   wingspan: 11,
   birdRenderScaleMax: 1.3,
-  birdRenderScaleMaxCrowded: 1.6,
+  birdRenderScaleMaxCrowded: 1.75,
   bumpDist: 6,
   bumpDz: 3,
   bumpImpulse: 5,

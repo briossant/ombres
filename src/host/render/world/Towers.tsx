@@ -10,12 +10,14 @@ import { cameraState } from '../../camera/cue.ts'
 import { gameView } from '../../view.ts'
 import { useNprFrame } from '../npr/NprPipeline.tsx'
 import { shadowCasters } from '../npr/shadowMap.ts'
+import { takeTowers } from './prebuild.ts'
 import { buildTowerGeometries } from './towerGeometry.ts'
 import { createTowerMaterial } from './towerMaterial.ts'
 
 export function Towers({ towers }: { towers: readonly TowerDef[] }) {
   const material = useMemo(() => createTowerMaterial(), [])
-  const geos = useMemo(() => buildTowerGeometries(towers), [towers])
+  // géométries préparées pendant les temps morts (carte suivante de la démo du titre), sinon construites ici
+  const geos = useMemo(() => takeTowers(towers) ?? buildTowerGeometries(towers), [towers])
   const meshes = useMemo(() => {
     const body = new THREE.Mesh(geos.body, material)
     body.name = 'towers.body'

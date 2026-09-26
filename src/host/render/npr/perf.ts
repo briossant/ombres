@@ -1,9 +1,19 @@
 // Instrumentation GPU (EXT_disjoint_timer_query_webgl2) : par passe avec ?debug (ou dans
 // les pages de dev), et image entière pour le banc et la surveillance de qualité. Les
 // requêtes sont lues de manière asynchrone (quelques frames plus tard) : aucune attente GPU.
+/** Retire l'élément i en place (splice alloue le tableau des éléments retirés). */
+function removeAt<T>(a: T[], i: number): void {
+  for (let k = i; k < a.length - 1; k++) a[k] = a[k + 1]!
+  a.length--
+}
+
 export class GpuTimer {
-  private readonly ext: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null
-  private readonly pending: Array<[string, WebGLQuery]> = []
+  private ext: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null
+  /** Contexte perdu depuis la dernière mesure : extension et requêtes à reprendre au retour (tech, vague 2). */
+  private stale = false
+  // requêtes en vol : deux tableaux parallèles (pas de tuple alloué par mesure, polish 2)
+  private readonly pendingName: string[] = []
+  private readonly pendingQuery: WebGLQuery[] = []
   private readonly history = new Map<string, Float32Array>()
   private readonly cursor = new Map<string, number>()
   private readonly count = new Map<string, number>()
@@ -20,9 +30,27 @@ export class GpuTimer {
     return this.ext !== null
   }
 
+  /**
+   * Contexte WebGL perdu puis rendu : l'extension de l'ancien contexte ne vaut plus rien (INVALID_ENUM
+   * à chaque image) et ses requêtes sont mortes. Faux tant que le contexte est perdu.
+   */
+  private live(): boolean {
+    if (this.gl.isContextLost()) {
+      this.stale = true
+      return false
+    }
+    if (this.stale) {
+      this.stale = false
+      this.pendingName.length = 0
+      this.pendingQuery.length = 0
+      this.ext = this.gl.getExtension('EXT_disjoint_timer_query_webgl2') as GpuTimer['ext']
+    }
+    return true
+  }
+
   /** Mesure `fn` sous le nom `name`. Pas d'imbrication (une requête active à la fois). */
   time<T>(name: string, fn: () => T): T {
-    if (!this.ext || this.active) return fn()
+    if (!this.ext || this.active || !this.live()) return fn()
     // une seule requête TIME_ELAPSED active à la fois par contexte : si une sonde externe mesure
     // déjà (outils de QA), on s'efface plutôt que de lever INVALID_OPERATION
     if (this.gl.getQuery(this.ext.TIME_ELAPSED_EXT, this.gl.CURRENT_QUERY)) return fn()
@@ -35,17 +63,19 @@ export class GpuTimer {
     } finally {
       this.gl.endQuery(this.ext.TIME_ELAPSED_EXT)
       this.active = false
-      this.pending.push([name, q])
+      this.pendingName.push(name)
+      this.pendingQuery.push(q)
     }
   }
 
   /** Relève les requêtes terminées (à appeler une fois par frame) ; `onSample` reçoit chaque mesure. */
   poll(onSample?: (name: string, ms: number) => void): void {
-    if (!this.ext) return
+    if (!this.ext || !this.live() || !this.ext) return
     const gl = this.gl
     const disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT) as boolean
-    for (let i = 0; i < this.pending.length; ) {
-      const [name, q] = this.pending[i]!
+    for (let i = 0; i < this.pendingQuery.length; ) {
+      const name = this.pendingName[i]!
+      const q = this.pendingQuery[i]!
       if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) {
         i++
         continue
@@ -56,7 +86,8 @@ export class GpuTimer {
         onSample?.(name, ms)
       }
       gl.deleteQuery(q)
-      this.pending.splice(i, 1)
+      removeAt(this.pendingName, i)
+      removeAt(this.pendingQuery, i)
     }
   }
 

@@ -89,3 +89,11 @@ Détail, mesures et preuves : `docs/polish/fix-audio.md`. Ce qui change pour les
 - `MusicDirector(engine, getView, onLastSecond?)`, `RoundMusic(engine, onLastSecond?)`, `RoundMusic.drivesLastSeconds`, `Track.start(fade, delay, startAt?)`, `RESULTS_STARTS` (tracks.ts), `Instruments.setLift(db, when, s)` (relief de midi et d'après-midi, +4 dB, `score.ts EARLY_LIFT_DB`).
 - `SfxSystem.setScreen(screen)` (appelé par `AudioSystem.setScreen`), `sfx.lastSecond(n, when)`, `sfx.scoreKeepsTime`.
 - Nouveaux fichiers : `whoosh_flap_01..03`, `whoosh_down_01`, `whoosh_hide_01` (CC0, `tools/audio-build.py`, `docs/CREDITS-sources.md`) ; `amb_chimes_loop` retiré.
+
+## Polish vague 2 — Edit ciblé du correcteur tech (fuite, détail : docs/polish/fix2-tech.md)
+
+- `music/tracks.ts` : les lecteurs de flux (`<audio>` + `MediaElementAudioSourceNode` + gain) viennent d'une réserve
+  par moteur (`takeVoice` / `releaseVoice`). Chrome garde en vie une `MediaElementAudioSourceNode` (et son élément)
+  tant que le contexte audio existe, même débranchée : deux par piste jouée s'accumulaient (+14 par cycle de trois
+  parties). Maintenant 4 `<audio>` pour toute une session. La minuterie de fin de fondu enchaîné ne met plus en pause
+  un élément déjà rendu à la réserve (`!this.stopped`).

@@ -81,5 +81,5 @@ export interface AnchorDef {
   pos: Vec3Tuple
 }
 
-export const ANCHOR_NAMES = ['tail', 'tipL', 'tipR', 'head', 'beak', 'riderTop', 'chest'] as const
+export const ANCHOR_NAMES = ['tail', 'tipL', 'tipR', 'head', 'beak', 'riderTop', 'chest', 'bandL', 'bandR'] as const
 export type AnchorName = (typeof ANCHOR_NAMES)[number]

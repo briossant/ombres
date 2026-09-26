@@ -4,6 +4,7 @@
 //   PORT=8832 node tools/polish/world/cap.mjs --name=golden4 --n=4 --times=55,68,89 [--speed=4] [--q=high]
 //     [--seed=7] [--nohud] [--burst=0] [--settle=900] [--w=1920] [--h=1080] [--round=1] [--gpu]
 //     [--eval="js exécuté juste avant chaque capture"] [--results] [--gpu] [--ab] [--passes]
+//     [--before] (polish 2 : ajoute <t>-avant.png, même scène avec worldView.lookPolish2 = false)
 // Images : shots/polish/fix-world/<name>/<t>.jpg
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -24,7 +25,8 @@ const SETTLE = Number(arg('settle', '900'))
 const BURST = Number(arg('burst', '0'))
 const ROUND = Number(arg('round', '1'))
 const EVAL = arg('eval', '')
-const dir = join(import.meta.dirname, '../../../shots/polish/fix-world', NAME)
+// --out=<dossier> (relatif au dépôt) : sinon shots/polish/fix-world/<name>
+const dir = arg('out', '') ? join(import.meta.dirname, '../../..', arg('out', ''), NAME) : join(import.meta.dirname, '../../../shots/polish/fix-world', NAME)
 mkdirSync(dir, { recursive: true })
 
 const browser = await launch()
@@ -88,6 +90,22 @@ for (const t of TIMES) {
   const f = join(dir, `${t.replace('.', '_')}.png`)
   await pc.screenshot({ path: f })
   console.log(`t=${t} ${JSON.stringify(info)} → ${f}`)
+  if (arg('alt', '')) {
+    // variante quelconque de la même scène : --alt="js" (puis --altReset="js") → <t>-alt.png
+    await pc.evaluate(arg('alt', ''))
+    await sleep(300)
+    await pc.screenshot({ path: join(dir, `${t.replace('.', '_')}-alt.png`) })
+    if (arg('altReset', '')) await pc.evaluate(arg('altReset', ''))
+    await sleep(250)
+  }
+  if (flag('before')) {
+    // polish 2 : même image avec le rendu d'avant (worldView.lookPolish2 = false), puis retour
+    await pc.evaluate(() => { window.__ombres.worldView.lookPolish2 = false })
+    await sleep(250)
+    await pc.screenshot({ path: join(dir, `${t.replace('.', '_')}-avant.png`) })
+    await pc.evaluate(() => { window.__ombres.worldView.lookPolish2 = true })
+    await sleep(250)
+  }
   for (let b = 0; b < BURST; b++) {
     await sleep(34)
     await pc.screenshot({ path: join(dir, `${t.replace('.', '_')}-b${b}.png`) })

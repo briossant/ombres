@@ -4,15 +4,27 @@
 // ART_BIBLE §1.2 (planches), §6.1-6.3 : horizon dans le tiers bas ou haut, jamais au centre,
 // FOV 35-45°, beaucoup de vide. Les zones de l'écran occupées par l'UI (logo, menu, panneau
 // des crédits) sont décrites par un CineLayout : les sujets sont posés ailleurs.
+//
+// Polish vague 2 (titre, « 100 % d'images composées ») : chaque plan est une PRISE (Setup) choisie
+// parmi des candidates et VALIDÉE AVANT la coupe sur la trajectoire prédite des oiseaux (2,4 s, ou
+// toute la grue) par un juge strict (frameFault : tour au premier plan ou trop large, tour derrière
+// le logo, oiseau sous le logo ou le menu, sujet caché, coupé, trop petit ou absent, oiseau qui fond
+// sur l'objectif, Simoun en gros plan). Si aucune candidate du plan voulu n'est propre, un plan de
+// REPLI (contre-jour, puis « sky » : poursuite libre d'un oiseau sur le ciel, lacet choisi autour de
+// lui) prend la place. Pendant le plan, l'image est rejugée 10 fois par seconde, et 0,8 s plus tôt
+// sur la trajectoire prédite : nouvelle prise validée en coupe franche avant que le défaut n'arrive.
 import * as THREE from 'three'
 import { towerRadiusAt } from '../../sim/maps.ts'
-import type { BirdState, SimState } from '../../sim/types.ts'
+import { RULES } from '../../sim/rules.ts'
+import type { SimState } from '../../sim/types.ts'
 import type { GameView } from '../view.ts'
 import { fitPoints, makeRig, type FitResult, type Rig, type ScreenRect } from './framing.ts'
-import { blendPose, clamp01, DEG, makePose, placeForSubject, smoother, Spring, wrapAngle, yawOfDir, yawPitchQuat, type Pose } from './math.ts'
-import { FULL_SCREEN, nearestTowerInView, stormDistanceInView, towerCover, towerCoverStats } from './towerCover.ts'
+import { blendPose, clamp01, DEG, guardPosition, makePose, placeForSubject, smoother, Spring, wrapAngle, yawOfDir, yawPitchQuat, type Pose } from './math.ts'
+import { demoFuture } from './demoFuture.ts'
+import { nearestTowerInView, stormDistanceInView } from './towerCover.ts'
 
-export type ShotKind = 'crane' | 'track' | 'group' | 'sunset' | 'orbit' | 'still'
+/** `sky` : plan de repli du titre (poursuite libre sur le ciel, de préférence en contre-jour). */
+export type ShotKind = 'crane' | 'track' | 'group' | 'sunset' | 'orbit' | 'sky' | 'still'
 
 /** Où poser les sujets à l'écran selon l'UI par-dessus (fractions d'écran, origine en haut à gauche). */
 export interface CineLayout {
@@ -24,29 +36,56 @@ export interface CineLayout {
   wideRect: ScreenRect
   /** Groupe d'oiseaux (plan bas de groupe). */
   groupRect: ScreenRect
-  /** Couchant : abscisse du soleil, point du sujet en silhouette. */
+  /** Couchant : abscisses du soleil essayées (la première est la préférée), point du sujet en silhouette. */
   sunX: number
+  sunXs: readonly number[]
   sunSubject: { x: number; y: number }
-  /** Cases de l'UI (logo, pied de page) : aucune tour ne doit y entrer (trame derrière le texte). */
-  uiRects: ScreenRect[]
+  /** Repli « sky » : point du sujet. */
+  skySubject: { x: number; y: number }
+  /** Cases de l'UI (logo, pitch, pied de page, bouton, menu) pour un rapport d'aspect donné. */
+  uiRects: (aspect: number) => readonly ScreenRect[]
 }
 
 /**
- * Titre : case du logo et du pitch en haut à gauche (x 0,04-0,57, y 0,05-0,44), pied de page en bas
- * à gauche (QR, « Appuie sur une touche » : x 0,04-0,57, y 0,80-0,96), menu en bas à droite quand il
- * est ouvert (x > 0,72, y 0,58-0,85). Les sujets vivent dans la bande libre y 0,46-0,78 et à droite.
+ * Cases de l'UI du titre (fractions d'écran) pour un rapport d'aspect : l'UI est dessinée en px de
+ * conception (hauteur 1080, largeur ≥ 1600, src/host/ui/scale.ts) ; mesures prises sur title.css et
+ * les captures (logo x 75-1092 y 50-377, pitch y 404-474, pied 862-1036, bouton centré à 150 px du
+ * bas, menu 440 px à droite, 170 px du bas) ; marge de 10 px. Le menu n'est ouvert qu'après une
+ * touche, mais il peut s'ouvrir à tout instant : sa case reste réservée.
+ */
+const _uiCache = { aspect: -1, rects: [] as ScreenRect[] }
+export function titleUiRects(aspect: number): readonly ScreenRect[] {
+  if (Math.abs(_uiCache.aspect - aspect) < 1e-4) return _uiCache.rects
+  const Wd = aspect >= 1600 / 1080 ? 1080 * aspect : 1600
+  const Hd = Wd / aspect
+  const sx = 0.04 * Wd
+  const m = 10
+  const r = (x0: number, x1: number, y0: number, y1: number): ScreenRect => ({ x0: (x0 - m) / Wd, x1: (x1 + m) / Wd, y0: (y0 - m) / Hd, y1: (y1 + m) / Hd })
+  _uiCache.aspect = aspect
+  _uiCache.rects = [
+    r(sx - 6, sx + 1020, 44, 384), // logo
+    r(sx + 36, sx + 940, 398, 482), // pitch
+    r(sx - 2, sx + 596, Hd - 222, Hd - 38), // pied de page (QR, code, plein écran)
+    r(Wd / 2 - 195, Wd / 2 + 195, Hd - 218, Hd - 144), // « Appuie sur une touche »
+    r(Wd - sx - 446, Wd - sx + 8, Hd - 440, Hd - 162), // menu
+  ]
+  return _uiCache.rects
+}
+
+/**
+ * Titre : case du logo et du pitch en haut à gauche, pied de page en bas à gauche, bouton au centre
+ * en bas, menu en bas à droite quand il est ouvert. Les sujets vivent dans la bande libre et à droite.
  */
 export const TITLE_LAYOUT: CineLayout = {
-  trackHigh: { x: 0.75, y: 0.33 },
-  trackLow: { x: 0.33, y: 0.64 },
-  wideRect: { x0: 0.05, x1: 0.69, y0: 0.5, y1: 0.92 },
-  groupRect: { x0: 0.1, x1: 0.7, y0: 0.48, y1: 0.78 },
+  trackHigh: { x: 0.78, y: 0.39 },
+  trackLow: { x: 0.34, y: 0.62 },
+  wideRect: { x0: 0.06, x1: 0.7, y0: 0.5, y1: 0.76 },
+  groupRect: { x0: 0.1, x1: 0.7, y0: 0.5, y1: 0.76 },
   sunX: 0.78,
-  sunSubject: { x: 0.64, y: 0.43 },
-  uiRects: [
-    { x0: 0.03, x1: 0.58, y0: 0.03, y1: 0.45 },
-    { x0: 0.03, x1: 0.58, y0: 0.79, y1: 0.97 },
-  ],
+  sunXs: [0.78, 0.68, 0.88],
+  sunSubject: { x: 0.66, y: 0.5 },
+  skySubject: { x: 0.72, y: 0.46 },
+  uiRects: titleUiRects,
 }
 /** Crédits : panneau central (x 0,23-0,77) ; la scène vit sur les bords. */
 export const CREDITS_LAYOUT: CineLayout = {
@@ -55,8 +94,10 @@ export const CREDITS_LAYOUT: CineLayout = {
   wideRect: { x0: 0.02, x1: 0.98, y0: 0.4, y1: 0.97 },
   groupRect: { x0: 0.04, x1: 0.96, y0: 0.45, y1: 0.95 },
   sunX: 0.12,
+  sunXs: [0.12, 0.2],
   sunSubject: { x: 0.87, y: 0.44 },
-  uiRects: [],
+  skySubject: { x: 0.86, y: 0.42 },
+  uiRects: () => [],
 }
 
 /** Rig → pose (repère three). */
@@ -82,29 +123,7 @@ export function rng(seed: number): () => number {
 }
 
 const _v = new THREE.Vector3()
-
-interface Interp {
-  x: number
-  y: number
-  z: number
-  heading: number
-  vx: number
-  vy: number
-  vz: number
-}
-
-function interpBird(view: GameView, b: BirdState, out: Interp): Interp {
-  const p = view.prevBirds[b.slot] ?? b
-  const a = view.alpha
-  out.x = p.x + (b.x - p.x) * a
-  out.y = p.y + (b.y - p.y) * a
-  out.z = p.z + (b.z - p.z) * a
-  out.heading = p.heading + wrapAngle(b.heading - p.heading) * a
-  out.vx = b.vx
-  out.vy = b.vy
-  out.vz = b.vz
-  return out
-}
+const _v2 = new THREE.Vector3()
 
 /** Une tour coupe-t-elle la ligne de visée caméra (three) → point (three) ? */
 export function towerOccludes(sim: SimState, cam: THREE.Vector3, p: THREE.Vector3): boolean {
@@ -127,65 +146,616 @@ export function towerOccludes(sim: SimState, cam: THREE.Vector3, p: THREE.Vector
   return false
 }
 
-const _rmax = new WeakMap<object, { r: number; ox: number; oy: number }>()
-/** Rayon maximal d'une tour (disques compris) et décalage de son centre (gnomon incliné), en cache. */
-function towerRMax(t: SimState['towers'][number]): { r: number; ox: number; oy: number } {
-  let m = _rmax.get(t)
-  if (!m) {
-    m = { r: 0, ox: 0, oy: 0 }
-    for (const g of t.segments) {
-      const r = Math.max(g.r0, g.r1)
-      if (r > m.r) {
-        m.r = r
-        m.ox = g.ox1 ?? 0
-        m.oy = g.oy1 ?? 0
-      }
-    }
-    _rmax.set(t, m)
+// ───────────────────────── Oiseaux : position présente et prédite ─────────────────────────
+
+/** Un oiseau à un instant (présent interpolé, ou prédit à τ s : cap et vitesse constants). Repère sim. */
+export interface BirdAt {
+  slot: number
+  x: number
+  y: number
+  z: number
+  heading: number
+  vx: number
+  vy: number
+  vz: number
+  /** Centre de son ombre au sol. */
+  scx: number
+  scy: number
+  dive: boolean
+  stun: boolean
+}
+/** Ensemble d'oiseaux à un instant. */
+export class BirdSet {
+  readonly a: BirdAt[] = Array.from({ length: 12 }, () => ({ slot: -1, x: 0, y: 0, z: 0, heading: 0, vx: 0, vy: 0, vz: 0, scx: 0, scy: 0, dive: false, stun: false }))
+  n = 0
+  get(slot: number): BirdAt | null {
+    for (let i = 0; i < this.n; i++) if (this.a[i]!.slot === slot) return this.a[i]!
+    return null
   }
-  return m
 }
 
 /**
- * Encombrement du premier plan : part de la largeur de l'écran masquée par les tours proches
- * de la caméra (three) et dans son champ horizontal (lacet, demi-angle). 0 = rien ;
- * 0,3 = une tour barre près d'un tiers de l'image.
+ * Oiseaux dans τ s (τ = 0 : image présente, interpolée) : extrapolation linéaire, bornée à l'arène
+ * (les bots virent au bord) et à l'altitude de vol. Au-delà de ~2,5 s, c'est une hypothèse ; la
+ * surveillance en cours de plan (0,8 s d'avance) rattrape les virages.
  */
-export function towerClutter(sim: SimState, cam: THREE.Vector3, yaw: number, halfFov: number): number {
-  let p = 0
-  for (const t of sim.towers) {
-    const m = towerRMax(t)
-    const dx = t.x + m.ox - cam.x
-    const dy = -(t.y + m.oy) - cam.z
-    const d = Math.max(1, Math.hypot(dx, dy))
-    if (d > 160 || t.height < cam.y * 0.4) continue
-    // sous un disque (caméra à l'intérieur de son rayon) : il couvre tout
-    const half = d < m.r ? Math.PI : Math.atan(Math.min(1, m.r / d) * 1.2)
-    // lacet vers la tour (three : 0 = −z)
-    const ang = Math.atan2(-dx, -dy)
-    const off = Math.abs(wrapAngle(ang - yaw))
-    if (off - half > halfFov) continue
-    // part visible de la largeur angulaire de la tour
-    const lo = Math.max(-halfFov, off - half)
-    const hi = Math.min(halfFov, off + half)
-    p += Math.max(0, hi - lo) / (2 * halfFov)
+export function predictBirds(sim: SimState, view: GameView, tau: number, out: BirdSet): BirdSet {
+  const A = sim.arena.a
+  const B = sim.arena.b
+  const al = view.alpha
+  out.n = 0
+  for (const b of sim.birds) {
+    if (out.n >= out.a.length) break
+    const p = view.prevBirds[b.slot] ?? b
+    const o = out.a[out.n++]!
+    o.slot = b.slot
+    let x = p.x + (b.x - p.x) * al + b.vx * tau
+    let y = p.y + (b.y - p.y) * al + b.vy * tau
+    // (extrapolation seulement : l'image présente garde la vraie position, même au bord)
+    const rho = tau > 0 ? Math.hypot(x / A, y / B) : 0
+    if (rho > 0.96) {
+      x *= 0.96 / rho
+      y *= 0.96 / rho
+    }
+    o.x = x
+    o.y = y
+    o.z = Math.min(40, Math.max(1, p.z + (b.z - p.z) * al + b.vz * tau))
+    o.heading = p.heading + wrapAngle(b.heading - p.heading) * al
+    o.vx = b.vx
+    o.vy = b.vy
+    o.vz = b.vz
+    o.scx = p.shadow.cx + (b.shadow.cx - p.shadow.cx) * al + b.vx * tau
+    o.scy = p.shadow.cy + (b.shadow.cy - p.shadow.cy) * al + b.vy * tau
+    o.dive = b.dive !== 'none'
+    o.stun = b.stun > 0
   }
-  return p
+  return out
 }
 
+// ───────────────────────── Juge de composition ─────────────────────────
+
+/**
+ * Défaut d'une image de cinéma ('' = composée) :
+ * - `storm` : rideau du Simoun à moins de 120 m dans le champ, caméra basse, non masqué ;
+ * - `near` : caméra collée à une tour, ou tour à moins de 63 m de plus de 5 % de la largeur ;
+ * - `wide` : une tour de plus de 12 % de la largeur au premier plan, de plus de 18 % au-delà ;
+ * - `clutter` : un grand fût coupé par le haut du cadre au milieu de l'image, ou le sujet collé à une
+ *   tour (devant ou derrière son fût : il ne se découpe plus) ;
+ * - `ui` : une tour derrière une case de l'UI (logo, pitch, pied de page, bouton, menu) ;
+ * - `bird-ui` : le sujet touche une case de l'UI, ou un autre oiseau net y est en partie caché ;
+ * - `close` : un oiseau qui fond sur l'objectif (plus de 45 % de la largeur) ;
+ * - `nosubject` / `hidden` / `small` : sujet absent ou coupé par le cadre, caché par une tour, trop
+ *   petit pour être net (moins de 4 % de la largeur ; plans larges : aucun oiseau net d'au moins 3 %).
+ */
+export type Fault = '' | 'storm' | 'near' | 'wide' | 'clutter' | 'ui' | 'bird-ui' | 'close' | 'nosubject' | 'hidden' | 'small'
+
+/** Plan refusé si le rideau du Simoun est à moins de ces mètres dans le champ (voile en gros plan). */
+const STORM_NEAR = 120
+/** Le rideau du Simoun (12 m) ne fait un voile en gros plan que vu d'une caméra plus basse que ceci (m). */
+const STORM_CAM_MAX_Z = 40
+/** Tour à moins de ces mètres dans l'angle horizontal : toujours un défaut (mur plein cadre, invisible à la projection). */
+const TOWER_TOUCH = 12
+/** Tour « proche » (m) : défaut dès qu'elle occupe plus de NEAR_MIN_WIDTH de la largeur. */
+const TOWER_NEAR = 63
+const NEAR_MIN_WIDTH = 0.07
+/** Tour proche de plus de 7 % : défaut si son milieu est à moins de ceci du centre de l'image (x). */
+const NEAR_MID = 0.17
+/**
+ * Largeur maximale d'une tour (part de la largeur de l'écran) : 12 % au premier plan (jusqu'au sujet
+ * + 15 m, 80 m au moins), 18 % au-delà (décor : un disque de Parasol de 36 m fait déjà 14 % à 200 m).
+ */
+const WIDE_MAX = 0.12
+const WIDE_FAR_MAX = 0.18
+/** Couverture admise d'une case de l'UI par les tours du premier plan / par toutes les tours. */
+const UI_COVER_FRONT = 0.03
+const UI_COVER_ANY = 0.05
+const UI_COVER_LOW = 0.25
+/** Fût central : plus large que ceci, coupé par le haut, milieu à moins de COLUMN_MID du centre. */
+const COLUMN_WIDTH = 0.055
+const COLUMN_MID = 0.22
+/** Sujet collé à une tour : tour plus large que ceci à moins de STICK_MARGIN de son cœur (part de la largeur). */
+const STICK_WIDTH = 0.025
+const STICK_MARGIN = 0.03
+/** Premier plan : tours à moins de max(80 m, sujet + 15 m). */
+const FRONT_MIN = 80
+/** Oiseaux : taille nette minimale (part de la largeur), sujet et plans larges ; oiseau qui fond sur l'objectif. */
+const SUBJECT_MIN = 0.04
+const WIDE_SUBJECT_MIN = 0.03
+const CLOSE_MAX = 0.45
+const SUBJECT_CLOSE_MAX = 0.55
+/**
+ * Sujet : son cœur (tête, corps, cavalier) jamais sous une case de l'UI, et au plus 10 % de sa boîte
+ * (un bout d'aile). Autre oiseau net (plus de 6 % de la largeur) : défaut si son cœur est en partie
+ * caché (plus de 10 %, pas entièrement : un oiseau tout entier derrière le logo ne se voit pas).
+ */
+const SUBJECT_UI_MAX = 0.1
+const OTHER_UI_MIN = 0.1
+const OTHER_UI_SPAN = 0.06
+/** Balayage du cœur des oiseaux au choix des prises (s de vol, de part et d'autre de l'instant). */
+const SWEEP = 0.07
+/** Échelle cosmétique des oiseaux (<Birds renderScale="auto">, controller.ts) : 60 px d'envergure en 1080p. */
+const AUTO_SPAN_PX = 60
+
+const _inv = new THREE.Matrix4()
+const _m4 = new THREE.Matrix4()
+const _pv = new THREE.Vector3()
+const _one3 = new THREE.Vector3(1, 1, 1)
+let _tanH = 1
+let _tanV = 1
+/** Projection d'une pose (repère three) (points en repère sim). */
+function setPoseProjector(pose: Pose, aspect: number): void {
+  _m4.compose(pose.pos, pose.quat, _one3)
+  _inv.copy(_m4).invert()
+  _tanV = Math.tan((pose.fov * DEG) / 2)
+  _tanH = _tanV * aspect
+}
+function project(x: number, y: number, z: number, out: { x: number; y: number; z: number }): void {
+  _pv.set(x, z, -y).applyMatrix4(_inv)
+  const d = -_pv.z
+  const dd = Math.max(1e-3, d)
+  out.x = (_pv.x / dd / _tanH + 1) / 2
+  out.y = (1 - _pv.y / dd / _tanV) / 2
+  out.z = d
+}
+
+const SEG_MAX = 512
+const _seg = new Float32Array(SEG_MAX * 4)
+const _segTower = new Int16Array(SEG_MAX)
+const TOWERS_MAX = 64
+const _twWidth = new Float32Array(TOWERS_MAX)
+const _twDist = new Float32Array(TOWERS_MAX)
+const _twMid = new Float32Array(TOWERS_MAX)
+const _twX0 = new Float32Array(TOWERS_MAX)
+const _twX1 = new Float32Array(TOWERS_MAX)
+const _twTop = new Float32Array(TOWERS_MAX)
+const _twBot = new Float32Array(TOWERS_MAX)
+const _pa = { x: 0, y: 0, z: 0 }
+const _pb = { x: 0, y: 0, z: 0 }
+/** sin de l'angle sous lequel on voit une section horizontale (1 = vue de dessus). */
+function sinDepression(cx: number, cy: number, cz: number, x: number, y: number, z: number): number {
+  const dh = Math.hypot(x - cx, y - cy)
+  const dz = Math.abs(cz - z)
+  return Math.max(0.08, dz / Math.max(1e-3, Math.hypot(dh, dz)))
+}
+/**
+ * Boîtes d'écran des segments de tours (troncs de cône et disques : enveloppe des ellipses des deux
+ * sections) pour la pose installée par setPoseProjector ; largeur écran et distance de chaque tour.
+ */
+function projectTowers(sim: SimState, cx: number, cy: number, cz: number): number {
+  let n = 0
+  const towers = sim.towers
+  for (let ti = 0; ti < towers.length && ti < TOWERS_MAX; ti++) {
+    const t = towers[ti]!
+    let tMin = Infinity
+    let tMax = -Infinity
+    let tTop = Infinity
+    let tBot = -Infinity
+    for (const g of t.segments) {
+      const x0 = t.x + (g.ox0 ?? 0)
+      const y0 = t.y + (g.oy0 ?? 0)
+      const x1 = t.x + (g.ox1 ?? 0)
+      const y1 = t.y + (g.oy1 ?? 0)
+      project(x0, y0, g.z0, _pa)
+      project(x1, y1, g.z1, _pb)
+      if (_pa.z < 2 || _pb.z < 2) continue
+      const ax0 = g.r0 / _pa.z / (2 * _tanH)
+      const ax1 = g.r1 / _pb.z / (2 * _tanH)
+      const ay0 = (g.r0 * sinDepression(cx, cy, cz, x0, y0, g.z0)) / _pa.z / (2 * _tanV)
+      const ay1 = (g.r1 * sinDepression(cx, cy, cz, x1, y1, g.z1)) / _pb.z / (2 * _tanV)
+      const bx0 = Math.min(_pa.x - ax0, _pb.x - ax1)
+      const bx1 = Math.max(_pa.x + ax0, _pb.x + ax1)
+      const by0 = Math.min(_pa.y - ay0, _pb.y - ay1)
+      const by1 = Math.max(_pa.y + ay0, _pb.y + ay1)
+      if (bx1 < 0 || bx0 > 1 || by1 < 0 || by0 > 1) continue
+      tMin = Math.min(tMin, Math.max(0, bx0))
+      tMax = Math.max(tMax, Math.min(1, bx1))
+      tTop = Math.min(tTop, by0)
+      tBot = Math.max(tBot, by1)
+      if (n < SEG_MAX) {
+        _seg[n * 4] = bx0
+        _seg[n * 4 + 1] = bx1
+        _seg[n * 4 + 2] = by0
+        _seg[n * 4 + 3] = by1
+        _segTower[n] = ti
+        n++
+      }
+    }
+    _twWidth[ti] = tMax > tMin ? tMax - tMin : 0
+    _twMid[ti] = (tMin + tMax) / 2
+    _twX0[ti] = tMin
+    _twX1[ti] = tMax
+    _twTop[ti] = tTop
+    _twBot[ti] = tBot
+    _twDist[ti] = Math.hypot(t.x - cx, t.y - cy)
+  }
+  return n
+}
+const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0))
+
+/**
+ * Marge de sécurité (0 = juge de l'image rendue ; 1 = choix des prises) : les prises sont choisies
+ * avec des seuils un peu plus stricts, pour que les petits écarts entre la simulation (pas de 0,1 s)
+ * et le rendu (60 i/s) ne fassent jamais franchir un seuil à l'image.
+ */
+let _margin = 0
+const _uiM: ScreenRect[] = Array.from({ length: 8 }, () => ({ x0: 0, x1: 0, y0: 0, y1: 0 }))
+
+/** Détail du dernier jugement (debug, scripts). */
+export const faultInfo = { towerWidth: 0, subjectSpan: 0, subjectUi: 0, birdSpan: 0, birdUi: 0, birdSlot: -1, nearKind: '' }
+
+/**
+ * Juge une image (voir Fault). `birds` : oiseaux au même instant ; `subject` : slot du sujet, ou −1
+ * pour un plan large (il faut alors au moins un oiseau net, entier et dégagé).
+ */
+export function frameFault(sim: SimState, birds: BirdSet, pose: Pose, aspect: number, layout: CineLayout, stormHidden: boolean, subject: number): Fault {
+  const cx = pose.pos.x
+  const cy = -pose.pos.z
+  const cz = pose.pos.y
+  _v.set(0, 0, -1).applyQuaternion(pose.quat)
+  const hx = _v.x
+  const hy = -_v.z
+  const flat = Math.hypot(hx, hy) > 0.05
+  const halfH = Math.atan(Math.tan((pose.fov * DEG) / 2) * aspect)
+  if (!stormHidden && cz < STORM_CAM_MAX_Z && flat && stormDistanceInView(sim, cx, cy, hx, hy, halfH) < STORM_NEAR) return 'storm'
+  if (flat && nearestTowerInView(sim, cx, cy, hx, hy, halfH) < TOWER_TOUCH + 3 * _margin) {
+    faultInfo.nearKind = 'touch'
+    return 'near'
+  }
+  setPoseProjector(pose, aspect)
+  // sujet : distance (premier plan des tours)
+  const sb = subject >= 0 ? birds.get(subject) : null
+  const subjDist = sb ? Math.hypot(sb.x - cx, sb.y - cy) : 0
+  const front = Math.max(FRONT_MIN, subjDist + 15)
+  const nseg = projectTowers(sim, cx, cy, cz)
+  let maxW = 0
+  for (let ti = 0; ti < sim.towers.length && ti < TOWERS_MAX; ti++) {
+    const w = _twWidth[ti]!
+    const d = _twDist[ti]!
+    if (w > maxW) maxW = w
+    // tour proche : au plus 12 % de la largeur, et jamais un fût de plus de 7 % au milieu de l'image
+    const k = 1 - 0.07 * _margin
+    if (d < TOWER_NEAR + 6 * _margin && w > NEAR_MIN_WIDTH * k && (w > WIDE_MAX * k || Math.abs(_twMid[ti]! - 0.5) < NEAR_MID + 0.03 * _margin)) {
+      faultInfo.towerWidth = w
+      faultInfo.nearKind = w > WIDE_MAX * k ? 'big' : 'mid'
+      return 'near'
+    }
+    if (w > (d < front ? WIDE_MAX : WIDE_FAR_MAX) * k) {
+      faultInfo.towerWidth = w
+      return 'wide'
+    }
+    // grand fût sombre au milieu de l'image, coupé par le haut du cadre (« mur » au centre)
+    if (w > COLUMN_WIDTH * k && _twTop[ti]! < 0.01 + 0.02 * _margin && Math.abs(_twMid[ti]! - 0.5) < COLUMN_MID + 0.03 * _margin) {
+      faultInfo.towerWidth = w
+      return 'clutter'
+    }
+  }
+  faultInfo.towerWidth = maxW
+  const ui0 = layout.uiRects(aspect)
+  let ui = ui0
+  if (_margin > 0) {
+    // cases de l'UI élargies de 1,2 % de chaque côté
+    const m = 0.012 * _margin
+    ui = _uiM.slice(0, ui0.length)
+    ui0.forEach((r, i) => {
+      const o = _uiM[i]!
+      o.x0 = r.x0 - m
+      o.x1 = r.x1 + m
+      o.y0 = r.y0 - m
+      o.y1 = r.y1 + m
+    })
+  }
+  for (let ri = 0; ri < ui.length; ri++) {
+    const r = ui[ri]!
+    // (aire de la case réelle : la marge élargit la case, jamais le seuil)
+    const r0 = ui0[ri]!
+    const area = (r0.x1 - r0.x0) * (r0.y1 - r0.y0)
+    let fr = 0
+    let any = 0
+    for (let s = 0; s < nseg; s++) {
+      const a = overlap(_seg[s * 4]!, _seg[s * 4 + 1]!, r.x0, r.x1) * overlap(_seg[s * 4 + 2]!, _seg[s * 4 + 3]!, r.y0, r.y1) * 0.8
+      if (a <= 0) continue
+      any += a
+      if (_twDist[_segTower[s]!]! < front) fr += a
+    }
+    // logo et pitch (en haut) : aucune tour derrière ; cases du bas (pied, bouton, menu), opaques et
+    // posées sur le sable : seulement une tour qui les couvre largement
+    if (r.y0 < 0.5 ? fr > UI_COVER_FRONT * area || any > UI_COVER_ANY * area : any > UI_COVER_LOW * area) return 'ui'
+  }
+  // oiseaux : boîte entière (envergure × 0,44 envergure) et « cœur » (tête, corps, cavalier : 40 % × 20 %)
+  const vpx = 1080 * aspect
+  let sharp = false
+  let subjectSeen = false
+  faultInfo.subjectSpan = 0
+  faultInfo.subjectUi = 0
+  for (let i = 0; i < birds.n; i++) {
+    const b = birds.a[i]!
+    project(b.x, b.y, b.z + 0.6, _pa)
+    const isSubj = b.slot === subject
+    if (_pa.z < 1.5) continue
+    const dist = Math.hypot(b.x - cx, b.y - cy, b.z - cz)
+    const raw = RULES.wingspan / (2 * _tanH * Math.max(1, dist))
+    const s = raw * Math.min(RULES.birdRenderScaleMax, Math.max(1, AUTO_SPAN_PX / Math.max(1e-3, raw * vpx)))
+    const hw = s / 2
+    const hh = 0.22 * s * aspect
+    const area = 4 * hw * hh
+    const on = (overlap(_pa.x - hw, _pa.x + hw, 0, 1) * overlap(_pa.y - hh, _pa.y + hh, 0, 1)) / area
+    if (on <= 0) continue
+    let uiPart = 0
+    let core = 0
+    const cw = 0.2 * s
+    const ch = 0.1 * s * aspect
+    // cœur : au choix des prises, balayé sur ± SWEEP s de vol (un oiseau qui passe le bord d'une case
+    // entre deux instants simulés est vu à cheval)
+    let kx0 = _pa.x - cw
+    let kx1 = _pa.x + cw
+    let ky0 = _pa.y - ch
+    let ky1 = _pa.y + ch
+    if (_margin > 0) {
+      for (const sg of [-1, 1]) {
+        project(b.x + b.vx * SWEEP * sg, b.y + b.vy * SWEEP * sg, b.z + 0.6 + b.vz * SWEEP * sg, _pb)
+        if (_pb.z < 1.5) continue
+        kx0 = Math.min(kx0, _pb.x - cw)
+        kx1 = Math.max(kx1, _pb.x + cw)
+        ky0 = Math.min(ky0, _pb.y - ch)
+        ky1 = Math.max(ky1, _pb.y + ch)
+      }
+    }
+    const karea = (kx1 - kx0) * (ky1 - ky0)
+    for (const r of ui) {
+      uiPart += (overlap(_pa.x - hw, _pa.x + hw, r.x0, r.x1) * overlap(_pa.y - hh, _pa.y + hh, r.y0, r.y1)) / area
+      core += (overlap(kx0, kx1, r.x0, r.x1) * overlap(ky0, ky1, r.y0, r.y1)) / karea
+    }
+    if (s > (isSubj ? SUBJECT_CLOSE_MAX : CLOSE_MAX) - 0.05 * _margin) return 'close'
+    if (isSubj) {
+      subjectSeen = true
+      faultInfo.subjectSpan = s
+      faultInfo.subjectUi = uiPart
+      if (on < 0.85 + 0.05 * _margin || _pa.x < 0.02 || _pa.x > 0.98 || _pa.y < 0.04 || _pa.y > 0.96) return 'nosubject'
+      if (core > 0 || uiPart > SUBJECT_UI_MAX - 0.04 * _margin) {
+        faultInfo.birdSpan = s
+        faultInfo.birdUi = uiPart
+        faultInfo.birdSlot = b.slot
+        return 'bird-ui'
+      }
+      _v2.set(b.x, b.z + 0.6, -b.y)
+      if (towerOccludes(sim, pose.pos, _v2)) return 'hidden'
+      if (s < SUBJECT_MIN) return 'small'
+      // le sujet collé à une tour (devant ou derrière son fût) : il ne se découpe plus
+      const kx0 = _pa.x - cw - STICK_MARGIN - 0.01 * _margin
+      const kx1 = _pa.x + cw + STICK_MARGIN + 0.01 * _margin
+      for (let ti = 0; ti < sim.towers.length && ti < TOWERS_MAX; ti++)
+        if (_twWidth[ti]! > STICK_WIDTH && _twX1[ti]! > kx0 && _twX0[ti]! < kx1 && _twBot[ti]! > _pa.y - ch && _twTop[ti]! < _pa.y + ch) {
+          faultInfo.towerWidth = _twWidth[ti]!
+          return 'clutter'
+        }
+      sharp = true
+    } else {
+      if (s > OTHER_UI_SPAN * (1 - 0.15 * _margin) && core > OTHER_UI_MIN * (1 - 0.5 * _margin) && core < 0.97 + 0.02 * _margin) {
+        faultInfo.birdSpan = s
+        faultInfo.birdUi = core
+        faultInfo.birdSlot = b.slot
+        return 'bird-ui'
+      }
+      if (!sharp && s >= WIDE_SUBJECT_MIN && on > 0.97 && uiPart < 0.02) {
+        _v2.set(b.x, b.z + 0.6, -b.y)
+        if (!towerOccludes(sim, pose.pos, _v2)) sharp = subject < 0
+      }
+    }
+  }
+  if (subject >= 0 && !subjectSeen) return 'nosubject'
+  if (!sharp) return subject >= 0 ? 'small' : 'nosubject'
+  return ''
+}
+
+/** Le rideau du Simoun est-il à moins de STORM_NEAR m dans le champ de cette pose (caméra basse) ? */
+export function stormNear(sim: SimState, pose: Pose, aspect: number): boolean {
+  _v2.set(0, 0, -1).applyQuaternion(pose.quat)
+  const hx = _v2.x
+  const hy = -_v2.z
+  if (Math.hypot(hx, hy) < 0.05 || pose.pos.y >= STORM_CAM_MAX_Z) return false
+  const halfH = Math.atan(Math.tan((pose.fov * DEG) / 2) * aspect)
+  return stormDistanceInView(sim, pose.pos.x, -pose.pos.z, hx, hy, halfH) < STORM_NEAR
+}
+
+// ───────────────────────── Poses des plans ─────────────────────────
+
 /** Tangage de la vue large qui tourne (titre, crédits). */
-const ORBIT_PITCH = 22 * DEG
+const ORBIT_PITCHES: readonly number[] = [24 * DEG, 32 * DEG, 40 * DEG]
 /** Vue large : oiseaux cadrés autour de l'oiseau central (m). */
 const ORBIT_GROUP_RADIUS = 95
-/** Deux coupes internes d'un même plan sont séparées d'au moins ce temps (s). */
-const RECUT_MIN = 1.2
-/** Anticipation des contrôles de composition (s). */
-const LOOK_AHEAD = 0.8
+/** Grue : tangage du plan large d'arrivée. */
+const CRANE_PITCH = 26 * DEG
+/** Rotations lentes (°/s). */
+const GROUP_SPIN = 1.5
+const ORBIT_SPIN = 1.1
+const CRANE_SPIN = 0.8
+const GROUP_PITCH = 16 * DEG
+
+/** Deux coupes internes d'un même plan : au moins ce temps (s). */
+const RECUT_SOON = 0.3
+/** Surveillance : période (s) ; resimulation de la prise rendue (s). */
+const CHECK_PERIOD = 0.1
+const RECHECK = 0.5
+/**
+ * Jugements par recherche de prise : recherche immédiate (début de boucle, filet de sécurité), puis
+ * recherche préparée d'avance (PRE_LEAD s avant la coupe, SLICE jugements et SLICE_MS ms par frame). Un jugement
+ * (pose + juge) coûte ~30-60 µs.
+ */
+const WANT_BUDGET = 300
+const FALLBACK_BUDGET = 160
+const SYNC_BUDGET = 700
+const WANT_BUDGET_BIG = 1600
+const FALLBACK_BUDGET_BIG = 700
+const SLICE = 64
+/** Tranche d'une recherche préparée : au plus ce temps par frame (ms ; machine lente : la fin se fait à la coupe). */
+const SLICE_MS = 1.6
+const PRE_LEAD = 2.4 // = TITLE_PREPARE
+
+/** Suivi : angles de visée par rapport au cap (°), du plus beau au moins beau. */
+const TRACK_LOOKS: readonly number[] = [30, 60, 10, 90]
+/** Couchant : distances caméra → oiseau essayées (m). */
+const SUNSET_DISTS: readonly number[] = [40, 30, 52]
+/** Repli « sky » : distances (m), tangage (vers le haut), écarts de lacet au soleil essayés (°). */
+const SKY_DISTS: readonly number[] = [34, 46, 26]
+/**
+ * Contre-plongée légère (l'oiseau sur l'horizon), contre-plongée franche (sur le ciel), puis plongée
+ * franche (l'oiseau et son ombre sur le sable peint, vus d'en haut ; en dernier : de près, les aplats
+ * saturés du soir font « tapis »), plan zénithal enfin (au milieu des tours, au départ de la boucle,
+ * c'est souvent le seul sans fût dans l'image).
+ */
+const SKY_PITCHES: readonly number[] = [-6 * DEG, -20 * DEG, 40 * DEG, 62 * DEG]
+const SKY_OFFSETS: readonly number[] = [0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180]
+
+/** Une prise : de quoi recalculer la pose du plan à tout instant (présent ou prédit). */
+interface Setup {
+  kind: ShotKind
+  slot: number
+  side: number
+  /** track : angle de visée par rapport au cap (°) ; 1 = oiseau haut (contre-plongée), 0 = bas. */
+  look: number
+  hk: number
+  /** sunset / sky : distance à l'oiseau (m). */
+  dist: number
+  /** sunset : abscisse du soleil ; sky : lacet de visée (sim, rad). */
+  sunX: number
+  az: number
+  /** group / orbit / grue : lacet de départ et tangage. */
+  yaw: number
+  pitch: number
+}
+/** Journal des choix de prise (banc, debug) : null en jeu. */
+export const cineDebug: { log: ((m: string) => void) | null; faults: Record<string, number> } = { log: null, faults: {} }
+const makeSetup = (): Setup => ({ kind: 'track', slot: -1, side: 1, look: 30, hk: 1, dist: 40, sunX: 0.78, az: 0, yaw: 0, pitch: 0 })
+const copySetup = (d: Setup, s: Setup): Setup => Object.assign(d, s)
+
+/** Pose du suivi pour un point de l'oiseau, un cap, un côté, un angle de visée. */
+function trackPose(x: number, y: number, z: number, h: number, side: number, lookDeg: number, hk: number, L: CineLayout, aspect: number, out: Pose): void {
+  // on regarde dans le sens du vol, tourné de lookDeg : l'oiseau file vers le fond, en diagonale
+  const lookH = h + side * lookDeg * DEG
+  const yaw = yawOfDir(Math.cos(lookH), Math.sin(lookH))
+  yawPitchQuat(out.quat, yaw, (17 - 25 * hk) * DEG)
+  out.fov = 38
+  const sx = L.trackLow.x + (L.trackHigh.x - L.trackLow.x) * hk
+  const sy = L.trackLow.y + (L.trackHigh.y - L.trackLow.y) * hk
+  _v.set(x, z + 1.2, -y)
+  placeForSubject(out.pos, _v, out.quat, out.fov, aspect, sx, sy, 26 + 2 * (1 - hk))
+  if (out.pos.y < 3.2) out.pos.y = 3.2
+}
+
+/** Pose du couchant : face au soleil (posé à l'abscisse sunX), l'oiseau à sunSubject, à `dist` m. */
+function sunsetPose(az: number, sunX: number, dist: number, x: number, y: number, z: number, L: CineLayout, aspect: number, out: Pose): void {
+  const tanH = Math.tan(20 * DEG) * aspect
+  const yaw = yawOfDir(Math.sin(az), Math.cos(az)) + Math.atan((sunX * 2 - 1) * tanH)
+  yawPitchQuat(out.quat, yaw, -7 * DEG)
+  out.fov = 40
+  _v.set(x, z + 1, -y)
+  placeForSubject(out.pos, _v, out.quat, out.fov, aspect, L.sunSubject.x, L.sunSubject.y, dist)
+  if (out.pos.y < 3.5) out.pos.y = 3.5
+}
+
+/** Repli « sky » : caméra basse qui regarde l'oiseau dans la direction `az` (sim), légèrement vers le haut. */
+function skyPose(az: number, pitch: number, dist: number, x: number, y: number, z: number, L: CineLayout, aspect: number, out: Pose): void {
+  yawPitchQuat(out.quat, yawOfDir(Math.cos(az), Math.sin(az)), pitch)
+  out.fov = 40
+  _v.set(x, z + 1, -y)
+  placeForSubject(out.pos, _v, out.quat, out.fov, aspect, L.skySubject.x, L.skySubject.y, dist)
+  if (out.pos.y < 3) out.pos.y = 3
+}
+
+const MAX_PTS = 48
+const _pts = new Float64Array(MAX_PTS * 3)
+const _fit: FitResult = { tx: 0, ty: 0, dist: 0, width: 0 }
+const _rig: Rig = makeRig()
+/** Points du plan de groupe : l'oiseau-sujet, ses voisins à moins de 70 m, leurs ombres. */
+function groupPoints(birds: BirdSet, slot: number): number {
+  const s = birds.get(slot)
+  if (!s) return 0
+  let n = 0
+  for (let i = 0; i < birds.n; i++) {
+    const b = birds.a[i]!
+    if (Math.hypot(b.x - s.x, b.y - s.y) > 70 || n + 2 > MAX_PTS) continue
+    _pts[n * 3] = b.x
+    _pts[n * 3 + 1] = b.y
+    _pts[n * 3 + 2] = b.z
+    n++
+    _pts[n * 3] = b.scx
+    _pts[n * 3 + 1] = b.scy
+    _pts[n * 3 + 2] = 0
+    n++
+  }
+  return n
+}
+/** Points de la vue large : un groupe d'oiseaux autour de `slot` et leurs ombres, le front de nuit, au moins un tiers de l'arène. */
+function orbitPoints(sim: SimState, birds: BirdSet, slot: number): number {
+  const s0 = birds.get(slot)
+  let n = 0
+  for (let i = 0; i < birds.n; i++) {
+    const b = birds.a[i]!
+    if (n + 3 > MAX_PTS) break
+    if (s0 && Math.hypot(b.x - s0.x, b.y - s0.y) > ORBIT_GROUP_RADIUS) continue
+    _pts[n * 3] = b.x
+    _pts[n * 3 + 1] = b.y
+    _pts[n * 3 + 2] = b.z
+    n++
+    _pts[n * 3] = b.scx
+    _pts[n * 3 + 1] = b.scy
+    _pts[n * 3 + 2] = 0
+    n++
+  }
+  const nt = sim.night
+  if (nt.active && birds.n) {
+    let west = Infinity
+    for (let i = 0; i < birds.n; i++) west = Math.min(west, birds.a[i]!.x * nt.dirX + birds.a[i]!.y * nt.dirY)
+    const s = Math.max(nt.s, -sim.arena.a, west - 40)
+    if (n < MAX_PTS) {
+      _pts.set([nt.dirX * s, nt.dirY * s, 0], n * 3)
+      n++
+    }
+  }
+  // jamais plus serré qu'un tiers de l'arène
+  const a = sim.arena.a * 0.34
+  if (n + 2 <= MAX_PTS && n > 0) {
+    let cx = 0
+    let cy = 0
+    for (let i = 0; i < n; i++) (cx += _pts[i * 3]!), (cy += _pts[i * 3 + 1]!)
+    cx /= n
+    cy /= n
+    _pts.set([cx - a, cy, 0], n * 3)
+    n++
+    _pts.set([cx + a, cy, 0], n * 3)
+    n++
+  }
+  return n
+}
+function fitPose(n: number, yaw: number, pitch: number, rect: ScreenRect, minD: number, maxD: number, aspect: number, out: Pose): void {
+  fitPoints(_pts, n, yaw, pitch, 40, aspect, rect, minD, maxD, _fit)
+  _rig.tx = _fit.tx
+  _rig.ty = _fit.ty
+  _rig.tz = 0
+  _rig.yaw = yaw
+  _rig.pitch = pitch
+  _rig.dist = _fit.dist
+  _rig.fov = 40
+  rigPose(_rig, out)
+}
 
 const _sp = { x: 0, y: 0 }
+function copyPoseTo(dst: Pose, src: Pose): void {
+  dst.pos.copy(src.pos)
+  dst.quat.copy(src.quat)
+  dst.fov = src.fov
+}
+function poseFinite(p: Pose): boolean {
+  return Number.isFinite(p.pos.x + p.pos.y + p.pos.z + p.quat.x + p.quat.y + p.quat.z + p.quat.w + p.fov)
+}
 const _q = new THREE.Quaternion()
+const _qi = new THREE.Quaternion()
 const _d0 = new THREE.Vector3()
 const _d1 = new THREE.Vector3()
+/** Correction de visée maximale de la grue et du cadreur (rad). */
+const AIM_MAX = 25 * DEG
+/** Cadreur : part de la dérive du sujet gardée à l'image. */
+const HOLD_KEEP = 0.35
 /** Point d'écran (fractions) d'un point three vu par une pose. */
 function projectInPose(pose: Pose, aspect: number, p: THREE.Vector3, out: { x: number; y: number }): void {
   _d0.copy(p).sub(pose.pos).applyQuaternion(_q.copy(pose.quat).invert())
@@ -197,10 +767,8 @@ function projectInPose(pose: Pose, aspect: number, p: THREE.Vector3, out: { x: n
 /** Tourne la pose (position fixe) du plus petit angle pour que `p` (three) tombe au point d'écran (sx, sy). */
 function aimAt(pose: Pose, aspect: number, p: THREE.Vector3, sx: number, sy: number): void {
   const tv = Math.tan((pose.fov * DEG) / 2)
-  // direction actuelle du point (repère caméra) et direction voulue pour ce point d'écran
   _d0.copy(p).sub(pose.pos).applyQuaternion(_q.copy(pose.quat).invert()).normalize()
   _d1.set((sx * 2 - 1) * tv * aspect, (1 - sy * 2) * tv, -1).normalize()
-  // rotation (repère caméra) qui amène d1 sur d0 : la caméra tourne pour que le point vienne en (sx, sy) ;
   // correction bornée (un sujet passé derrière la caméra ne la fait jamais se retourner)
   if (_d0.z > -0.2) return
   _q.setFromUnitVectors(_d1, _d0)
@@ -208,239 +776,129 @@ function aimAt(pose: Pose, aspect: number, p: THREE.Vector3, sx: number, sy: num
   if (ang > AIM_MAX) _q.slerp(_qi, 1 - AIM_MAX / ang)
   pose.quat.multiply(_q)
 }
-const _qi = new THREE.Quaternion()
-/** Correction de visée maximale de la grue (rad). */
-const AIM_MAX = 25 * DEG
-function copyPoseTo(dst: Pose, src: Pose): void {
-  dst.pos.copy(src.pos)
-  dst.quat.copy(src.quat)
-  dst.fov = src.fov
-}
 
-/** Couchant : distances caméra → oiseau essayées (m). */
-const SUNSET_DISTS: readonly number[] = [40, 30]
-let _sunYaw = 0
-/** Pose du couchant : face au soleil (posé à l'abscisse sunX), l'oiseau à sunSubject, à `dist` m. */
-function sunsetPose(az: number, sunX: number, dist: number, tanH: number, x: number, y: number, z: number, L: CineLayout, aspect: number, out: Pose): void {
-  const yaw = yawOfDir(Math.sin(az), Math.cos(az)) + Math.atan((sunX * 2 - 1) * tanH)
-  _sunYaw = yaw
-  yawPitchQuat(out.quat, yaw, -7 * DEG)
-  out.fov = 40
-  _v.set(x, z + 1, -y)
-  placeForSubject(out.pos, _v, out.quat, out.fov, aspect, L.sunSubject.x, L.sunSubject.y, dist)
-  if (out.pos.y < 3.5) out.pos.y = 3.5
-}
+// ───────────────────────── Le plan ─────────────────────────
 
-/** Le rideau du Simoun est-il à moins de STORM_NEAR m dans le champ de cette pose ? */
-export function stormNear(sim: SimState, pose: Pose, aspect: number): boolean {
-  _v2.set(0, 0, -1).applyQuaternion(pose.quat)
-  const hx = _v2.x
-  const hy = -_v2.z
-  if (Math.hypot(hx, hy) < 0.05) return false
-  const halfH = Math.atan(Math.tan((pose.fov * DEG) / 2) * aspect)
-  return stormDistanceInView(sim, pose.pos.x, -pose.pos.z, hx, hy, halfH) < STORM_NEAR
-}
-
-/** Suivi : oiseaux essayés, angles de visée par rapport au cap (°), du plus beau au moins beau. */
-const TRACK_TRY_BIRDS = 6
-const TRACK_LOOKS: readonly number[] = [30, 60, 10, 90]
-
-let _trackYaw = 0
-/** Pose du suivi pour un point lissé de l'oiseau, un cap, un côté, un angle de visée. */
-function trackPose(x: number, y: number, z: number, h: number, side: number, lookDeg: number, hk: number, sx: number, sy: number, aspect: number, out: Pose): void {
-  // on regarde dans le sens du vol, tourné de lookDeg : l'oiseau file vers le fond, en diagonale
-  const lookH = h + side * lookDeg * DEG
-  const yaw = yawOfDir(Math.cos(lookH), Math.sin(lookH))
-  _trackYaw = yaw
-  yawPitchQuat(out.quat, yaw, (17 - 25 * hk) * DEG)
-  out.fov = 38
-  _v.set(x, z + 1.2, -y)
-  placeForSubject(out.pos, _v, out.quat, out.fov, aspect, sx, sy, 24 + 4 * (1 - hk))
-  if (out.pos.y < 3.2) out.pos.y = 3.2
-}
+const _now = new BirdSet()
+const _vp = makePose()
 
 /**
- * Note de défaut d'une pose de suivi (0 = propre) : sujet caché, tour proche ou large, Simoun,
- * tour dans une case de l'UI. Les tests bon marché d'abord (la rastérisation ne sert qu'aux poses
- * qui les passent).
+ * Oiseaux dans τ s de l'image présente : trajectoire exacte de la jumelle de la démo (demoFuture)
+ * quand elle couvre l'instant, sinon extrapolation (crédits d'une autre sim, jumelle désaccordée).
  */
-function poseBadness(sim: SimState, pose: Pose, aspect: number, layout: CineLayout, subject: THREE.Vector3): number {
-  let bad = towerOccludes(sim, pose.pos, subject) ? 3 : 0
-  const halfH = Math.atan(Math.tan((pose.fov * DEG) / 2) * aspect)
-  _v2.set(0, 0, -1).applyQuaternion(pose.quat)
-  const yaw = Math.atan2(-_v2.x, -_v2.z)
-  const clutter = towerClutter(sim, pose.pos, yaw, halfH)
-  if (clutter > CLUTTER_MAX) bad += clutter
-  const cx = pose.pos.x
-  const cy = -pose.pos.z
-  const hx = _v2.x
-  const hy = -_v2.z
-  if (bad > 0) return bad
-  // le Simoun proche n'est plus un défaut : le plan le masque (hideStorm, décidé à la coupe) ;
-  // rastérisations bornées par prise (coût à la coupe) ; au-delà, test angulaire grossier
-  if (_rasterBudget <= 0) {
-    const d = Math.hypot(hx, hy) > 0.05 ? nearestTowerInView(sim, cx, cy, hx, hy, halfH) : Infinity
-    return d < TOWER_NEAR ? 1 + (TOWER_NEAR - d) / TOWER_NEAR : 0.25
-  }
-  _rasterBudget--
-  return shotFault(sim, pose, aspect, layout, true, subject.distanceTo(pose.pos)) ? 0.5 : 0
-}
-const _v2 = new THREE.Vector3()
-/** Rastérisations restantes pour le choix de prise en cours. */
-let _rasterBudget = 0
-const RASTER_BUDGET = 10
-
-/** Oiseau suivant (ordre des slots, en boucle). */
-function nextSlot(sim: SimState, slot: number): number {
-  const birds = sim.birds
-  if (!birds.length) return -1
-  const i = birds.findIndex(b => b.slot === slot)
-  return birds[(i + 1) % birds.length]!.slot
-}
-
-const MAX_PTS = 48
-/** Au-delà, une tour barre trop l'image (part de la largeur) : on change de côté, de lacet ou de sujet. */
-const CLUTTER_MAX = 0.12
-/** Plan refusé si une tour dans le champ est à moins de ces mètres (tour géante au premier plan). */
-const TOWER_NEAR = 45
-/** Plan refusé si le rideau du Simoun est à moins de ces mètres dans le champ (voile en gros plan). */
-const STORM_NEAR = 120
-/** Tour à moins de ces mètres dans l'angle horizontal : toujours un défaut (mur plein cadre, invisible à la projection). */
-const TOWER_TOUCH = 12
-/** Une tour à moins de 45 m (axe à moins de 45 + 18 m) compte si elle occupe plus de 5 % de la largeur. */
-const NEAR_MIN_WIDTH = 0.05
-/** Le rideau du Simoun (12 m) ne fait un voile en gros plan que vu d'une caméra plus basse que ceci (m). */
-const STORM_CAM_MAX_Z = 40
-/** Une tour plus large que CLUTTER_MAX ne compte comme « premier plan » qu'en deçà du sujet (et de 80 m au moins). */
-const WIDE_NEAR = 80
-/** Part d'une case de l'UI (logo, pied de page) qu'une tour peut couvrir. */
-const UI_COVER_MAX = 0.05
-/** Un oiseau en piqué engagé ne se suit pas (traînée de 700 px en diagonale à 25 m). */
-const DIVE_STATES_EXCLUDED = true
-/** Contrôle d'encombrement en cours de plan : période (s). */
-const CHECK_PERIOD = 0.1
-
-const _inv = new THREE.Matrix4()
-const _m4 = new THREE.Matrix4()
-const _pv = new THREE.Vector3()
-const _one3 = new THREE.Vector3(1, 1, 1)
-let _tanH = 1
-let _tanV = 1
-/** Projection d'une pose (repère three) pour towerCover (points en repère sim). */
-function setPoseProjector(pose: Pose, aspect: number): void {
-  _m4.compose(pose.pos, pose.quat, _one3)
-  _inv.copy(_m4).invert()
-  _tanV = Math.tan((pose.fov * DEG) / 2)
-  _tanH = _tanV * aspect
-}
-const poseProjector = (x: number, y: number, z: number, out: { x: number; y: number; z: number }) => {
-  _pv.set(x, z, -y).applyMatrix4(_inv)
-  const d = -_pv.z
-  const dd = Math.max(1e-3, d)
-  out.x = (_pv.x / dd / _tanH + 1) / 2
-  out.y = (1 - _pv.y / dd / _tanV) / 2
-  out.z = d
+export function birdsAhead(sim: SimState, view: GameView, tau: number, out: BirdSet): BirdSet {
+  if (tau > 0 && demoFuture.birdsAt(sim, view.alpha, tau, out)) return out
+  return predictBirds(sim, view, tau, out)
 }
 
 /**
- * Défaut de composition d'une pose de cinéma (polish S4), '' si aucun : tour à moins de 45 m dans le
- * champ, tour plus large que 12 % de l'écran, rideau du Simoun à moins de 120 m, tour dans la case
- * du logo ou du pied de page.
+ * Pas de simulation d'une prise (s) : tri des candidates (0,2), vérification fine de celles qui
+ * comptent, de la retenue à la coupe et de la prise rendue en continu (0,05 : un oiseau qui passe le
+ * bord du logo, une tour qui entre par le côté, sont vus).
  */
-export function shotFault(sim: SimState, pose: Pose, aspect: number, layout: CineLayout, stormHidden = false, subjectDist = Infinity): '' | 'near' | 'wide' | 'storm' | 'ui' {
-  const cx = pose.pos.x
-  const cy = -pose.pos.z
-  const cz = pose.pos.y
-  _v.set(0, 0, -1).applyQuaternion(pose.quat)
-  const hx = _v.x
-  const hy = -_v.z
-  const halfH = Math.atan(Math.tan((pose.fov * DEG) / 2) * aspect)
-  // rideau du Simoun (12 m de haut) : un voile en gros plan seulement vu d'une caméra basse
-  if (!stormHidden && cz < STORM_CAM_MAX_Z && Math.hypot(hx, hy) > 0.05 && stormDistanceInView(sim, cx, cy, hx, hy, halfH) < STORM_NEAR) return 'storm'
-  // caméra collée à une tour (la projection ne la voit plus : un mur plein cadre)
-  if (Math.hypot(hx, hy) > 0.05 && nearestTowerInView(sim, cx, cy, hx, hy, halfH) < TOWER_TOUCH) return 'near'
-  setPoseProjector(pose, aspect)
-  // tour à moins de 45 m réellement à l'image (pas seulement dans l'angle horizontal : sous le cadre,
-  // derrière la caméra ou réduite à un fil, elle ne compte pas)
-  towerCover(sim, cx, cy, cz, poseProjector, _tanH, _tanV, 0, FULL_SCREEN, TOWER_NEAR + 18, TOWER_NEAR + 18)
-  if (towerCoverStats.maxWidth > NEAR_MIN_WIDTH) return 'near'
-  // largeur : les tours du premier plan (jusqu'au sujet, 80 m au moins) ; au-delà, c'est le décor
-  const nearDist = Math.max(WIDE_NEAR, subjectDist + 15)
-  towerCover(sim, cx, cy, cz, poseProjector, _tanH, _tanV, 0, FULL_SCREEN, nearDist)
-  if (towerCoverStats.maxWidth > CLUTTER_MAX) return 'wide'
-  // cases de l'UI : une tour de premier plan qui passe derrière le logo ou le pied de page (les tours
-  // du fond, petites et en partie cachées par la case opaque, font partie du décor)
-  for (const r of layout.uiRects) if (towerCover(sim, cx, cy, cz, poseProjector, _tanH, _tanV, 0, r, Infinity, nearDist) > UI_COVER_MAX) return 'ui'
-  return ''
+const SIM_STEP = 0.2
+const VERIFY_STEP = 0.05
+const FINE_STEP = VERIFY_STEP
+/** Vérification fine : ressorts intégrés au pas du rendu entre deux instants jugés (plus fidèle, plus cher). */
+const SUBSTEPS = false
+/** Une prise plus courte que ceci n'est gardée qu'à défaut de mieux (s). */
+const MIN_TAKE = 3
+const MIN_TAKE_BEAUTY = 2
+/** Une prise préparée qui, vérifiée à la coupe, tient moins que ceci (s) est recherchée à nouveau. */
+const ADOPT_MIN = 0.6
+/** On coupe cette avance (s) avant le premier défaut prévu d'une prise. */
+const CUT_MARGIN = 0.25
+/** Défaut prévu à moins de ceci (s) de la fin du plan : on passe au plan suivant (director). */
+const EARLY_END = 1.2
+
+/** État de lissage d'un plan (ressorts) : sauvegardé pendant la simulation des candidates. */
+interface Smooth {
+  s: Float64Array
+  highT: number
+  fresh: boolean
 }
 
 /**
- * Un plan : état propre (sujet lissé, temps), pose calculée à chaque frame.
+ * Un plan : une prise validée (Setup), l'état de lissage, la pose calculée à chaque frame, la
+ * surveillance et les nouvelles prises (coupes franches internes). Chaque candidate est SIMULÉE
+ * sur la durée du plan (ressorts, cadreur et visée compris) avec la trajectoire exacte des oiseaux
+ * quand elle est connue ; la retenue est propre jusqu'à `cleanUntil` (fin du plan de préférence) :
+ * on coupe juste avant sur une autre prise validée.
  */
 export class CineShot {
+  /** Plan voulu par la séquence. */
   kind: ShotKind = 'still'
   t = 0
   dur = 8
-  private subject = -1
   private rand: () => number = rng(1)
-  private readonly sx = new Spring()
-  private readonly sy = new Spring()
-  private readonly sz = new Spring()
-  private readonly sh = new Spring()
-  private readonly side = new Spring()
-  private readonly rx = new Spring()
-  private readonly ry = new Spring()
-  private readonly rd = new Spring()
-  private readonly rig: Rig = makeRig()
+  private readonly setup: Setup = makeSetup()
+  private readonly cand: Setup = makeSetup()
+  private readonly best: Setup = makeSetup()
+  private planned = false
+  private readonly springs = Array.from({ length: 9 }, () => new Spring())
+  private readonly sx = this.springs[0]!
+  private readonly sy = this.springs[1]!
+  private readonly sz = this.springs[2]!
+  private readonly sh = this.springs[3]!
+  private readonly side = this.springs[4]!
+  private readonly rx = this.springs[5]!
+  private readonly ry = this.springs[6]!
+  private readonly rd = this.springs[7]!
+  /** 1 = oiseau haut (contre-plongée sur le ciel), 0 = bas (plongée sur le sable) ; lissé. */
+  private readonly highK = this.springs[8]!
+  private highT = 1
+  private fresh = true
+  private readonly saved: Smooth = { s: new Float64Array(18), highT: 1, fresh: true }
   private readonly close = makePose()
   private readonly far = makePose()
-  /** Dernière pose calculée (plan de groupe) et dérive de lacet d'évitement des tours. */
-  private readonly pose0 = makePose()
-  /** Pose extrapolée (LOOK_AHEAD s) pour anticiper l'entrée d'une tour. */
-  private readonly ahead = makePose()
-  private yawDrift = 0
-  private cluttered = 0
-  private flips = 0
+  /** Dernière pose finie rendue. */
+  private readonly lastGood = makePose()
   /** Coupes franches internes au plan (le réalisateur les compte comme des coupes). */
   recuts = 0
-  private readonly fit: FitResult = { tx: 0, ty: 0, dist: 0, width: 0 }
-  private readonly pts = new Float64Array(MAX_PTS * 3)
-  private sideSign = 1
-  private yaw0 = 0
-  /** 1 = oiseau haut (contre-plongée sur le ciel), 0 = bas (plongée sur le sable) ; lissé. */
-  private readonly highK = new Spring()
-  private highT = 1
-  private occluded = 0
-  private fresh = true
-  /**
-   * Première image d'un suivi : essais de côté / de sujet avant d'afficher quoi que ce soit (ajout
-   * qa) ; −1 = vérifié. Sans cela, le plan d'ouverture du titre montrait ~0,5 s un fût de tour en
-   * plein cadre, le temps que le ressort de côté passe de l'autre côté.
-   */
-  private freshCheck = 0
-  private readonly tmp: Interp = { x: 0, y: 0, z: 0, heading: 0, vx: 0, vy: 0, vz: 0 }
+  /** Prises de repli (aucune candidate du plan voulu n'était propre assez longtemps). */
+  fallbacks = 0
+  /** Le Simoun passe à moins de 120 m dans une image de la prise : masqué pour toute la prise. */
+  hideStorm = false
   layout: CineLayout = TITLE_LAYOUT
   private checkClock = 0
-  /** Suivi : angle de visée par rapport au cap (°). */
-  private lookDeg = 30
-  /** Couchant : distance à l'oiseau et abscisse du soleil retenues. */
-  private sunDist = 40
-  private sunX = 0.78
-  /** Temps depuis la dernière coupe interne (s). */
   private sinceCut = 0
-  /** Plan de vue large : oiseau central du groupe cadré. */
-  private orbitSubject = -1
-  private lastFault: ReturnType<typeof shotFault> = ''
-  /** Dernier défaut de composition relevé (debug, scripts). */
+  private faultTime = 0
+  private lastFault: Fault = ''
+  private judged = 0
+  /** Prochaine resimulation de la prise en cours (s). */
+  private recheck = 0
+  /** Temps de plan jusqu'auquel la prise est propre, et jusqu'auquel elle a été simulée. */
+  private cleanUntil = 0
+  private checkedUntil = 0
+  /** Défaut de l'image courante (surveillance ; debug, scripts). */
   get fault(): string {
     return this.lastFault
   }
-
-  /** Distance (m) de la caméra de `pose` au sujet du plan (Infinity sans sujet). */
-  subjectDistance(sim: SimState, pose: Pose): number {
-    const b = sim.bySlot[this.kind === 'orbit' ? this.orbitSubject : this.subject]
-    if (!b) return Infinity
-    return Math.hypot(b.x - pose.pos.x, b.y + pose.pos.z, b.z - pose.pos.y)
+  /** Début (temps de plan) de la prise recherchée d'avance, −∞ sans recherche. */
+  get jobFrom(): number {
+    return this.job?.from ?? -Infinity
+  }
+  /** Le plan suivant de la séquence est préparé (director, à chaque frame). */
+  nextReady = false
+  /** Début du plan suivant dans SON horloge (0 = coupe prévue ; négatif si ce plan lui passe la main plus tôt). */
+  get handOverAt(): number {
+    return this.planned && this.cleanUntil < this.dur - 1e-3 && this.dur - this.cleanUntil < EARLY_END ? this.cleanUntil - CUT_MARGIN - this.dur : 0
+  }
+  /**
+   * La prise en cours arrive à son premier défaut prévu moins de EARLY_END s avant la fin du plan :
+   * plutôt qu'une prise de quelques dixièmes, le réalisateur passe tout de suite au plan suivant
+   * (s'il est préparé, pour cet instant : handOverAt).
+   */
+  get endsEarly(): boolean {
+    return this.planned && this.cleanUntil < this.dur - 1e-3 && this.dur - this.cleanUntil < EARLY_END && this.t >= this.cleanUntil - CUT_MARGIN
+  }
+  /** Plan effectivement tourné (repli compris). */
+  get actualKind(): ShotKind {
+    return this.planned ? this.setup.kind : this.kind
+  }
+  /** Sujet de la prise (−1 pour un plan large). */
+  get subjectSlot(): number {
+    return this.judgeSubject(this.setup, this.t)
   }
 
   start(kind: ShotKind, dur: number, seed: number, layout: CineLayout): void {
@@ -448,136 +906,59 @@ export class CineShot {
     this.dur = dur
     this.t = 0
     this.rand = rng(seed * 7919 + 13)
-    this.subject = -1
-    this.fresh = true
-    this.freshCheck = 0
-    this.occluded = 0
-    this.yaw0 = 0
-    this.yawDrift = 0
-    this.cluttered = 0
-    this.flips = 0
     this.layout = layout
-    this.sideSign = this.rand() < 0.5 ? -1 : 1
-    this.checkClock = 0
-    this.lastFault = ''
-    this.sinceCut = 0
-    this.orbitSubject = -1
-  }
-
-  /**
-   * Défaut de composition, réévalué au plus toutes les CHECK_PERIOD s (toujours si `now`). `ahead` :
-   * la pose que le plan aura dans ~0,8 s (sujet extrapolé) — une tour qui va entrer déclenche la
-   * nouvelle prise avant d'être à l'image.
-   */
-  private faultOf(sim: SimState, pose: Pose, aspect: number, dt: number, now: boolean, ahead: Pose | null = null): string {
-    this.checkClock -= dt
-    if (now || this.checkClock <= 0) {
-      this.checkClock = CHECK_PERIOD
-      this.lastFault = shotFault(sim, pose, aspect, this.layout, true, this.subjectDistance(sim, pose))
-      if (!this.lastFault && ahead) this.lastFault = shotFault(sim, ahead, aspect, this.layout, true, this.subjectDistance(sim, ahead))
-    }
-    return this.lastFault
-  }
-
-  private snapTrack(i: Interp, mode: 0 | 1): void {
-    this.sx.snap(i.x)
-    this.sy.snap(i.y)
-    this.sz.snap(i.z)
-    this.sh.snap(i.heading)
-    this.side.snap(this.sideSign)
-    this.highT = mode === 0 && i.z > 10 ? 1 : 0
-    this.highK.snap(this.highT)
-    this.fresh = false
-  }
-
-  /**
-   * Première image d'un suivi (polish S4) : essaie, dans l'ordre, l'oiseau courant puis les
-   * suivants (piqués exclus), des deux côtés, sous deux angles (30° puis 60° du cap), et garde la
-   * première pose sans défaut (ni tour à moins de 45 m ou trop large, ni Simoun proche, ni tour dans
-   * les cases de l'UI, ni oiseau caché) ; à défaut, la moins mauvaise. Coupe franche : rien n'est
-   * montré avant ce choix.
-   */
-  private chooseTrack(sim: SimState, view: GameView, aspect: number, mode: 0 | 1): void {
-    this.freshCheck = -1
-    _rasterBudget = RASTER_BUDGET
-    const n = Math.min(TRACK_TRY_BIRDS, sim.birds.length)
-    let bestScore = Infinity
-    let bestSubject = this.subject
-    let bestSide = this.sideSign
-    let bestLook: number = TRACK_LOOKS[0]
-    let slot = this.subject
-    const L = this.layout
-    for (let k = 0; k < n; k++) {
-      const b = sim.bySlot[slot]
-      if (b && !(DIVE_STATES_EXCLUDED && b.dive !== 'none')) {
-        const i = interpBird(view, b, this.tmp)
-        const hk = mode === 0 && i.z > 10 ? 1 : 0
-        const sx = L.trackLow.x + (L.trackHigh.x - L.trackLow.x) * hk
-        const sy = L.trackLow.y + (L.trackHigh.y - L.trackLow.y) * hk
-        for (const look of TRACK_LOOKS)
-          for (const sd of [this.sideSign, -this.sideSign]) {
-            trackPose(i.x, i.y, i.z, i.heading, sd, look, hk, sx, sy, aspect, this.close)
-            const score = poseBadness(sim, this.close, aspect, L, _v)
-            if (score < bestScore) {
-              bestScore = score
-              bestSubject = slot
-              bestSide = sd
-              bestLook = look
-            }
-            if (score === 0) {
-              k = n
-              break
-            }
-          }
-        if (bestScore === 0) break
-      }
-      slot = nextSlot(sim, slot)
-    }
-    this.subject = bestSubject
-    this.sideSign = bestSide
-    this.lookDeg = bestLook
+    this.planned = false
     this.fresh = true
+    this.checkClock = 0
+    this.sinceCut = 0
+    this.faultTime = 0
+    this.lastFault = ''
+    this.hideStorm = false
+    this.cleanUntil = this.checkedUntil = 0
+    this.job = null
+    this.preSim = null
+    this.setup.kind = kind
+    this.setup.slot = -1
+    this.setup.side = this.rand() < 0.5 ? -1 : 1
   }
 
-  /** Choix du sujet : un oiseau en vol, loin du bord et des tours ; haut ou bas selon le plan. */
-  private pickSubject(sim: SimState, wantHigh: number): number {
-    let best = -1
-    let bestScore = -Infinity
-    const a = sim.arena.a
-    const b = sim.arena.b
-    for (const bird of sim.birds) {
-      const rho = Math.hypot(bird.x / a, bird.y / b)
-      let s = -rho * 2 + wantHigh * (bird.z / 18) + this.rand() * 0.6
-      if (bird.stun > 0) s -= 1
-      // un oiseau en piqué fond sur la caméra : jamais comme sujet de suivi
-      if (bird.dive !== 'none') s -= DIVE_STATES_EXCLUDED ? 10 : 1
-      for (const t of sim.towers) {
-        const d = Math.hypot(t.x - bird.x, t.y - bird.y)
-        if (d < 30) s -= (30 - d) / 30
-      }
-      if (s > bestScore) {
-        bestScore = s
-        best = bird.slot
-      }
-    }
-    return best
+  /** Juge l'image `pose` avec les oiseaux présents (director : cameraState.shotFault). */
+  judge(sim: SimState, view: GameView, pose: Pose, aspect: number, stormHidden: boolean): Fault {
+    predictBirds(sim, view, 0, _now)
+    return frameFault(sim, _now, pose, aspect, this.layout, stormHidden, this.subjectSlot)
   }
 
   update(dt: number, sim: SimState | null, view: GameView, aspect: number, out: Pose): Pose {
     this.t += dt
     if (!sim || this.kind === 'still') return this.still(out, sim)
-    switch (this.kind) {
-      case 'track':
-        return this.track(dt, sim, view, aspect, out, 0)
-      case 'crane':
-        return this.crane(dt, sim, view, aspect, out)
-      case 'group':
-        return this.group(dt, sim, view, aspect, out)
-      case 'sunset':
-        return this.sunset(dt, sim, view, aspect, out)
-      case 'orbit':
-        return this.orbit(sim, aspect, out, this.layout.wideRect)
+    // première image d'une prise : on choisit (et valide) avant de montrer quoi que ce soit
+    if (!this.planned || !sim.bySlot[this.setup.slot]) this.plan(sim, view, aspect)
+    predictBirds(sim, view, 0, _now)
+    this.pose(dt, sim, _now, this.setup, this.t, aspect, out)
+    this.sinceCut += dt
+    // prise suivante du même plan (premier défaut prévu avant la fin) : recherche préparée d'avance
+    const cutAt = this.cleanUntil - CUT_MARGIN
+    if (this.cleanUntil < this.dur - 1e-3 && !(this.nextReady && this.dur - this.cleanUntil < EARLY_END) && this.t >= cutAt - PRE_LEAD && this.t < cutAt) {
+      if (!this.job || this.job.sim !== sim || Math.abs(this.job.from - cutAt) > 1e-3) this.startJob(sim, Math.max(this.t, cutAt), this.kind, true)
+      this.runJob(sim, view, aspect, SLICE, SLICE_MS)
     }
+    if (!poseFinite(out)) {
+      // garde-fou (jamais observé au banc) : une pose non finie ne s'affiche pas ; nouvelle prise
+      copyPoseTo(out, this.lastGood)
+      this.planned = false
+      return out
+    }
+    copyPoseTo(this.lastGood, out)
+    if (this.watch(dt, sim, view, aspect, out)) {
+      this.recuts++
+      this.sinceCut = 0
+      this.faultTime = 0
+      this.plan(sim, view, aspect)
+      this.pose(0, sim, _now, this.setup, this.t, aspect, out)
+      this.checkClock = 0
+      this.watch(0, sim, view, aspect, out)
+    }
+    return out
   }
 
   /** Plan fixe élégant (chargement) : horizon au tiers bas, vers le couchant. */
@@ -590,394 +971,587 @@ export class CineShot {
     return out
   }
 
-  /**
-   * Travelling qui suit un oiseau. Oiseau haut : contre-plongée, il se découpe sur le ciel
-   * (horizon au tiers bas). Oiseau bas : plongée, sa traînée peinte court sur le sable
-   * (horizon au tiers haut). La visée évite les tours (changement de côté en douceur).
-   * `mode` : 0 = selon l'altitude au départ, 1 = plongée imposée (départ de la grue).
-   */
-  private track(dt: number, sim: SimState, view: GameView, aspect: number, out: Pose, mode: 0 | 1): Pose {
-    if (this.subject < 0 || !sim.bySlot[this.subject]) {
-      this.subject = this.pickSubject(sim, mode === 1 ? 0 : 1)
-      this.fresh = true
-      this.freshCheck = 0
+  /** Sujet jugé : −1 pour les plans larges (groupe, vue large, grue une fois montée). */
+  private judgeSubject(s: Setup, t: number): number {
+    if (s.kind === 'group' || s.kind === 'orbit') return -1
+    if (s.kind === 'crane') return this.craneK(t) > 0.2 ? -1 : s.slot
+    return s.slot
+  }
+  private craneK(t: number): number {
+    return smoother((t - 1.2) / Math.max(1, this.dur - 1.8))
+  }
+
+  // ── pose (lissée) : la même fonction sert au rendu et à la simulation des candidates ──
+
+  private pose(dt: number, sim: SimState, birds: BirdSet, s: Setup, t: number, aspect: number, out: Pose): boolean {
+    const ok = this.poseRaw(dt, sim, birds, s, t, aspect, out)
+    // mêmes garde-fous que le réalisateur (jamais sous le sol ni dans une tour ; plus haut hors de
+    // l'arène) : la simulation des prises juge exactement l'image qui sera rendue
+    guardPosition(out.pos, sim.towers, sim.arena)
+    return ok
+  }
+  private poseRaw(dt: number, sim: SimState, birds: BirdSet, s: Setup, t: number, aspect: number, out: Pose): boolean {
+    const b = birds.get(s.slot)
+    if (!b) {
+      this.still(out, sim)
+      return false
     }
-    // première image d'une prise : on choisit sujet, côté et angle avant de montrer quoi que ce soit
-    if (this.freshCheck >= 0) this.chooseTrack(sim, view, aspect, mode)
-    const b = sim.bySlot[this.subject]
-    if (!b) return this.orbit(sim, aspect, out, this.layout.wideRect)
-    const i = interpBird(view, b, this.tmp)
-    if (this.fresh) this.snapTrack(i, mode)
-    // avance de 2v/ω : un ressort critique qui suit une rampe traîne de 2v/ω, on l'annule
-    const x = this.sx.step(i.x + i.vx * 0.5, 4, dt)
-    const y = this.sy.step(i.y + i.vy * 0.5, 4, dt)
-    const z = this.sz.step(i.z + i.vz * (2 / 3), 3, dt)
-    const h = this.sh.stepAngle(i.heading, 0.8, dt)
-    const side = this.side.step(this.sideSign, 1.4, dt)
+    const L = this.layout
+    switch (s.kind) {
+      case 'track':
+        this.trackSmooth(dt, b, s, aspect, out)
+        return true
+      case 'crane':
+        this.trackSmooth(dt, b, s, aspect, this.close)
+        fitPose(orbitPoints(sim, birds, s.slot), s.yaw + t * CRANE_SPIN * DEG * s.side, CRANE_PITCH, L.wideRect, 60, 4000, aspect, this.far)
+        this.craneBlend(b, s, t, aspect, this.close, this.far, out)
+        return true
+      case 'sunset':
+      case 'sky': {
+        if (this.fresh) {
+          this.sx.snap(b.x)
+          this.sy.snap(b.y)
+          this.sz.snap(b.z)
+          this.fresh = false
+        }
+        // suivi très amorti : la caméra glisse, l'oiseau vit dans le cadre (avance 2v/ω)
+        const x = this.sx.step(b.x + b.vx * (2 / 1.4), 1.4, dt)
+        const y = this.sy.step(b.y + b.vy * (2 / 1.4), 1.4, dt)
+        const z = this.sz.step(b.z + b.vz * (2 / 1.5), 1.5, dt)
+        if (s.kind === 'sunset') {
+          sunsetPose(sim.sun.azimuth, s.sunX, s.dist, x, y, z, L, aspect, out)
+          this.hold(out, b, 1, L.sunSubject.x, L.sunSubject.y, aspect)
+        } else {
+          skyPose(s.az, s.pitch, s.dist, x, y, z, L, aspect, out)
+          this.hold(out, b, 1, L.skySubject.x, L.skySubject.y, aspect)
+        }
+        return true
+      }
+      case 'group': {
+        const n = groupPoints(birds, s.slot)
+        const yaw = s.yaw + t * GROUP_SPIN * DEG * s.side
+        fitPoints(_pts, n, yaw, GROUP_PITCH, 40, aspect, L.groupRect, 70, 600, _fit)
+        if (this.fresh) {
+          this.rx.snap(_fit.tx)
+          this.ry.snap(_fit.ty)
+          this.rd.snap(Math.log(_fit.dist))
+          this.fresh = false
+        }
+        // le groupe se déplace avec son oiseau-sujet : même avance que le suivi
+        _rig.tx = this.rx.step(_fit.tx + b.vx * (2 / 1.2), 1.2, dt)
+        _rig.ty = this.ry.step(_fit.ty + b.vy * (2 / 1.2), 1.2, dt)
+        _rig.tz = 0
+        _rig.yaw = yaw
+        _rig.pitch = GROUP_PITCH
+        _rig.dist = Math.exp(this.rd.step(Math.log(_fit.dist), 0.8, dt))
+        _rig.fov = 40
+        rigPose(_rig, out)
+        return true
+      }
+      case 'orbit':
+        fitPose(orbitPoints(sim, birds, s.slot), s.yaw + t * ORBIT_SPIN * DEG * s.side, s.pitch, L.wideRect, 60, 4000, aspect, out)
+        this.fresh = false
+        return true
+      default:
+        this.still(out, sim)
+        return false
+    }
+  }
+
+  /** Travelling qui suit un oiseau (avance 2v/ω : un ressort critique qui suit une rampe traîne de 2v/ω). */
+  private trackSmooth(dt: number, b: BirdAt, s: Setup, aspect: number, out: Pose): void {
+    if (this.fresh) {
+      this.sx.snap(b.x)
+      this.sy.snap(b.y)
+      this.sz.snap(b.z)
+      this.sh.snap(b.heading)
+      this.side.snap(s.side)
+      this.highT = s.hk
+      this.highK.snap(s.hk)
+      this.fresh = false
+    }
+    const x = this.sx.step(b.x + b.vx * 0.5, 4, dt)
+    const y = this.sy.step(b.y + b.vy * 0.5, 4, dt)
+    const z = this.sz.step(b.z + b.vz * (2 / 3), 3, dt)
+    const h = this.sh.stepAngle(b.heading, 0.8, dt)
+    const side = this.side.step(s.side, 1.4, dt)
     // l'oiseau change d'étage : le plan passe du ciel au sable (ou l'inverse) en douceur
-    if (mode === 0) {
-      if (this.highT > 0.5 && i.z < 8) this.highT = 0
-      else if (this.highT < 0.5 && i.z > 13) this.highT = 1
-    }
+    if (this.highT > 0.5 && b.z < 8) this.highT = 0
+    else if (this.highT < 0.5 && b.z > 13) this.highT = 1
     const hk = this.highK.step(this.highT, 1.3, dt)
     const L = this.layout
-    const sx = L.trackLow.x + (L.trackHigh.x - L.trackLow.x) * hk
-    const sy = L.trackLow.y + (L.trackHigh.y - L.trackLow.y) * hk
-    // pose dans LOOK_AHEAD s (même cap), pour couper avant qu'une tour n'entre
-    trackPose(x + i.vx * LOOK_AHEAD, y + i.vy * LOOK_AHEAD, z, h, side, this.lookDeg, hk, sx, sy, aspect, this.ahead)
-    trackPose(x, y, z, h, side, this.lookDeg, hk, sx, sy, aspect, out)
-    const yaw = _trackYaw
-    const blocked = towerOccludes(sim, out.pos, _v) || towerClutter(sim, out.pos, yaw, Math.atan(Math.tan(19 * DEG) * aspect)) > CLUTTER_MAX || this.faultOf(sim, out, aspect, dt, false, this.ahead) !== ''
-    // l'oiseau suivi engage un piqué : il fondrait sur la caméra, nouvelle prise sur un autre oiseau
-    if (DIVE_STATES_EXCLUDED && b.dive !== 'none' && mode === 0) {
-      this.subject = -1
-      this.recuts++
-      this.occluded = 0
-      this.flips = 0
-      return this.track(0, sim, view, aspect, out, mode)
-    }
-    // une tour masque l'oiseau ou barre l'image (ou le Simoun, ou la case du logo) : nouvelle prise
-    // en coupe franche — l'autre côté, puis un autre oiseau (vérifiés avant la première image) ; un
-    // lent passage de l'autre côté laissait la tour plein cadre pendant deux secondes (polish S4)
-    this.sinceCut += dt
-    if (blocked) {
-      this.occluded += dt
-      if (this.occluded > 0.1 && (this.sinceCut > RECUT_MIN || mode === 1)) {
-        this.occluded = 0
-        this.sinceCut = 0
-        this.recuts++
-        this.sideSign = -this.sideSign
-        this.freshCheck = 0
-        this.fresh = true
-        return this.track(0, sim, view, aspect, out, mode)
-      }
-      if (this.occluded > 0.2) {
-        // coupes trop rapprochées : passage de l'autre côté en douceur, comme avant
-        this.flips++
-        this.sideSign = -this.sideSign
-        this.occluded = -1.2
-      }
-    } else if (this.occluded > 0) this.occluded = 0
-    else this.occluded = Math.min(0, this.occluded + dt)
-    return out
+    trackPose(x, y, z, h, side, s.look, hk, L, aspect, out)
+    this.hold(out, b, 1.2, L.trackLow.x + (L.trackHigh.x - L.trackLow.x) * hk, L.trackLow.y + (L.trackHigh.y - L.trackLow.y) * hk, aspect)
   }
 
   /**
-   * Part serré sur un oiseau (sur le ciel s'il vole haut), puis s'élève et recule pour révéler
-   * l'arène entière. Le sujet reste dans le cadre pendant toute la grue : la visée interpolée est
-   * corrigée pour que l'oiseau glisse de sa place du plan serré à sa place dans le plan large (bornée
-   * à la zone libre de l'UI) — plus de plan sans sujet à mi-grue.
+   * Cadreur : le sujet dérive de sa place (virage, retard des ressorts) ; la visée en rattrape
+   * 1 − HOLD_KEEP (rotation seule, bornée) — il garde un peu de vie sans passer sous le logo ni le menu.
    */
-  private crane(dt: number, sim: SimState, view: GameView, aspect: number, out: Pose): Pose {
-    this.track(dt, sim, view, aspect, this.close, 0)
-    if (this.yaw0 === 0) {
-      // lacet du plan large : celui du départ, ramené vers le nord (l'arène se lit mieux de biais)
-      const f = _v.set(0, 0, -1).applyQuaternion(this.close.quat)
-      this.yaw0 = yawOfDir(f.x, -f.z) * 0.5 || 1e-3
-    }
-    const yaw = this.yaw0 + this.t * 0.8 * DEG * this.sideSign
-    this.wideFit(sim, aspect, yaw, 24 * DEG, this.layout.wideRect)
-    rigPose(this.rig, this.far)
-    const k = smoother((this.t - 1.2) / Math.max(1, this.dur - 1.8))
-    blendPose(out, this.close, this.far, k, 0)
-    const b = sim.bySlot[this.subject]
-    if (!b || k <= 0) return out
-    const i = interpBird(view, b, this.tmp)
-    _v.set(i.x, i.z + 1.2, -i.y)
-    // où l'oiseau tombe dans le plan large (ramené dans la bande libre), où il est dans le plan serré
+  private hold(out: Pose, b: BirdAt, lift: number, sx: number, sy: number, aspect: number): void {
+    _v2.set(b.x, b.z + lift, -b.y)
+    projectInPose(out, aspect, _v2, _sp)
+    aimAt(out, aspect, _v2, sx + (_sp.x - sx) * HOLD_KEEP, sy + (_sp.y - sy) * HOLD_KEEP)
+  }
+
+  /** Grue : du plan serré au plan large ; le sujet glisse de sa place serrée à sa place large (bande libre). */
+  private craneBlend(b: BirdAt, s: Setup, t: number, aspect: number, close: Pose, far: Pose, out: Pose): void {
+    const k = this.craneK(t)
+    blendPose(out, close, far, k, 0)
+    if (k <= 0) return
     const L = this.layout
-    projectInPose(this.far, aspect, _v, _sp)
-    const fx = Math.min(0.66, Math.max(0.1, _sp.x))
-    const fy = Math.min(0.76, Math.max(0.5, _sp.y))
-    const hk = this.highK.x
-    const cx = L.trackLow.x + (L.trackHigh.x - L.trackLow.x) * hk
-    const cy = L.trackLow.y + (L.trackHigh.y - L.trackLow.y) * hk
-    aimAt(out, aspect, _v, cx + (fx - cx) * k, cy + (fy - cy) * k)
-    return out
+    _v2.set(b.x, b.z + 1.2, -b.y)
+    projectInPose(far, aspect, _v2, _sp)
+    const fx = Math.min(0.66, Math.max(0.12, _sp.x))
+    const fy = Math.min(0.72, Math.max(0.52, _sp.y))
+    const cx = L.trackLow.x + (L.trackHigh.x - L.trackLow.x) * s.hk
+    const cy = L.trackLow.y + (L.trackHigh.y - L.trackLow.y) * s.hk
+    aimAt(out, aspect, _v2, cx + (fx - cx) * k, cy + (fy - cy) * k)
   }
 
-  /** L'arène entière (ellipse) dans un rectangle d'écran, pour un lacet et un tangage donnés. */
-  private wideFit(sim: SimState, aspect: number, yaw: number, pitch: number, rect: ScreenRect): Rig {
-    const P = this.pts
-    const n = 20
-    const a = sim.arena.a * 1.04
-    const b = sim.arena.b * 1.04
-    for (let i = 0; i < n; i++) {
-      const th = (i / n) * Math.PI * 2
-      P[i * 3] = Math.cos(th) * a
-      P[i * 3 + 1] = Math.sin(th) * b
-      P[i * 3 + 2] = 0
-    }
-    fitPoints(P, n, yaw, pitch, 40, aspect, rect, 60, 4000, this.fit)
-    const r = this.rig
-    r.tx = this.fit.tx
-    r.ty = this.fit.ty
-    r.tz = 0
-    r.yaw = yaw
-    r.pitch = pitch
-    r.dist = this.fit.dist
-    r.fov = 40
-    return r
+  // ── simulation et choix de la prise ──
+
+  private saveSmooth(): void {
+    const o = this.saved
+    this.springs.forEach((sp, i) => {
+      o.s[i * 2] = sp.x
+      o.s[i * 2 + 1] = sp.v
+    })
+    o.highT = this.highT
+    o.fresh = this.fresh
+  }
+  private restoreSmooth(): void {
+    const o = this.saved
+    this.springs.forEach((sp, i) => {
+      sp.x = o.s[i * 2]!
+      sp.v = o.s[i * 2 + 1]!
+    })
+    this.highT = o.highT
+    this.fresh = o.fresh
   }
 
-  /** Plan bas de groupe : un oiseau et ses voisins proches, leurs ombres et le sable peint, horizon au tiers haut. */
-  private group(dt: number, sim: SimState, view: GameView, aspect: number, out: Pose): Pose {
-    const pickYaw = this.subject < 0 || !sim.bySlot[this.subject]
-    if (pickYaw) this.subject = this.pickSubject(sim, 0)
-    const s = sim.bySlot[this.subject]
-    if (!s) return this.orbit(sim, aspect, out, this.layout.wideRect)
-    const P = this.pts
-    let n = 0
-    const si = interpBird(view, s, this.tmp)
-    const cx = si.x
-    const cy = si.y
-    const svx = si.vx
-    const svy = si.vy
-    for (const b of sim.birds) {
-      const i = interpBird(view, b, this.tmp)
-      if (Math.hypot(i.x - cx, i.y - cy) > 70 || n + 2 > MAX_PTS) continue
-      const p = view.prevBirds[b.slot] ?? b
-      const scx = p.shadow.cx + (b.shadow.cx - p.shadow.cx) * view.alpha
-      const scy = p.shadow.cy + (b.shadow.cy - p.shadow.cy) * view.alpha
-      P[n * 3] = i.x
-      P[n * 3 + 1] = i.y
-      P[n * 3 + 2] = i.z
-      n++
-      P[n * 3] = scx
-      P[n * 3 + 1] = scy
-      P[n * 3 + 2] = 0
-      n++
-    }
-    const pitch = 16 * DEG
-    if (pickYaw) {
-      // lacet choisi pour qu'aucune tour ne barre le premier plan (sur toute la rotation du plan)
-      const base = (this.rand() - 0.5) * 70 * DEG
-      const halfH = Math.atan(Math.tan(20 * DEG) * aspect)
-      let best = Infinity
-      for (let k = 0; k < 12; k++) {
-        const cand = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 30 * DEG
-        let pen = Math.abs(wrapAngle(cand)) * 0.15 // préférence : regarder vers le nord
-        for (const dt2 of [0, this.dur * 0.5, this.dur]) {
-          const y2 = cand + dt2 * 1.5 * DEG * this.sideSign
-          fitPoints(P, n, y2, pitch, 40, aspect, this.layout.groupRect, 70, 600, this.fit)
-          this.rig.tx = this.fit.tx
-          this.rig.ty = this.fit.ty
-          this.rig.tz = 0
-          this.rig.yaw = y2
-          this.rig.pitch = pitch
-          this.rig.dist = this.fit.dist
-          rigPose(this.rig, this.far)
-          pen += towerClutter(sim, this.far.pos, y2, halfH) + (shotFault(sim, this.far, aspect, this.layout, true) ? 1 : 0)
+  /**
+   * Simule la prise `s` à partir du temps de plan courant (fraîche : ressorts recalés, ou dans l'état
+   * de lissage présent) jusqu'à `until`, au pas `step` ; rend le temps de plan du premier défaut
+   * (`until` si aucun). `storm` : note si le Simoun passe près (this.stormSeen).
+   */
+  private simulate(sim: SimState, view: GameView, s: Setup, aspect: number, fresh: boolean, until: number, step: number, from = this.t, stormHidden = true): number {
+    this.saveSmooth()
+    if (fresh) this.fresh = true
+    _margin = 1
+    let clean = until
+    let prevT = this.t
+    this.stormSeen = false
+    this.simFault = ''
+    for (let tt = from; tt <= until + 1e-6; tt += step) {
+      this.judged++
+      let dt = tt === from && fresh ? 0 : tt - prevT
+      if (SUBSTEPS && step <= FINE_STEP && dt > 0) {
+        // vérification fine : ressorts intégrés comme au rendu (pas de 1/60 s) entre deux instants jugés
+        const n = Math.max(1, Math.round(dt * 60))
+        for (let k = 1; k < n; k++) {
+          const ti = prevT + (dt * k) / n
+          this.pose(dt / n, sim, this.predicted(sim, view, ti), s, ti, aspect, _vp)
         }
-        if (pen < best) {
-          best = pen
-          this.yaw0 = cand
+        dt /= n
+      }
+      const birds = this.predicted(sim, view, tt)
+      const ok = this.pose(dt, sim, birds, s, tt, aspect, _vp)
+      prevT = tt
+      if (!ok) {
+        clean = tt
+        break
+      }
+      const f = frameFault(sim, birds, _vp, aspect, this.layout, stormHidden, this.judgeSubject(s, tt))
+      if (f) {
+        if (cineDebug.log && step === SIM_STEP) {
+          const k = `${s.kind}${s.kind === 'sky' ? Math.round(s.pitch / DEG) : ''}:${f}${f === 'near' ? faultInfo.nearKind : ''}${tt - from < 0.5 ? '@0' : tt - from < 2 ? '@<2' : '@2+'}`
+          cineDebug.faults[k] = (cineDebug.faults[k] ?? 0) + 1
         }
+        clean = tt
+        this.simFault = f
+        break
       }
+      if (!this.stormSeen && stormNear(sim, _vp, aspect)) this.stormSeen = true
     }
-    let yaw = this.yaw0 + this.t * 1.5 * DEG * this.sideSign
-    // en cours de plan, une tour s'approche du premier plan : le lacet s'en écarte doucement
-    const halfH = Math.atan(Math.tan(20 * DEG) * aspect)
-    if (!pickYaw && (towerClutter(sim, this.pose0.pos, yaw, halfH) > CLUTTER_MAX || this.faultOf(sim, this.pose0, aspect, dt, false) !== '')) {
-      const probe = (dy: number) => {
-        fitPoints(P, n, yaw + dy, pitch, 40, aspect, this.layout.groupRect, 70, 600, this.fit)
-        this.rig.tx = this.fit.tx
-        this.rig.ty = this.fit.ty
-        this.rig.yaw = yaw + dy
-        this.rig.pitch = pitch
-        this.rig.dist = this.fit.dist
-        rigPose(this.rig, this.far)
-        return towerClutter(sim, this.far.pos, yaw + dy, halfH)
-      }
-      this.yawDrift += (probe(0.3) < probe(-0.3) ? 1 : -1) * 14 * DEG * dt
-      this.cluttered += dt
-      if (this.cluttered > 0.35) {
-        // la tour s'impose malgré tout : nouveau groupe (coupe franche)
-        this.cluttered = 0
-        this.subject = -1
-        this.fresh = true
-        this.yawDrift = 0
-        this.recuts++
-        return this.group(0, sim, view, aspect, out)
-      }
-    } else this.cluttered = Math.max(0, this.cluttered - dt)
-    yaw += this.yawDrift
-    fitPoints(P, n, yaw, pitch, 40, aspect, this.layout.groupRect, 70, 600, this.fit)
-    if (this.fresh) {
-      this.rx.snap(this.fit.tx)
-      this.ry.snap(this.fit.ty)
-      this.rd.snap(Math.log(this.fit.dist))
-      this.fresh = false
+    this.restoreSmooth()
+    _margin = 0
+    return clean
+  }
+  private stormSeen = false
+  /** Défaut qui a arrêté la dernière simulation (debug). */
+  private simFault: Fault = ''
+
+  /**
+   * Oiseaux au temps de plan `tt` (cache par recherche : toutes les candidates partagent les mêmes
+   * instants ; clé à la milliseconde). L'avenir exact ne change pas d'une frame à l'autre ; une entrée
+   * extrapolée est recalculée dès que l'avenir exact la couvre.
+   */
+  private readonly predMap = new Map<number, { set: BirdSet; exact: boolean }>()
+  private readonly predPool: { set: BirdSet; exact: boolean }[] = []
+  private predUsed = 0
+  private predicted(sim: SimState, view: GameView, tt: number): BirdSet {
+    if (this.predUsed === 0 && this.predMap.size) this.predMap.clear()
+    const key = Math.round(tt * 1000)
+    const tau = Math.max(0, key / 1000 - this.t)
+    const exact = this.preSim === sim ? key / 1000 <= demoFuture.upcomingHorizon(sim) : tau <= demoFuture.horizon(sim, view.alpha)
+    let e = this.predMap.get(key)
+    if (e && (e.exact || !exact)) return e.set
+    if (!e) {
+      if (this.predUsed >= this.predPool.length) this.predPool.push({ set: new BirdSet(), exact: false })
+      e = this.predPool[this.predUsed++]!
+      this.predMap.set(key, e)
     }
-    const r = this.rig
-    // le groupe se déplace avec son oiseau-sujet : même avance que le suivi
-    r.tx = this.rx.step(this.fit.tx + svx * (2 / 1.2), 1.2, dt)
-    r.ty = this.ry.step(this.fit.ty + svy * (2 / 1.2), 1.2, dt)
-    r.tz = 0
-    r.yaw = yaw
-    r.pitch = pitch
-    r.dist = Math.exp(this.rd.step(Math.log(this.fit.dist), 0.8, dt))
-    r.fov = 40
-    rigPose(r, out)
-    copyPoseTo(this.pose0, out)
-    return out
+    e.exact = exact
+    // démo pas encore à l'écran (première prise du rebouclage) : son avenir depuis son tick 0
+    if (this.preSim === sim && demoFuture.birdsAtStart(sim, Math.max(0, key / 1000), e.set)) return e.set
+    return birdsAhead(sim, view, tau, e.set)
+  }
+  /** Plan préparé pour la démo suivante, pas encore à l'écran (son temps de plan 0 = le tick 0 de cette démo). */
+  preSim: SimState | null = null
+
+  /** Oiseaux candidats au rôle de sujet, du plus beau au moins beau (piqués et sonnés à la fin). */
+  private subjects(sim: SimState, wantHigh: number): number[] {
+    const a = sim.arena.a
+    const b = sim.arena.b
+    const scored = sim.birds.map((bird) => {
+      const rho = Math.hypot(bird.x / a, bird.y / b)
+      let s = -rho * 2 + wantHigh * (bird.z / 18) + this.rand() * 0.6
+      if (bird.stun > 0) s -= 1
+      if (bird.dive !== 'none') s -= 10
+      for (const t of sim.towers) {
+        const d = Math.hypot(t.x - bird.x, t.y - bird.y)
+        if (d < 30) s -= (30 - d) / 30
+      }
+      return { slot: bird.slot, s }
+    })
+    scored.sort((p, q) => q.s - p.s)
+    return scored.map((p) => p.slot)
   }
 
-  /** Face au couchant, caméra basse à l'est d'un oiseau : silhouettes devant le soleil bas. */
-  private sunset(dt: number, sim: SimState, view: GameView, aspect: number, out: Pose): Pose {
+  /**
+   * Meilleures candidates de la recherche en cours : `best` (la plus longue propre) et `acc` (parmi
+   * celles qui tiennent MIN_TAKE s ou jusqu'à la fin du plan, la plus belle : rang le plus bas, puis
+   * la plus longue).
+   */
+  private bestClean = -1
+  private readonly acc: Setup = makeSetup()
+  private accClean = -1
+  private accRank = Infinity
+  /**
+   * Rang de beauté d'une prise (0 = le plan voulu) : contre-jour et suivis d'abord ; plongée franche
+   * ensuite (en fin de journée, après tout le reste : de près, les aplats saturés font « tapis ») ;
+   * plan zénithal en dernier recours.
+   */
+  private rankOf(sim: SimState, s: Setup, want: ShotKind): number {
+    if (s.kind === want) return 0
+    if (s.kind === 'sunset') return 1
+    if (s.kind === 'sky') {
+      if (s.pitch < -10 * DEG) return 2
+      if (s.pitch < 0) return 1
+      if (s.pitch > 50 * DEG) return 5
+      return sim.sun.t / sim.sun.T > 0.6 ? 4.5 : 3
+    }
+    if (s.kind === 'track') return 1.5
+    return 2
+  }
+
+  /**
+   * Recherche de prise en cours (incrémentale) : prise qui commencera au temps de plan `from`, plan
+   * voulu puis replis, chacun avec son budget de jugements ; `done` quand une belle candidate est
+   * propre jusqu'à la fin du plan ou que tout est essayé. Lancée d'avance (PRE_LEAD s avant la coupe)
+   * et menée par tranches à chaque frame : le choix est prêt à la coupe, sans à-coup.
+   */
+  private job: { from: number; want: ShotKind; kinds: ShotKind[]; ki: number; it: Generator<void> | null; kindEnd: number; big: boolean; done: boolean; sim: SimState } | null = null
+
+  /** Essaie la candidate `this.cand` (prise qui commence à `from`) ; true = on peut s'arrêter (belle et propre jusqu'au bout). */
+  private tryCand(sim: SimState, view: GameView, aspect: number, from: number, want: ShotKind): boolean {
+    const end = Math.max(from, this.dur)
+    const rank = this.rankOf(sim, this.cand, want)
+    // une belle prise (contre-jour, suivi, groupe) vaut d'être gardée dès 2 s ; les autres dès 3 s
+    const enough = Math.min(end, from + (rank <= 2 ? MIN_TAKE_BEAUTY : MIN_TAKE))
+    // tri grossier (pas de 0,2 s), puis vérification fine (0,1 s) de toute candidate qui compterait
+    let clean = this.simulate(sim, view, this.cand, aspect, true, end, SIM_STEP, from)
+    const counts = (c: number) => c > this.bestClean || (c >= enough - 1e-6 && (rank < this.accRank || (rank === this.accRank && c > this.accClean)))
+    if (!counts(clean)) return false
+    clean = this.simulate(sim, view, this.cand, aspect, true, clean, VERIFY_STEP, from)
+    if (clean > this.bestClean) {
+      this.bestClean = clean
+      copySetup(this.best, this.cand)
+    }
+    if (clean >= enough - 1e-6 && (rank < this.accRank || (rank === this.accRank && clean > this.accClean))) {
+      this.accRank = rank
+      this.accClean = clean
+      copySetup(this.acc, this.cand)
+    }
+    return rank <= 1 && clean >= end - 1e-6
+  }
+
+  /** Candidates d'un type de plan, dans l'ordre de préférence (this.cand, une à chaque étape). */
+  private *candidates(sim: SimState, kind: ShotKind): Generator<void> {
+    const c = this.cand
     const L = this.layout
-    const az = sim.sun.azimuth
-    const tanH = Math.tan(20 * DEG) * aspect
-    const halfH = Math.atan(tanH)
-    if (this.subject < 0 || !sim.bySlot[this.subject]) {
-      // l'oiseau (plutôt haut), la distance et la place du soleil dont le contrechamp est le plus
-      // dégagé : première prise sans défaut, sinon la moins mauvaise (polish S4)
-      _rasterBudget = RASTER_BUDGET
-      let best = -1
-      let bestScore = Infinity
-      for (const b of sim.birds) {
-        if (b.dive !== 'none') continue
-        const i = interpBird(view, b, this.tmp)
-        for (const dist of SUNSET_DISTS)
-          for (const sunX of [L.sunX, L.sunX + (L.sunX > 0.5 ? -0.1 : 0.1)]) {
-            sunsetPose(az, sunX, dist, tanH, i.x, i.y, i.z, L, aspect, this.far)
-            _v.set(i.x, i.z + 1, -i.y)
-            const score = poseBadness(sim, this.far, aspect, L, _v) * 10 - i.z / 18 + (b.stun > 0 ? 1 : 0) + this.rand() * 0.2
-            if (score < bestScore) {
-              bestScore = score
-              best = b.slot
-              this.sunDist = dist
-              this.sunX = sunX
+    c.kind = kind
+    const side0 = this.setup.side || 1
+    switch (kind) {
+      case 'track':
+      case 'crane': {
+        for (const slot of this.subjects(sim, 1)) {
+          const b = sim.bySlot[slot]
+          if (!b || b.dive !== 'none') continue
+          c.slot = slot
+          c.hk = b.z > 10 ? 1 : 0
+          if (kind === 'crane') {
+            // le plan large d'arrivée : lacets essayés autour du nord (l'arène se lit de biais)
+            for (const sd of [side0, -side0]) {
+              c.look = TRACK_LOOKS[0]!
+              c.side = sd
+              const base = (this.rand() - 0.5) * 50 * DEG
+              for (let k = 0; k < 6; k++) {
+                c.yaw = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 60 * DEG
+                yield
+              }
+            }
+          } else
+            for (const look of TRACK_LOOKS)
+              for (const sd of [side0, -side0]) {
+                c.look = look
+                c.side = sd
+                yield
+              }
+        }
+        return
+      }
+      case 'sunset': {
+        for (const slot of this.subjects(sim, 1)) {
+          const b = sim.bySlot[slot]
+          if (!b || b.dive !== 'none') continue
+          c.slot = slot
+          for (const dist of SUNSET_DISTS)
+            for (const sunX of L.sunXs) {
+              c.dist = dist
+              c.sunX = sunX
+              yield
+            }
+        }
+        return
+      }
+      case 'sky': {
+        const sunAz = sim.sun.azimuth
+        // direction du soleil (sim) : visée face à lui = contre-jour, puis on s'en écarte
+        const sunDir = Math.atan2(Math.cos(sunAz), Math.sin(sunAz))
+        const slots = this.subjects(sim, 1)
+        for (const pitch of SKY_PITCHES)
+          for (const off of SKY_OFFSETS)
+            for (const slot of slots) {
+              const b = sim.bySlot[slot]
+              if (!b || b.dive !== 'none') continue
+              c.slot = slot
+              c.az = sunDir + off * DEG
+              c.pitch = pitch
+              for (const dist of SKY_DISTS) {
+                c.dist = dist
+                yield
+              }
+            }
+        return
+      }
+      case 'group': {
+        for (const slot of this.subjects(sim, 0)) {
+          c.slot = slot
+          c.side = side0
+          const base = (this.rand() - 0.5) * 70 * DEG
+          for (let k = 0; k < 12; k++) {
+            c.yaw = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 30 * DEG
+            yield
+          }
+        }
+        return
+      }
+      case 'orbit': {
+        // l'oiseau qui a le plus de voisins proches d'abord
+        const order = sim.birds
+          .map((b) => ({ slot: b.slot, c: sim.birds.filter((o) => Math.hypot(o.x - b.x, o.y - b.y) < ORBIT_GROUP_RADIUS).length + this.rand() * 0.5 }))
+          .sort((p, q) => q.c - p.c)
+        for (const { slot } of order.slice(0, 4)) {
+          c.slot = slot
+          c.side = side0
+          for (const pitch of ORBIT_PITCHES) {
+            c.pitch = pitch
+            const base = (this.rand() - 0.5) * 60 * DEG
+            for (let k = 0; k < 10; k++) {
+              c.yaw = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 36 * DEG
+              yield
             }
           }
+        }
+        return
       }
-      this.subject = best
-      this.fresh = true
+      default:
+        return
     }
-    const b = sim.bySlot[this.subject]
-    if (!b) return this.orbit(sim, aspect, out, this.layout.wideRect)
-    const i = interpBird(view, b, this.tmp)
-    if (this.fresh) {
-      this.sx.snap(i.x)
-      this.sy.snap(i.y)
-      this.sz.snap(i.z)
-      this.fresh = false
+  }
+
+  /** Plans de repli, dans l'ordre, pour un plan voulu. */
+  private static fallbacksOf(kind: ShotKind): ShotKind[] {
+    switch (kind) {
+      case 'sunset':
+        return ['sky', 'track', 'group']
+      case 'track':
+        return ['sky', 'sunset', 'group']
+      case 'crane':
+        return ['track', 'sky', 'group']
+      default:
+        return ['track', 'sky', 'sunset']
     }
-    // suivi très amorti : la caméra glisse, l'oiseau vit dans le cadre
-    const x = this.sx.step(i.x + i.vx * (2 / 1.4), 1.4, dt)
-    const y = this.sy.step(i.y + i.vy * (2 / 1.4), 1.4, dt)
-    const z = this.sz.step(i.z + i.vz * (2 / 1.5), 1.5, dt)
-    sunsetPose(az, this.sunX, this.sunDist, tanH, x + i.vx * LOOK_AHEAD, y + i.vy * LOOK_AHEAD, z, L, aspect, this.ahead)
-    sunsetPose(az, this.sunX, this.sunDist, tanH, x, y, z, L, aspect, out)
-    const yaw = _sunYaw
-    // une tour vient barrer l'image (ou la case du logo) : nouvelle prise sur un autre oiseau
-    this.sinceCut += dt
-    if (dt > 0 && (towerClutter(sim, out.pos, yaw, halfH) > CLUTTER_MAX || this.faultOf(sim, out, aspect, dt, false, this.ahead) !== '')) {
-      this.cluttered += dt
-      if (this.cluttered > 0.12 && this.sinceCut > RECUT_MIN) {
-        this.cluttered = 0
-        this.sinceCut = 0
-        this.subject = -1
-        this.recuts++
-        return this.sunset(0, sim, view, aspect, out)
+  }
+
+  private startJob(sim: SimState, from: number, want: ShotKind, big: boolean): void {
+    this.judged = 0
+    this.predUsed = 0
+    this.bestClean = -1
+    this.accClean = -1
+    this.accRank = Infinity
+    this.job = { from, want, kinds: [want, ...CineShot.fallbacksOf(want)], ki: 0, it: null, kindEnd: big ? WANT_BUDGET_BIG : WANT_BUDGET, big, done: false, sim }
+  }
+
+  /** Mène la recherche en cours pour au plus `slice` jugements ; true quand elle est finie. */
+  private runJob(sim: SimState, view: GameView, aspect: number, slice: number, ms = Infinity): boolean {
+    const j = this.job
+    if (!j || j.done) return true
+    const stop = this.judged + slice
+    const t0 = ms < Infinity ? performance.now() : 0
+    while (this.judged < stop && (ms === Infinity || performance.now() - t0 < ms)) {
+      if (!j.it) j.it = this.candidates(sim, j.kinds[j.ki]!)
+      const r = this.judged > j.kindEnd ? { done: true } : j.it.next()
+      if (!r.done) {
+        if (this.tryCand(sim, view, aspect, j.from, j.want)) {
+          j.done = true
+          break
+        }
+        continue
       }
-    } else this.cluttered = Math.max(0, this.cluttered - dt)
-    return out
+      // type épuisé (ou son budget) : le plan voulu suffit-il ? sinon repli suivant
+      j.it = null
+      j.ki++
+      if (j.ki >= j.kinds.length || this.accRank === 0) {
+        j.done = true
+        break
+      }
+      j.kindEnd = this.judged + (j.big ? FALLBACK_BUDGET_BIG : FALLBACK_BUDGET)
+    }
+    return j.done
   }
 
   /**
-   * Vue large qui tourne lentement (tangage 22°) autour de l'action : les oiseaux, leurs ombres et,
-   * pendant la Grande Ombre, la lèvre du front (polish S4 : plus l'arène entière « en pizza » aux
-   * oiseaux de 10 px). Lacet de départ choisi sans tour au premier plan ni dans les cases de l'UI.
+   * Adopte le résultat de la recherche : parmi les prises qui tiennent MIN_TAKE s (ou jusqu'à la fin
+   * du plan), la plus belle (rankOf), sinon la plus longue propre. Coupe franche : rien n'est montré
+   * avant ce choix.
    */
-  private orbit(sim: SimState, aspect: number, out: Pose, rect: ScreenRect): Pose {
-    const pitch = ORBIT_PITCH
-    const n = this.actionPoints(sim)
-    if (this.fresh) {
-      const base = (this.rand() - 0.5) * 60 * DEG
-      let best = Infinity
-      for (let k = 0; k < 8; k++) {
-        const cand = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 40 * DEG
-        let pen = Math.abs(wrapAngle(cand)) * 0.1
-        for (const dt2 of [0, this.dur]) {
-          this.fitAction(n, aspect, cand + dt2 * 1.1 * DEG * this.sideSign, pitch, rect)
-          rigPose(this.rig, this.far)
-          pen += shotFault(sim, this.far, aspect, this.layout, true) ? 1 : 0
-        }
-        if (pen < best) {
-          best = pen
-          this.yaw0 = cand
-        }
-      }
-      this.fresh = false
+  private adopt(sim: SimState, view: GameView, aspect: number, retry = true): void {
+    const j = this.job!
+    const want = j.want
+    const end = Math.max(this.t, this.dur)
+    // la plus belle qui tient MIN_TAKE s (ou jusqu'à la fin), sinon la plus longue propre
+    if (this.accClean >= 0) {
+      copySetup(this.best, this.acc)
+      this.bestClean = this.accClean
     }
-    const yaw = this.yaw0 + this.t * 1.1 * DEG * this.sideSign
-    this.fitAction(n, aspect, yaw, pitch, rect)
-    return rigPose(this.rig, out)
+    if (this.best.kind !== want) this.fallbacks++
+    if (this.bestClean <= this.t || this.best.slot < 0 || !sim.bySlot[this.best.slot]) {
+      // rien de propre (ou sim vide) : la meilleure trouvée, sinon premier oiseau venu en suivi simple
+      if (this.best.slot < 0 || !sim.bySlot[this.best.slot]) {
+        copySetup(this.best, this.setup)
+        this.best.kind = 'track'
+        this.best.slot = sim.birds[0]?.slot ?? -1
+      }
+      this.bestClean = Math.max(this.bestClean, this.t)
+    }
+    copySetup(this.setup, this.best)
+    this.job = null
+    // vérification fine depuis maintenant (le tri a pu sauter un défaut bref ; la prise commence
+    // peut-être une frame plus tôt ou plus tard que prévu) et Simoun à masquer
+    this.predUsed = 0
+    this.cleanUntil = this.simulate(sim, view, this.setup, aspect, true, Math.max(this.t, this.bestClean), FINE_STEP)
+    this.hideStorm = this.stormSeen
+    if (retry && this.cleanUntil < Math.min(end, this.t + ADOPT_MIN)) {
+      if (cineDebug.log) cineDebug.log(`  prise préparée (${this.best.kind}, propre →${this.bestClean.toFixed(2)}) refusée à la coupe : ${this.simFault} à ${this.cleanUntil.toFixed(2)} (t=${this.t.toFixed(2)}, from=${j.from.toFixed(2)})`)
+      // la prise préparée ne tient plus depuis maintenant (elle commence plus tôt ou plus tard que
+      // prévu) : recherche immédiate depuis cet instant, sans rien montrer avant
+      this.startJob(sim, this.t, want, false)
+      this.runJob(sim, view, aspect, SYNC_BUDGET)
+      return this.adopt(sim, view, aspect, false)
+    }
+    // horizon réellement simulé : jusqu'à la fin du plan, ou jusqu'au premier défaut prévu
+    this.checkedUntil = Math.min(end, this.t + Math.max(0, demoFuture.horizon(sim, view.alpha)))
+    if (cineDebug.log) cineDebug.log(`plan t=${this.t.toFixed(2)} from=${j.from.toFixed(2)} want=${want} got=${this.best.kind} clean→${this.cleanUntil.toFixed(1)}/${end.toFixed(1)} judged=${this.judged} horizon=${demoFuture.horizon(sim, view.alpha).toFixed(1)} why=${this.lastFault || '-'} end=${this.cleanUntil < end - 1e-3 ? this.simFault + (this.simFault === 'near' ? faultInfo.nearKind : '') : '-'}`)
+    this.planned = true
+    this.fresh = true
+    this.lastFault = ''
   }
 
-  /** Points de l'action pour la vue large : un groupe d'oiseaux et leurs ombres, le front de nuit. */
-  private actionPoints(sim: SimState): number {
-    const P = this.pts
-    let n = 0
-    if (this.orbitSubject < 0 || !sim.bySlot[this.orbitSubject]) {
-      // l'oiseau qui a le plus de voisins proches
-      let best = -1
-      for (const b of sim.birds) {
-        let c = 0
-        for (const o of sim.birds) if (Math.hypot(o.x - b.x, o.y - b.y) < ORBIT_GROUP_RADIUS) c++
-        const score = c + this.rand() * 0.5
-        if (score > best) {
-          best = score
-          this.orbitSubject = b.slot
+  /** Choix de prise maintenant : la recherche préparée pour cet instant si elle existe (finie au besoin), sinon une recherche bornée. */
+  private plan(sim: SimState, view: GameView, aspect: number): void {
+    const j = this.job
+    if (!j || j.sim !== sim || j.from - this.t > EARLY_END + 0.1 || j.from - this.t < -0.3) this.startJob(sim, this.t, this.kind === 'still' ? 'track' : this.kind, false)
+    this.runJob(sim, view, aspect, SYNC_BUDGET)
+    this.adopt(sim, view, aspect)
+  }
+
+  /**
+   * Plan suivant de la séquence, préparé avant sa coupe (director) : son horloge court déjà (t < 0) ;
+   * la recherche de sa première prise (à t = 0) avance d'une tranche par frame.
+   */
+  prepare(dt: number, sim: SimState, view: GameView, aspect: number, from = 0): void {
+    this.t += dt
+    if (!this.job || this.job.sim !== sim || Math.abs(this.job.from - from) > 0.05) this.startJob(sim, Math.max(from, this.t), this.kind === 'still' ? 'track' : this.kind, true)
+    this.runJob(sim, view, aspect, SLICE, SLICE_MS)
+  }
+
+  // ── surveillance ──
+
+  /**
+   * true = nouvelle prise maintenant : on arrive au premier défaut prévu de la prise ; ou la prise,
+   * resimulée dans son état présent quand l'avenir connu s'allonge, montre un défaut dans moins de
+   * 0,6 s ; ou (filet de sécurité) l'image rendue a un défaut depuis 0,1 s.
+   */
+  private watch(dt: number, sim: SimState, view: GameView, aspect: number, out: Pose): boolean {
+    this.checkClock -= dt
+    if (this.checkClock <= 0) {
+      this.checkClock = CHECK_PERIOD
+      predictBirds(sim, view, 0, _now)
+      this.lastFault = frameFault(sim, _now, out, aspect, this.layout, this.hideStorm, this.judgeSubject(this.setup, this.t))
+      // la prise telle qu'elle est rendue (ressorts à 60 i/s) s'écarte un peu de sa simulation (pas de
+      // 0,1 s) : toutes les 0,5 s, elle est resimulée depuis son état présent sur les 1,6 s à venir
+      this.recheck -= CHECK_PERIOD
+      if (this.recheck <= 0 && this.cleanUntil > this.t) {
+        this.recheck = RECHECK
+        const until = Math.min(this.cleanUntil, this.t + 1.6)
+        const c = this.simulate(sim, view, this.setup, aspect, false, until, FINE_STEP, this.t, this.hideStorm)
+        if (c < until - 1e-6) {
+          this.cleanUntil = c
+          this.job = null
+        }
+      }
+      // l'avenir connu s'est allongé depuis le choix (début de boucle) : on prolonge la validation
+      const known = Math.min(this.dur, this.t + demoFuture.horizon(sim, view.alpha))
+      if (this.cleanUntil >= this.checkedUntil - 1e-6 && this.checkedUntil < this.dur - 1e-3 && known > this.checkedUntil + 0.5) {
+        const c = this.simulate(sim, view, this.setup, aspect, false, known, VERIFY_STEP, this.t, this.hideStorm)
+        this.checkedUntil = known
+        if (c < known - 1e-6) {
+          this.cleanUntil = c
+          this.job = null
         }
       }
     }
-    const s0 = sim.bySlot[this.orbitSubject]
-    for (const b of sim.birds) {
-      if (n + 3 > MAX_PTS) break
-      if (s0 && Math.hypot(b.x - s0.x, b.y - s0.y) > ORBIT_GROUP_RADIUS) continue
-      P.set([b.x, b.y, b.z], n * 3)
-      n++
-      P.set([b.shadow.cx, b.shadow.cy, 0], n * 3)
-      n++
-    }
-    const nt = sim.night
-    if (nt.active && sim.birds.length) {
-      let west = Infinity
-      for (const b of sim.birds) west = Math.min(west, b.x * nt.dirX + b.y * nt.dirY)
-      const s = Math.max(nt.s, -sim.arena.a, west - 40)
-      if (n < MAX_PTS) {
-        P.set([nt.dirX * s, nt.dirY * s, 0], n * 3)
-        n++
-      }
-    }
-    // jamais plus serré qu'un tiers de l'arène
-    const a = sim.arena.a * 0.34
-    if (n + 2 <= MAX_PTS && n > 0) {
-      let cx = 0
-      let cy = 0
-      for (let i = 0; i < n; i++) (cx += P[i * 3]!), (cy += P[i * 3 + 1]!)
-      cx /= n
-      cy /= n
-      P.set([cx - a, cy, 0], n * 3)
-      n++
-      P.set([cx + a, cy, 0], n * 3)
-      n++
-    }
-    return n
-  }
-
-  private fitAction(n: number, aspect: number, yaw: number, pitch: number, rect: ScreenRect): void {
-    fitPoints(this.pts, n, yaw, pitch, 40, aspect, rect, 60, 4000, this.fit)
-    const r = this.rig
-    r.tx = this.fit.tx
-    r.ty = this.fit.ty
-    r.tz = 0
-    r.yaw = yaw
-    r.pitch = pitch
-    r.dist = this.fit.dist
-    r.fov = 40
+    if (dt <= 0) return false
+    if (this.lastFault) this.faultTime += dt
+    else this.faultTime = 0
+    if (this.faultTime > 0.1 && this.sinceCut > RECUT_SOON) return true
+    // (défaut prévu juste avant la fin du plan et plan suivant prêt : le réalisateur coupe sur lui)
+    const handOver = this.nextReady && this.dur - this.cleanUntil < EARLY_END
+    if (!handOver && this.cleanUntil < this.dur - 1e-3 && this.t >= this.cleanUntil - CUT_MARGIN && this.sinceCut > RECUT_SOON) return true
+    return false
   }
 }
 
@@ -989,15 +1563,21 @@ export interface SequenceEntry {
 }
 
 /**
- * Titre (démo de 40 s, nuit à 40 s, rebouclage à 44 s) : la vue large tourne moins de 5 s en pleine
- * heure dorée, et la boucle finit sur le couchant (le plus beau plan), en deux prises (deux oiseaux).
+ * Titre (démo de 40 s, nuit à 40 s, rebouclage à 44 s) : ouverture sur un oiseau dans le ciel (le
+ * premier plan après le chargement et après chaque rebouclage est un suivi validé), grue qui révèle
+ * le sable peint, plan bas de groupe, suivi, plan bas de groupe à l'heure dorée (la vue large qui
+ * tournait laissait l'action sous le pied de page et une moitié d'image de sable vide : retirée) ;
+ * la boucle finit sur le couchant (le plus beau plan), en deux prises (deux oiseaux).
  */
+/** Le plan suivant du titre est préparé pendant ces dernières secondes du plan en cours (s). */
+export const TITLE_PREPARE = 2.4
+
 export const TITLE_SEQUENCE: SequenceEntry[] = [
-  { kind: 'crane', at: 0 },
-  { kind: 'track', at: 0.16 },
-  { kind: 'group', at: 0.32 },
-  { kind: 'track', at: 0.46 },
-  { kind: 'orbit', at: 0.6 },
+  { kind: 'track', at: 0 },
+  { kind: 'crane', at: 0.14 },
+  { kind: 'group', at: 0.3 },
+  { kind: 'track', at: 0.44 },
+  { kind: 'group', at: 0.58 },
   { kind: 'sunset', at: 0.72 },
   { kind: 'sunset', at: 0.9 },
 ]

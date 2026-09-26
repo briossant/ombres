@@ -38,6 +38,12 @@ export const worldView = {
    */
   roundFocus: true,
   shadowSmooth: true,
+  /**
+   * Levier de mesure (polish 2, scripts sous ?debug) : matière de fin de journée (glacis violet des
+   * ombres sur la peinture, plafond de chroma du couchant, densité d'aquarelle, bande de pigment).
+   * false = rendu d'avant, pour les captures avant / après et l'A/B de coût. Toujours vrai en jeu.
+   */
+  lookPolish2: true,
 }
 
 export type WorldView = typeof worldView

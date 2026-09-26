@@ -238,6 +238,22 @@ class AsrChecker:
         s = "".join(c for c in s if unicodedata.category(c) != "Mn")
         return re.sub(r"[^a-z0-9]+", "", s)  # sans espaces ni ponctuation : « l'ocre » == « locre »
 
+    # Homophones parfaits (mêmes sons, autre orthographe) : Whisper ne peut les départager qu'au sens,
+    # et choisit souvent la mauvaise graphie. On les ramène à une forme commune AVANT le CER (sur le
+    # texte normalisé, sans espaces) : ce n'est pas une indulgence sur la prononciation.
+    SAME = {
+        "fr": [("lheuredoree", "leurdore"),   # « l'heure dorée » = « leur doré » [lœʁ dɔʁe]
+               ("sonombre", "sonnombre"),     # « son ombre » = « son nombre » (liaison)
+               ("envoit", "envoie")],         # « en voit » = « envoie » [ɑ̃vwa]
+        "en": [("asyour", "azure")],        # « Azure » [ˈæʒə] écrit « as your » par Whisper
+    }
+
+    @classmethod
+    def _same(cls, s: str, lang: str) -> str:
+        for a, b in cls.SAME.get(lang, []):
+            s = s.replace(a, b)
+        return s
+
     def __call__(self, y: np.ndarray, sr: int, text: str, lang: str, prompt: str | None = None) -> tuple[float, str]:
         import librosa
 
@@ -248,7 +264,118 @@ class AsrChecker:
                                         without_timestamps=True, condition_on_previous_text=False,
                                         initial_prompt=prompt or None)
         hyp = " ".join(s.text.strip() for s in segs).strip()
-        return _cer(self._norm(PAUSE_RE.sub(" ", text), lang), self._norm(hyp, lang)), hyp
+        return _cer(self._same(self._norm(PAUSE_RE.sub(" ", text), lang), lang),
+                    self._same(self._norm(hyp, lang), lang)), hyp
+
+
+class ContextBed:
+    """Fond sonore réel du jeu (musique, ambiance, bruitages, interface, déjà baissés sous la voix),
+    enregistré pendant les répliques d'une partie à 12 oiseaux. Un clip y est posé à +snr LU
+    (sonie pondérée K de la voix contre celle du fond) après 0,8 s de fond seul : c'est « la
+    réplique en contexte ». Le segment du fond dépend de l'id du clip (toutes ses prises
+    sont jugées sur le même fond). Une ligne peut imposer son écart (`asr_bed_snr`, en LU)."""
+
+    LEAD_S = 0.8
+
+    def __init__(self, path: Path, snr_lu: float) -> None:
+        import librosa
+
+        y, sr = sf.read(path, dtype="float32", always_2d=True)
+        y = y.mean(axis=1)
+        self.bed = librosa.resample(y, orig_sr=sr, target_sr=16000) if sr != 16000 else y
+        self.snr = snr_lu
+        self.kf = self._k_filter(16000)
+
+    @staticmethod
+    def _k_filter(sr: int):
+        """Pondération K de BS.1770-4 (shelving haut + passe-haut RLB), recalculée pour sr."""
+        f0, g, q = 1681.974450955533, 3.999843853973347, 0.7071752369554196
+        k = np.tan(np.pi * f0 / sr)
+        vh = 10 ** (g / 20)
+        vb = vh ** 0.4996667741545416
+        a0 = 1 + k / q + k * k
+        s1 = ([(vh + vb * k / q + k * k) / a0, 2 * (k * k - vh) / a0, (vh - vb * k / q + k * k) / a0],
+              [1, 2 * (k * k - 1) / a0, (1 - k / q + k * k) / a0])
+        f0, q = 38.13547087602444, 0.5003270373238773
+        k = np.tan(np.pi * f0 / sr)
+        a0 = 1 + k / q + k * k
+        return s1, ([1, -2, 1], [1, 2 * (k * k - 1) / a0, (1 - k / q + k * k) / a0])
+
+    def _kpow(self, x: np.ndarray) -> float:
+        from scipy import signal
+
+        (b1, a1), (b2, a2) = self.kf
+        y = signal.lfilter(b2, a2, signal.lfilter(b1, a1, x))
+        return float((y ** 2).mean())
+
+    def mix(self, y16: np.ndarray, key: str, snr_lu: float | None = None) -> np.ndarray:
+        b = voiced_bounds(y16, 16000) or (0, len(y16))
+        lead = int(self.LEAD_S * 16000)
+        n = len(y16) + lead
+        off = int(hashlib.md5(key.encode()).hexdigest(), 16) % max(1, len(self.bed) - n - 1)
+        bg = self.bed[off:off + n]
+        if len(bg) < n:
+            bg = np.resize(self.bed, n)
+        snr = self.snr if snr_lu is None else snr_lu
+        g = np.sqrt(self._kpow(y16[b[0]:b[1]]) / max(self._kpow(bg), 1e-12) / 10 ** (snr / 10))
+        out = bg * g
+        out[lead:] += y16
+        return out.astype(np.float32)
+
+
+def asr_judge(asr: "AsrChecker", audio16: np.ndarray, say: str, lang: str, ln: dict, args, key: str,
+              bed: "ContextBed | None", every: bool = False) -> dict:
+    """Juge une prise encodée (16 kHz). P = avec l'amorce des noms de couleur (CER ≤ --max-cer) ;
+    puis les conditions de --asr-strict (défaut « NC ») : N = SANS amorce (mots-clés `keywords_np`
+    s'ils existent ; N ne bloque que les répliques neutres et celles qui ont des `keywords_np`),
+    C = posée dans le fond du jeu (--asr-bed), avec l'amorce. Mots-clés exigés ; CER ≤
+    --max-cer-strict pour N et C. S'arrête au premier échec bloquant sauf si `every`."""
+    def kw(field: str) -> list[list[str]]:
+        src = ln[field] if field in ln else ln.get("keywords") or []  # `keywords_np: []` : aucun mot-clé en N
+        return [[AsrChecker._same(AsrChecker._norm(a, lang), lang) for a in k.split("|")] for k in src]
+
+    def one(y: np.ndarray, prompt: str | None, max_cer: float, keywords: list[list[str]]) -> dict:
+        cer, hyp = asr(y, 16000, say, lang, prompt)
+        hyp_n = AsrChecker._same(AsrChecker._norm(hyp, lang), lang)
+        missing = [alts[0] for alts in keywords if not any(a in hyp_n for a in alts)]
+        return {"cer": round(cer, 3), "text": hyp, "missing": missing, "ok": cer <= max_cer and not missing}
+
+    conds = "P" + "".join(c for c in (getattr(args, "asr_strict", None) or "") if c in "NC" and (c != "C" or bed))
+    # N ne départage que ce que l'amorce pourrait masquer : réplique neutre, ou nom exigé par `keywords_np`
+    # (Lagon, Safran). Pour les autres noms, Whisper sans amorce écrit « Corée » pour un « Corail » bien dit :
+    # N est alors noté (manifest) sans bloquer la prise.
+    n_gates = not ln.get("keywords") or bool(ln.get("keywords_np", ln.get("keywords")))
+    res: dict = {}
+    for c in conds:
+        if not every and res and not all(r["ok"] for k, r in res.items() if k != "N" or n_gates):
+            break
+        if c == "P":
+            res[c] = one(audio16, ln.get("asr_prompt"), args.max_cer, kw("keywords"))
+        elif c == "N":
+            res[c] = one(audio16, None, args.max_cer_strict, kw("keywords_np"))
+        else:
+            res[c] = one(bed.mix(audio16, key, ln.get("asr_bed_snr")), ln.get("asr_prompt"), args.max_cer_strict,
+                         kw("keywords"))
+    if "N" in res and not n_gates:
+        res["N"]["info"] = True  # noté, non bloquant
+    res["ok"] = len(res) == len(conds) and all(r["ok"] or r.get("info") for r in res.values())
+    return res
+
+
+def asr_why(j: dict) -> str:
+    """Résumé lisible des conditions refusées (log)."""
+    return " ; ".join(f"{k} CER {r['cer']:.2f}" + (f", mots-clés non entendus : {r['missing']}" if r["missing"] else "")
+                      + f" « {r['text']} »" for k, r in j.items() if k != "ok" and not r["ok"] and not r.get("info"))
+
+
+def asr_fields(j: dict, model: str) -> dict:
+    """Champs du manifest : P en asr_cer/asr_text (comme avant), N et C en asr_np_*/asr_ctx_*."""
+    p = j.get("P") or j.get("D") or {"cer": None, "text": None}  # D : prise trop longue, non transcrite
+    out = {"asr_cer": p["cer"], "asr_text": p["text"], "asr_ok": j["ok"], "asr_model": model}
+    for k, name in (("N", "asr_np"), ("C", "asr_ctx")):
+        if k in j:
+            out[f"{name}_cer"], out[f"{name}_text"] = j[k]["cer"], j[k]["text"]
+    return out
 
 
 def _cer(ref: str, hyp: str) -> float:
@@ -391,39 +518,58 @@ def run(cmd: list[str]) -> subprocess.CompletedProcess:
     return p
 
 
+def presence_filter(db: float, hz: float) -> str:
+    """Plateau de présence (shelf haut, pente douce) : +db au-dessus de hz, pour que les consonnes
+    passent dans le mix. Placé AVANT la normalisation : la sonie finale reste celle visée."""
+    return f"highshelf=f={hz:g}:g={db:g}:t=s:w=1" if abs(db) > 1e-3 else ""
+
+
 def encode_normalized_mp3(wav_in: Path, mp3_out: Path, I: float, TP: float, LRA: float, q: int,
                           tempo: float, tag: str, sample_rate: int = 44100, bitrate: str | None = None,
-                          abr: bool = False) -> dict:
+                          abr: bool = False, eq: str = "") -> dict:
     """EBU R128 : mesure -> (gain + limiteur si le gain ferait dépasser le true-peak) -> loudnorm
     2e passe linéaire -> MP3 mono 44.1 kHz VBR. Sans pré-limiteur, loudnorm linéaire plafonne le
-    gain sur les voix à pics marqués (jusqu'à -2 LU mesuré sur des répliques courtes)."""
+    gain sur les voix à pics marqués (jusqu'à -2 LU mesuré sur des répliques courtes).
+    `eq` : filtre ffmpeg appliqué avant la mesure (plateau de présence)."""
     base = f"loudnorm=I={I}:TP={TP}:LRA={LRA}"
-    head = f"atempo={tempo}," if abs(tempo - 1.0) > 1e-3 else ""
+    head = (f"atempo={tempo}," if abs(tempo - 1.0) > 1e-3 else "") + (eq + "," if eq else "")
 
     def measure(pre: str) -> dict:
         af = head + (pre + "," if pre else "") + base + ":print_format=json"
         return ffmpeg_loudnorm_json(run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(wav_in), "-af", af,
                                          "-f", "null", "-"]).stderr)
 
+    def limiter(gain_db: float, margin_db: float) -> str:
+        lim = 10 ** ((TP - 1.0 - margin_db) / 20)  # limiteur à TP-1 dB, suréchantillonné pour les pics inter-échantillons
+        return (f"volume={gain_db:.2f}dB,aresample=192000,alimiter=limit={lim:.4f}:attack=2:release=40:level=disabled,"
+                f"aresample=48000")
+
     m = measure("")
     pre = ""
     gain = I - float(m["input_i"])
     if float(m["input_tp"]) + gain > TP - 0.5:
-        lim = 10 ** ((TP - 1.0) / 20)  # limiteur à TP-1 dB, suréchantillonné pour les pics inter-échantillons
-        pre = (f"volume={gain:.2f}dB,aresample=192000,alimiter=limit={lim:.4f}:attack=2:release=40:level=disabled,"
-               f"aresample=48000")
+        pre = limiter(gain, 0.0)
         m = measure(pre)
-    af = head + ((pre + ",") if pre else "") + (
-        f"{base}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
-        f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true:print_format=json,"
-        f"aresample={sample_rate}")
     rate = (["-b:a", bitrate] + (["-abr", "1"] if abr else [])) if bitrate else ["-q:a", str(q)]
     tmp = mp3_out.with_suffix(".tmp.mp3")
-    run(["ffmpeg", "-hide_banner", "-nostats", "-y", "-i", str(wav_in), "-af", af, "-ac", "1",
-         "-c:a", "libmp3lame", *rate, "-metadata", f"comment={tag}", "-id3v2_version", "3", str(tmp)])
+    margin = 0.0
+    for attempt in range(3):
+        af = head + ((pre + ",") if pre else "") + (
+            f"{base}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
+            f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true:print_format=json,"
+            f"aresample={sample_rate}")
+        run(["ffmpeg", "-hide_banner", "-nostats", "-y", "-i", str(wav_in), "-af", af, "-ac", "1",
+             "-c:a", "libmp3lame", *rate, "-metadata", f"comment={tag}", "-id3v2_version", "3", str(tmp)])
+        chk = ffmpeg_loudnorm_json(run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(tmp), "-af",
+                                        base + ":print_format=json", "-f", "null", "-"]).stderr)
+        # L'encodeur MP3 peut dépasser la crête visée (plateau de présence : +0,3 dB mesuré) : on resserre
+        # le limiteur de l'écart constaté et on recommence (2 fois au plus).
+        if float(chk["input_tp"]) <= TP + 0.05 or attempt == 2:
+            break
+        margin += float(chk["input_tp"]) - TP + 0.2
+        pre = limiter(gain, margin)
+        m = measure(pre)
     os.replace(tmp, mp3_out)
-    chk = ffmpeg_loudnorm_json(run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(mp3_out), "-af",
-                                    base + ":print_format=json", "-f", "null", "-"]).stderr)
     return {"lufs": float(chk["input_i"]), "true_peak_db": float(chk["input_tp"])}
 
 
@@ -594,6 +740,19 @@ def main() -> int:
     ap.add_argument("--verify", action="store_true",
                     help="ne génère rien : re-transcrit les MP3 à jour (--asr, défaut small) et met à jour "
                          "asr_cer/asr_text/asr_ok du manifest, pour juger ce que le joueur entend vraiment")
+    ap.add_argument("--presence-db", type=float, default=0.0,
+                    help="plateau de présence (dB) au-dessus de --presence-hz, avant normalisation ; 0 = aucun")
+    ap.add_argument("--presence-hz", type=float, default=3000.0, help="fréquence du plateau de présence")
+    ap.add_argument("--asr-strict", nargs="?", const="NC", default=None, metavar="CONDS",
+                    help="avec --asr : conditions en plus de P (amorce) — N : SANS amorce ; C : dans le fond du jeu "
+                         "(--asr-bed). Défaut « NC » ; « C » pour le seul contexte")
+    ap.add_argument("--max-cer-strict", type=float, default=0.15, help="seuil CER des conditions N et C")
+    ap.add_argument("--asr-bed", type=Path, default=None,
+                    help="fond sonore du jeu pour la condition « en contexte » (ex. tools/tts/asr-bed.ogg)")
+    ap.add_argument("--max-speech-s", type=float, default=0.0,
+                    help="refuse une prise dont la durée parlée dépasse cette valeur (s) ; 0 = pas de limite")
+    ap.add_argument("--asr-bed-snr", type=float, default=6.0,
+                    help="sonie de la voix au-dessus du fond (LU) ; 6 ≈ 10e centile mesuré en partie à 12")
     args = ap.parse_args()
 
     for tool in ("ffmpeg", "ffprobe"):
@@ -625,7 +784,7 @@ def main() -> int:
             tag = probe(f)["comment"] if f.exists() else ""
             on_disk = [e for e in cs if e.get("hash") and tag.endswith(":" + e["hash"])]
             pool = on_disk or cs
-            entries[k] = max(pool, key=lambda e: ("take" in e, "asr_text" in e))
+            entries[k] = max(pool, key=lambda e: ("take" in e, "asr_text" in e, e.get("asr_verified", "")))
     post = {"lufs": args.lufs, "tp": args.true_peak, "lra": args.lra, "q": args.mp3_quality,
             "head": args.head_ms, "tail": args.tail_ms, "pause": args.pause_ms}
     # Ajoutés au hash seulement s'ils diffèrent du défaut : les MP3 déjà générés avec l'ancien outil restent à jour.
@@ -635,6 +794,9 @@ def main() -> int:
         post["br"] = args.bitrate + ("-abr" if args.abr else "")
     if args.max_pause_ms:
         post["maxpause"] = args.max_pause_ms
+    eq = presence_filter(args.presence_db, args.presence_hz)
+    if eq:
+        post["presence"] = f"{args.presence_db:g}@{args.presence_hz:g}"
     if args.merge:
         write_manifest(manifest_path, entries, lines, post, args.lite_manifest)
         log(f"manifest fusionné : {manifest_path} ({sum(1 for k in entries if k in {(l['lang'], l['id']) for l in lines})} lignes)")
@@ -651,6 +813,7 @@ def main() -> int:
         args.asr = "small"
     if args.asr and not args.dry_run:
         asr = AsrChecker(args.asr)
+    bed = ContextBed(args.asr_bed, args.asr_bed_snr) if (asr and args.asr_strict and args.asr_bed) else None
 
     stats = {"generated": 0, "skipped": 0, "stale": 0, "failed": 0, "asr_warn": 0}
     t_start = time.time()
@@ -679,18 +842,20 @@ def main() -> int:
                 log(f"✗ {rel}: absent ou pas à jour — rien à vérifier")
                 stats["failed"] += 1
                 continue
-            keywords = [[AsrChecker._norm(a, lang) for a in k.split("|")] for k in ln.get("keywords", [])]
             audio = decode_audio(mp3)
-            cer, hyp = asr(audio, 16000, say, lang, ln.get("asr_prompt"))
+            j = asr_judge(asr, audio, say, lang, ln, args, f"{lang}/{lid}", bed, every=True)
             e["speech_s"] = round(speech_stats(audio, 16000)["speech_s"], 2)
-            hyp_n = AsrChecker._norm(hyp, lang)
-            missing = [alts[0] for alts in keywords if not any(a in hyp_n for a in alts)]
-            ok = cer <= args.max_cer and not missing
-            e.update({"asr_cer": round(cer, 3), "asr_text": hyp, "asr_ok": ok, "asr_model": args.asr})
+            if args.max_speech_s and e["speech_s"] > args.max_speech_s:
+                j["D"] = {"cer": 1.0, "text": f"{e['speech_s']:.2f} s parlées > {args.max_speech_s} s", "missing": [], "ok": False}
+                j["ok"] = False
+            for k in ("asr_np_cer", "asr_np_text", "asr_ctx_cer", "asr_ctx_text"):
+                e.pop(k, None)
+            e.update(asr_fields(j, args.asr))
+            e["asr_verified"] = time.strftime("%Y-%m-%dT%H:%M:%S")  # --merge garde la vérification la plus récente
             stats["skipped"] += 1
-            if not ok:
+            if not j["ok"]:
                 stats["asr_warn"] += 1
-                log(f"  ⚠ {rel}: CER {cer:.2f}{f', mots-clés non entendus : {missing}' if missing else ''} « {hyp} »")
+                log(f"  ⚠ {rel}: {asr_why(j)}")
             continue
         if mp3.exists() and not args.force:
             info = probe(mp3)
@@ -744,12 +909,15 @@ def main() -> int:
             sane, st = is_sane(y, sr, say, args.pause_ms)
             y = atempo(trim(y, sr), sr, float(vcfg.get("tempo", 1.0)))
             score = scorer(y, sr) if scorer else 0.0
-            cands.append({"y": y, "sr": sr, "seed": s, "take": k + 1, "sane": sane, "score": score, **st})
+            speech = speech_stats(y, sr)["speech_s"]
+            short = not args.max_speech_s or speech <= args.max_speech_s
+            cands.append({"y": y, "sr": sr, "seed": s, "take": k + 1, "sane": sane, "score": score,
+                          "short": short, "speech": round(speech, 2), **st})
         if not cands and not cached:
             stats["failed"] += 1
             continue
         if not cached:
-            cands.sort(key=lambda c: (c["sane"], c["score"]), reverse=True)
+            cands.sort(key=lambda c: (c["sane"], c["short"], c["score"]), reverse=True)
             chosen, n_cands = cands[0], len(cands)
         def encode_take(c: dict, dest: Path) -> dict:
             """Padding, normalisation EBU R128 et encodage MP3 d'une prise."""
@@ -763,7 +931,7 @@ def main() -> int:
                 sf.write(wav, yy, c["sr"], subtype="PCM_16")
                 # le ralenti est déjà appliqué à la prise (voir atempo) : tempo 1 ici
                 res = encode_normalized_mp3(wav, dest, args.lufs, args.true_peak, args.lra, args.mp3_quality,
-                                            1.0, tag, args.sample_rate, args.bitrate, args.abr)
+                                            1.0, tag, args.sample_rate, args.bitrate, args.abr, eq)
                 if args.keep_wav:
                     shutil.copy(wav, mp3.with_suffix(".raw.wav"))
             return res
@@ -771,29 +939,33 @@ def main() -> int:
         if asr and not cached:
             # L'ASR juge chaque prise candidate APRÈS encodage : exactement ce que le joueur entendra
             # (et ce que --verify relira). Mot-clé "Lilas|lila" : homophones que Whisper écrit autrement.
-            keywords = [[AsrChecker._norm(a, lang) for a in k.split("|")] for k in ln.get("keywords", [])]
+            # Avec --asr-strict, une prise doit aussi passer sans amorce (N) et dans le fond du jeu (C).
             with tempfile.TemporaryDirectory(dir=out, prefix=".cand-") as cand_dir:
                 for i, c in enumerate(cands):
                     c_mp3 = Path(cand_dir) / f"{i}.mp3"
                     c["_loud"], c["_mp3"] = encode_take(c, c_mp3), c_mp3
-                    cer, hyp = asr(decode_audio(c_mp3), 16000, say, lang, ln.get("asr_prompt"))
-                    hyp_n = AsrChecker._norm(hyp, lang)
-                    missing = [alts[0] for alts in keywords if not any(a in hyp_n for a in alts)]
-                    c["asr_cer"], c["asr_text"], c["asr_missing"] = round(cer, 3), hyp, missing
-                    if cer <= args.max_cer and not missing:
+                    if not c["short"]:  # règle « moins de 3 s à l'oral » : refusée sans transcription
+                        c["_asr"] = {"D": {"cer": 1.0, "text": f"{c['speech']:.2f} s parlées > {args.max_speech_s} s",
+                                           "missing": [], "ok": False}, "ok": False}
+                    else:
+                        c["_asr"] = asr_judge(asr, decode_audio(c_mp3), say, lang, ln, args, f"{lang}/{lid}", bed)
+                    if c["_asr"]["ok"]:
                         chosen = c
                         break
+                    if args.asr_strict:
+                        log(f"  · {rel} prise {c['take']} refusée : {asr_why(c['_asr'])}")
                 else:
-                    chosen = min(cands, key=lambda c: (len(c.get("asr_missing", [])), c.get("asr_cer", 9)))
+                    # la moins mauvaise : le plus de conditions passées, puis le moins de mots-clés manqués, puis le CER
+                    def badness(c: dict) -> tuple:
+                        conds = [r for k, r in c["_asr"].items() if k != "ok" and not r.get("info")]
+                        return (-sum(r["ok"] for r in conds), sum(len(r["missing"]) for r in conds),
+                                sum(r["cer"] for r in conds))
+                    chosen = min(cands, key=badness)
                     stats["asr_warn"] += 1
-                    miss = f", mots-clés non entendus : {chosen['asr_missing']}" if chosen.get("asr_missing") else ""
-                    log(f"  ⚠ {rel}: aucune prise valide (CER ≤ {args.max_cer}{' + mots-clés' if keywords else ''}) ; "
-                        f"retenue : CER {chosen['asr_cer']}{miss} « {chosen['asr_text']} » → reformuler ou changer de voix")
+                    log(f"  ⚠ {rel}: aucune prise valide ; retenue : {asr_why(chosen['_asr'])} → reformuler ou changer de voix")
                 os.replace(chosen["_mp3"], mp3)
                 loud = chosen["_loud"]
-            asr_info = {"asr_cer": chosen.get("asr_cer"), "asr_text": chosen.get("asr_text"),
-                        "asr_ok": not (chosen.get("asr_missing") or (chosen.get("asr_cer") or 0) > args.max_cer),
-                        "asr_model": args.asr}
+            asr_info = asr_fields(chosen["_asr"], args.asr)
         else:
             loud = encode_take(chosen, mp3)
         if not cached:

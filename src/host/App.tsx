@@ -5,6 +5,7 @@
 // oiseaux −1 → FX 0 → pipeline NPR 1.
 // Bornes d'erreur (polish G6) : une exception dans le monde 3D ou dans l'UI affiche « Recharger »
 // au lieu d'un écran blanc ; la sauvegarde de session (écrite tout de suite) reprend la partie.
+// Perte du contexte WebGL (<DisplayGuard/>) : manche en pause, « L'image s'est interrompue ».
 import { GameCamera, HudProjector, PodiumStage, stageModes } from './camera/index.ts'
 import { WorldCanvas } from './render/WorldCanvas.tsx'
 import { Birds } from './render/bird/Birds.tsx'
@@ -13,6 +14,7 @@ import { useRenderQuality } from './render/quality.ts'
 import { UiRoot } from './ui/UiRoot.tsx'
 import { DEBUG, DEBUG_PERF } from './runner/debug.ts'
 import { RunnerFrame } from './runner/RunnerFrame.tsx'
+import { DisplayGuard } from './runner/DisplayGuard.tsx'
 import { runner } from './runner/runner.ts'
 import { useStage } from './runner/stageStore.ts'
 import { CrashProbe, ErrorBoundary, debugCrash } from './loading/Fallback.tsx'
@@ -33,6 +35,7 @@ export function App() {
       <ErrorBoundary label="monde" onError={saveNow}>
         <WorldCanvas style={CANVAS_STYLE} measure={DEBUG_PERF}>
           <RunnerFrame />
+          <DisplayGuard />
           <PodiumStage />
           <GameCamera />
           <HudProjector />

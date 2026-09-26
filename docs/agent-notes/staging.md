@@ -61,7 +61,7 @@ Le runner écrit, la caméra lit. Utiliser `cueCamera(mode, { winnerSlot, podium
 
 **Podium** (`podium.ts`, `PodiumStage.tsx`) : scène synthétique clonée de la dernière manche (territoire peint gardé au sol, tours de la carte retirées) ; trois tours « Pile » (crème, disque ocre, plateau turquoise) placées **par lancer de rayon** pour que le point de perche tombe 84 px (1080p) au-dessus de chaque plaque (`PODIUM_X` = 0,30 / 0,50 / 0,70, haut des plaques 37 % + 40/0/70 px) ; oiseaux en mode `'perch'`, couronne sur le vainqueur, les autres tournent au loin à l'ouest. Caméra à 5,5 m, 46 m des tours, regard relevé de 6° (horizon au tiers bas). Ciel : `sunOverride` 12° plein ouest (disque derrière le vainqueur), palette KF1,6, pas de nuit (`nightAll` 0), Simoun masqué. Entrée : poussée de 4,5 s (focale × 1,16 → 1, montée de 1,6 m) puis respiration de focale ± 2 % et de ±0,12 m.
 
-**Titre** (`cine.ts`) : plans calés sur le soleil de la démo (u = t/T), coupes franches, reprise au rebouclage (polish : séquence révisée crane 0 → track 0,16 → group 0,32 → track 0,46 → orbit 0,6 → sunset 0,72 → sunset 0,9, voir §8 ; description d'origine ci-dessous) :
+**Titre** (`cine.ts`) : plans calés sur le soleil de la démo (u = t/T), coupes franches, reprise au rebouclage (polish vague 2 : **prises validées sur l'avenir exact de la démo**, séquence track 0 → crane 0,14 → group 0,3 → track 0,44 → group 0,58 → sunset 0,72 → sunset 0,9, replis, voir §10 ; description d'origine ci-dessous) :
 `crane` (u 0 : serré sur un oiseau — sur le ciel s'il vole haut — puis grue qui révèle l'arène dans la zone bas-gauche) → `track` (0,17 : travelling ; oiseau haut en contre-plongée posé à (0,75 ; 0,33), oiseau bas en plongée à (0,33 ; 0,66), bascule douce quand il change d'étage) → `group` (0,34 : plan bas d'un groupe, lacet choisi pour qu'aucune tour ne barre l'image) → `track` (0,50) → `sunset` (0,66 : face au soleil posé à x 0,78 en haut à droite, oiseau en silhouette, choisi parmi ceux dont le contrechamp est dégagé) → `orbit` (0,86 : vue large qui tourne, l'arène peinte et la Grande Ombre dans le bas du cadre, jusqu'à la nuit et au rebouclage ; le runner change de carte à chaque boucle → coupe).
 Évitement des tours : `towerClutter` mesure la part de la largeur de l'écran masquée par les tours proches (rayon max, disques et gnomon incliné compris) ; au-delà de 30 % le suivi change de côté (3 fois → autre oiseau), le groupe dérive son lacet puis reprend un autre groupe, le couchant reprend un autre oiseau (nouvelle prise, coupe franche).
 Le logo (haut gauche) et le menu (bas droite) restent libres. Les suivis compensent le retard des ressorts (avance 2v/ω).
@@ -159,3 +159,93 @@ vrai réalisateur, mêmes critères que `read-stats.mjs`), `match.mjs` + `read-s
 (partie réelle avec sonde qui importe les modules par leur URL réelle — la sonde de `feel/lib.mjs`
 lisait une deuxième instance de `viewModel.ts` quand Vite ajoute `?t=`), `title-probe.mjs` (défauts du
 titre), `nohmr.mjs` (préchargement qui coupe le HMR : les autres correcteurs rechargeaient la page).
+
+## 9. Polish vague 2 (correcteur climax : Grande Ombre et tours ; détail et mesures : `docs/polish/fix2-climax.md`)
+
+**Grande Ombre, plan serré (S2)** — `framingRig.ts`. À 8 oiseaux ou moins, de 1,2 s avant la Grande Ombre
+jusqu'à la fin de la pause de nuit, le cadre ne suit plus toute la dispersion de l'arène :
+- `gsMask` (masque de slots, 5 Hz) : les **humains toujours** (`gameView.players[slot].kind` phone/keyboard),
+  puis les bots, des voisins des humains aux plus lointains (sans humain : du plus proche du front au plus
+  lointain ; ceux déjà dans la nuit en dernier), chacun gardé
+  si le cadre reste sous la largeur visée `1,2 a → 0,8 a` (a = demi-grand axe de l'arène, jamais sous
+  `camMinWidth`), × 1,15 pour un bot déjà cadré (hystérésis). Les bots hors masque peuvent sortir (flèche
+  hors champ du HUD, GDD §13.1) ; la contrainte dure S1 et le garde-fou ne portent que sur le masque.
+  Figé pendant la pause de nuit (la montée part de ce cadre). Au-delà de 8 oiseaux : inchangé (arène).
+- Sujet : les oiseaux cadrés et leur position dans 0,7 s, leur ombre seulement si elle est à moins de 45 m
+  (au soleil rasant elle file au bord est), et le front à leur hauteur, au plus 90 → 40 m à l'ouest du plus
+  à l'ouest d'entre eux (le mur de nuit entre tôt dans le cadre).
+- Zoom avant × 1,8 plus vif pendant les 3 premières secondes (poussée à l'annonce), poussée lente de 10 %
+  et décalage vers l'est inchangés.
+- Tangage −5° sur la phase (au lieu de −3°), **bloqué quand les tours couvriraient plus de 15 % du cadre
+  abaissé** (`gsLow`, ressort ; revient sous 11 %). Gardé pendant la pause de nuit (plus de saut de 3° à
+  l'instant de la nuit).
+
+**Tours (S3, W9)** — mesure d'encombrement `obstruction()` = max(part d'écran couverte au-dessus de 4 m
+(20 m avant), 0,45 × largeur de la plus large tour, pénalité si la caméra est à moins de 45 m d'une
+tour (`towerClearance`, nouveau dans `towerCover.ts` ; au-delà de la bande de trame de 30-38 m du
+matériau, qui ne se voit plus qu'en passage)). Parades essayées dans l'ordre (relever +5°, +8°,
+puis reculer × 1,2 / 1,45 / 1,8 ; 12 évaluations au plus par estimation à 10 Hz), retenue si elle ramène
+sous 12 % (avant : 15 %, le cadre se posait sur le seuil). Bug corrigé : le cadre visé contenait déjà le
+recul courant, chaque parade était évaluée sur un cadre reculé deux fois (prévision trop optimiste, cadre
+resté à 16-20 %). Un recul décidé s'applique aussitôt au cadre visé (le ressort de zoom le lisse ; avant, deux
+ressorts en série : le cadre restait bouché ~1 s) ; retour du recul plus vif (ω 1,6 au lieu de 1,0). Punch-in refusé ou relâché plus tôt
+(10 Hz) si son cadre est encombré (> 12 %) ou si sa caméra passe à moins de 42 m d'une tour (`punchReject`
+= `'tours'`). Essais écartés (mesurés au banc, pas mieux ou pires) : glissement latéral du cadre (deux
+versions), relèvement de 12°.
+
+`FramingRig.coverTrace` (base, prévu) et `gsMask` sont lisibles pour le debug et les scripts.
+Outils : `tools/polish/climax/` — `bench.ts` (banc headless : Grande Ombre par tranches de 2 s, tours par
+phase, épisodes > 15 %, coût de `update`), `shots.mjs` (page de dev, 4 cartes × 4/6/12 oiseaux, mesures
+dont la couverture **réellement peinte** par les tours, rafale screencast), `realgame.mjs` (vraie partie
+avec un joueur clavier), `debug-cover.ts` (parades à un instant donné).
+
+## 10. Polish vague 2 (correcteur title : cinématique du titre ; détail et mesures : `docs/polish/fix2-title.md`)
+
+**Principe.** Chaque plan de la séquence est une suite de **prises** (`Setup` : type, oiseau, côté,
+angle, distance, lacet, tangage). Une prise n'est montrée que si elle a été **simulée** sur sa durée
+(ressorts, cadreur et visée compris, pas de 0,2 s puis 0,05 s) et **jugée propre** à chaque instant par
+`frameFault` (`cine.ts`). Au premier défaut prévu, coupe franche sur la prise suivante, cherchée d'avance.
+
+**Avenir exact de la démo** — `demoFuture.ts`. La démo est une boucle fermée (sim pure + bots à graine) :
+une **jumelle** (même config, bots neufs aux mêmes graines, même `InputRouter`) tourne jusqu'à 8 s en
+avance et donne la trajectoire exacte des oiseaux (vérifié identique au tick près). Le runner l'alimente
+(3 lignes) : `demoFuture.prebuild(state, botsJumeaux)` dans `buildDemo` (la démo suivante, préparée au
+repos, prend son avance au repos du navigateur), `demoFuture.begin(state)` dans `startDemo`,
+`demoFuture.follow(st)` après chaque tick de démo. Écart constaté → `valid = false`, extrapolation.
+
+**Juge** `frameFault(sim, birds, pose, aspect, layout, stormHidden, subject)` → `'' | storm | near | wide |
+clutter | ui | bird-ui | close | nosubject | hidden | small`. Tours : boîtes écran par segment (troncs et
+disques) ; `near` (< 63 m : > 12 %, ou > 7 % au milieu), `wide` (> 12 % jusqu'au sujet + 15 m, > 18 %
+au-delà), `clutter` (fût > 5,5 % coupé par le haut au milieu ; sujet collé à une tour), `ui` (tour derrière
+logo/pitch : 3 % de la case au premier plan, 5 % toutes tours ; cases du bas : 25 %). Oiseaux : boîte
+(envergure × échelle `auto` du rendu) et cœur ; sujet : cœur jamais sous l'UI, ≤ 10 % de la boîte,
+entier, non caché, ≥ 4 % de la largeur ; autre oiseau net en partie caché par une case = défaut ; plus de
+45 % de la largeur = `close`. Plans larges (`subject` −1) : au moins un oiseau net (≥ 3 %) entier et dégagé.
+Cases de l'UI : `titleUiRects(aspect)` (logo, pitch, pied de page, « Appuie sur une touche », menu — le
+menu reste réservé même fermé). Au choix des prises, marge (`_margin` = 1) : cases élargies de 1,2 %,
+seuils plus stricts, cœur des oiseaux balayé sur ± 0,07 s de vol.
+
+**Plans.** `track`, `crane`, `group`, `sunset`, `orbit` (crédits), et `sky` = poursuite libre (lacet
+autour de l'oiseau, face au soleil d'abord ; tangages −6°, −20°, +40°, +62°). Replis : `sunset` → sky,
+track, group ; `track` → sky, sunset, group ; `crane` → track, sky, group ; `group` → track, sky, sunset.
+Choix (`adopt`) : parmi les prises qui tiennent 2 s (belles : rang ≤ 2) ou 3 s, la plus belle (`rankOf` :
+plan voulu 0, contre-jour 1, suivi 1,5, groupe / grue / contre-plongée 2, plongée 3 — 4,5 après
+u = 0,6 —, zénithal 5), sinon la plus longue. Cadreur (`hold`) : le sujet garde 35 % de sa dérive.
+
+**Séquence** `TITLE_SEQUENCE` : track 0 → crane 0,14 → group 0,3 → track 0,44 → group 0,58 → sunset 0,72
+→ sunset 0,9 → jusqu'au rebouclage (T + nuit 2 s + pause 2 s). La vue large qui tourne (`orbit`) est
+retirée du titre (action sous le pied de page, moitié d'image de sable vide).
+**Réalisateur** (`director.ts`, partie titre) : deux `CineShot` (`shot`, `spare`). Le plan suivant se
+prépare sur `spare` pendant les 2,4 dernières secondes (`TITLE_PREPARE`), par tranches (64 jugements,
+1,6 ms par frame au plus) ; au rebouclage, la première prise de la démo suivante (`demoFuture.upcoming`,
+`spare.preSim`) ; pendant le chargement, la prise d'ouverture du titre ; aux crédits, le plan suivant. Une
+prise qui finit moins de 1,2 s avant la coupe prévue passe la main au plan suivant plus tôt (`handOverAt`).
+Horloge des plans = **temps de la démo** (`dt × gameView.timeScale` : ralenti de la dernière seconde).
+Le titre est toujours une coupe franche à l'entrée (plus de fondu depuis les crédits). Le Simoun est masqué
+pour toute une prise si elle passe à moins de 120 m de lui (décidé à la coupe). `cameraState.shot` = plan
+réellement tourné (repli compris), `cameraState.shotFault` = juge de l'image rendue (4 Hz).
+
+**Outils** : `tools/polish/title2/bench.ts` (banc headless : vraies démos, jumelles, chargement, ralenti ;
+images ratées, rythme, coût), `every.mjs` (une capture par seconde, planches), `blank.mjs` (sonde d'images
+unies). `npx vitest run src/host/camera/cine.test.ts` : cases de l'UI, juge, jumelle, 20 s de démo filmée
+sans image ratée.

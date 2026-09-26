@@ -51,6 +51,10 @@ export class BirdRig {
   private readonly anchorLocal: Vector3[] = []
   private readonly bindPos: Record<BoneName, Vector3>
   private shownDetail: BirdDetail
+  /** Os des ailes (épaule, coude, poignet, doigt) et des pattes (cuisse, tibia), par côté : pas de
+   *  nom d'os construit à chaque frame (une chaîne allouée par accès, polish vague 2). */
+  private readonly wingBones: Record<'L' | 'R', readonly [Bone, Bone, Bone, Bone]>
+  private readonly legBones: Record<'L' | 'R', readonly [Bone, Bone]>
 
   constructor(readonly asset: BirdAsset) {
     const { model } = asset
@@ -96,6 +100,10 @@ export class BirdRig {
     this.hull = skinned('birdHull', mats.hull)
     this.object.add(this.mesh, this.hull)
 
+    const B = this.bones
+    this.wingBones = { L: [B.shoulderL, B.elbowL, B.wristL, B.fingerL], R: [B.shoulderR, B.elbowR, B.wristR, B.fingerR] }
+    this.legBones = { L: [B.thighL, B.shinL], R: [B.thighR, B.shinR] }
+
     for (const a of ANCHOR_NAMES) {
       const def = model.anchors[a]
       this.anchorBone.push(this.bones[def.bone])
@@ -105,12 +113,12 @@ export class BirdRig {
 
   private setWing(side: 'L' | 'R', w: WingPose): void {
     const s = side === 'L' ? 1 : -1
-    const B = this.bones
+    const wb = this.wingBones[side]
     // Ordre YZX : vrillage (X) puis battement (Z) puis flèche (Y), dans le repère parent.
-    B[`shoulder${side}`].quaternion.setFromEuler(_e.set(-w.shoulderTwist, s * w.shoulderSweep, s * w.shoulderFlap, 'YZX'))
-    B[`elbow${side}`].quaternion.setFromEuler(_e.set(0, s * w.elbowSweep, s * w.elbowFlap, 'YZX'))
-    B[`wrist${side}`].quaternion.setFromEuler(_e.set(-w.wristTwist, s * w.wristSweep, s * w.wristFlap, 'YZX'))
-    B[`finger${side}`].quaternion.setFromEuler(_e.set(0, s * w.fingerSweep, s * w.fingerFlap, 'YZX'))
+    wb[0].quaternion.setFromEuler(_e.set(-w.shoulderTwist, s * w.shoulderSweep, s * w.shoulderFlap, 'YZX'))
+    wb[1].quaternion.setFromEuler(_e.set(0, s * w.elbowSweep, s * w.elbowFlap, 'YZX'))
+    wb[2].quaternion.setFromEuler(_e.set(-w.wristTwist, s * w.wristSweep, s * w.wristFlap, 'YZX'))
+    wb[3].quaternion.setFromEuler(_e.set(0, s * w.fingerSweep, s * w.fingerFlap, 'YZX'))
   }
 
   /** Applique une pose complète (transformation du groupe et rotations des os). */
@@ -138,9 +146,10 @@ export class BirdRig {
     // Pattes : repliées vers l'arrière → sorties vers le bas (perché).
     // En vol, les pattes sont rentrées sous le ventre (réduites, plaquées).
     for (const s of SIDES) {
-      B[`thigh${s}`].quaternion.setFromEuler(_e.set(0.22 - p.legs * 1.45, 0, 0))
-      B[`thigh${s}`].scale.setScalar(0.55 + 0.45 * p.legs)
-      B[`shin${s}`].quaternion.setFromEuler(_e.set(0.15 + p.legs * 0.25, 0, 0))
+      const lb = this.legBones[s]
+      lb[0].quaternion.setFromEuler(_e.set(0.22 - p.legs * 1.45, 0, 0))
+      lb[0].scale.setScalar(0.55 + 0.45 * p.legs)
+      lb[1].quaternion.setFromEuler(_e.set(0.15 + p.legs * 0.25, 0, 0))
     }
     B.rider.position.set(this.bindPos.rider.x, this.bindPos.rider.y + p.riderLift, this.bindPos.rider.z).sub(this.bindPos.chest)
     B.rider.quaternion.setFromEuler(_e.set(p.riderPitch, 0, p.riderRoll, 'YXZ'))

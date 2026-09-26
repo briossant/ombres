@@ -78,7 +78,7 @@ export interface GroundProps {
 
 export function Ground({ arena, towers, segments, bilinear = false }: GroundProps) {
   const territory = useMemo(() => new TerritoryTexture(), [])
-  const uniforms = useMemo(() => createGroundUniforms(territory.texture), [territory])
+  const uniforms = useMemo(() => createGroundUniforms(territory.texture, territory.edgeTexture), [territory])
   const material = useMemo(() => createGroundMaterial(uniforms, { bilinear }), [uniforms, bilinear])
   const geometry = useMemo(() => buildGroundGeometry(arena, segments), [arena, segments])
   const far = useMemo(() => buildFarGeometry(), [])

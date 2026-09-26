@@ -178,3 +178,14 @@ Compte rendu détaillé et preuves : `docs/polish/fix-hostui.md`. Changements d'
 | `format.ts` `sentenceLines` | une seule phrase longue se coupe après les deux-points. |
 
 Décisions : bulles et étiquettes n'ont plus de transition de position (une étiquette qui glisse chevauche celle qui prend sa place) ; les étiquettes masquées sortent de la mise en page (`display: none`, fondu d'entrée par `@starting-style`). `.veil` = papier calque (#F7F0E3 à 55 %). `font-variant-ligatures: no-common-ligatures` sur `.ui-root` (Patrick Hand SC dessine « fi », « ffl » en bas de casse).
+
+## Polish vague 2 (correcteur tech) — détail : docs/polish/fix2-tech.md
+
+| Où | Changement |
+|---|---|
+| `viewModel.ts` `HostLink` | `'ok' \| 'reconnecting' \| 'replaced'` (`'lost'` n'existait que pour l'onglet remplacé). |
+| `viewModel.ts` `UiState.display` | `'ok' \| 'lost'` : contexte WebGL perdu → surcouche `screens/DisplayLost.tsx` (papier opaque, couche de navigation 40 ; « Recharger » après 3 s). |
+| `UiActions` | + `takeOver()` (« Reprendre ici »), `reloadPage()` (sauvegarde puis rechargement). |
+| `SubtitleVM.lang` / `showSubtitle({ lang })` | texte figé dans une langue : `Subtitle` écrit le nom de couleur dans cette langue (pas de « Saffron ouvre les hostilités » après un passage en anglais). Sans `lang`, `key` est retraduite. |
+| `screens/Reconnect.tsx` | cas `'replaced'` : « Ombres est ouvert dans un autre onglet » + bouton « Reprendre ici » (focus, Entrée) ; monté aussi pendant le chargement ; `key={hostLink}` dans `UiRoot`. |
+| Chaînes (`host.ts`) | `host.reconnect.replaced.title/body`, `host.reconnect.takeOver`, `host.display.title/wait/stuck` (FR/EN) ; `host.reconnect.lost` retirée. |

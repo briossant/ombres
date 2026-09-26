@@ -181,6 +181,8 @@ const J_FINGER = 4.25
 /** Bande de couleur du joueur : 55 → 70 % de la demi-envergure (ART_BIBLE §6.7). */
 export const BAND_X0 = 0.555 * X_TIP
 export const BAND_X1 = 0.7 * X_TIP
+/** Milieu commun des bandes normale et lointaine (ancres `bandL` / `bandR`). */
+const BAND_MID_X = 0.6 * X_TIP
 
 const sparZ = (x: number): number => wingZle(x) - 0.25 * wingChord(x)
 
@@ -925,6 +927,9 @@ export function buildBirdModel(detail: BirdDetail = 'high'): BirdModel {
     beak: { bone: 'head', pos: [0, bodyY(Z_BEAK), Z_BEAK] },
     riderTop: { bone: 'rider', pos: riderXf([0, seatY + 0.85, RIDER_Z - 0.05]) },
     chest: { bone: 'chest', pos: [0, bodyY(0.2), 0.2] },
+    // Milieu de la bande de couleur (au loin comme de près), mi-corde : mesures de lisibilité.
+    bandL: { bone: 'wristL', pos: [BAND_MID_X, wingY(BAND_MID_X), wingZle(BAND_MID_X) - 0.5 * wingChord(BAND_MID_X)] },
+    bandR: { bone: 'wristR', pos: [-BAND_MID_X, wingY(BAND_MID_X), wingZle(BAND_MID_X) - 0.5 * wingChord(BAND_MID_X)] },
   }
   const fc = riderXf([0, seatY + 0.6, RIDER_Z + 0.12])
   const face: [number, number, number, number] = [0, fc[1], fc[2], 0]

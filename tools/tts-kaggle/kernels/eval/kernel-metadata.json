@@ -1,0 +1,25 @@
+{
+  "id": "ftgplwa/ombres-tts-eval",
+  "title": "ombres-tts-eval",
+  "code_file": "evaluate.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "ftgplwa/ombres-tts-bench-data"
+  ],
+  "kernel_sources": [
+    "ftgplwa/ombres-tts-pocket",
+    "ftgplwa/ombres-tts-qwen3",
+    "ftgplwa/ombres-tts-voxcpm2",
+    "ftgplwa/ombres-tts-chatterbox",
+    "ftgplwa/ombres-tts-kyutai16",
+    "ftgplwa/ombres-tts-cosyvoice3"
+  ],
+  "competition_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}

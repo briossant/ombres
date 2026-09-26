@@ -18,6 +18,7 @@ import {
   hintDisplaySeconds,
   hintParams,
   hintText,
+  narratorText,
   type HintCue,
   type HintMemory,
   type NarratorClipIndex,
@@ -28,7 +29,7 @@ import { HostSession, type HostSessionStatus } from '../../net/hostSession.ts'
 import { LobbyGoalTracker } from '../../net/lobbyGoals.ts'
 import { PhoneHub, type PhoneInfo } from '../../net/phoneHub.ts'
 import type { PhoneAction } from '../../shared/messages.ts'
-import { getLang } from '../../shared/i18n.ts'
+import { getLang, hasKey } from '../../shared/i18n.ts'
 import { MAX_PLAYERS } from '../../shared/players.ts'
 import {
   RULES,
@@ -53,10 +54,12 @@ import {
   type Simulation,
   type TitleAward,
 } from '../../sim/index.ts'
-import { isAudioUnlocked, onAudioUnlock, playNarratorLine, playStinger, playUi, preloadNarrator, setAudioPaused, setAudioScreen, type AudioScreen } from '../audio/index.ts'
+import { getAudio, isAudioUnlocked, onAudioUnlock, playNarratorLine, playStinger, playUi, preloadNarrator, setAudioPaused, setAudioScreen, type AudioScreen } from '../audio/index.ts'
 import { simEvents, subtitleEvents } from '../bus.ts'
 import { cueCamera, cameraBeats, cameraCue, type CameraMode } from '../camera/cue.ts'
+import { demoFuture } from '../camera/demoFuture.ts'
 import { requestPlancheFlash } from '../render/npr/index.ts'
+import { prepareTowers } from '../render/world/prebuild.ts'
 import { applyQualitySetting, hasQualityBench, qualityMonitor, startQualityBench, useRenderQuality } from '../render/quality.ts'
 import { worldView } from '../render/worldView.ts'
 import { getSettings, useSettings } from '../settings.ts'
@@ -93,6 +96,8 @@ import { useStage } from './stageStore.ts'
 export type RunnerPhase = ViewContext['phase']
 
 const TICK = 1 / RULES.tickHz
+/** Cartes de la démo du titre, dans l'ordre (une par boucle). */
+const DEMO_MAPS = ['parasols', 'aiguilles', 'geantes', 'cadran'] as const
 const SLOTS = MAX_PLAYERS
 /** Nombre de ticks au plus par frame (au-delà, on lâche du temps plutôt que de spiraler). */
 const MAX_TICKS_PER_FRAME = 5
@@ -194,6 +199,12 @@ export class Runner {
   private hiddenPause = false
   /** Page en train de se fermer ou de se recharger (beforeunload / pagehide reçus). */
   private unloading = false
+  /** Contexte WebGL perdu (DisplayGuard) : plus d'image, surcouche « L'image s'est interrompue ». */
+  private displayLost = false
+  /** Pause posée parce que l'image a été perdue (reprise en « 3, 2, 1 » à son retour). */
+  private displayPause = false
+  /** « Reprendre ici » (onglet dupliqué) : la manche reprendra en « 3, 2, 1 » quand la salle revient. */
+  private tookOver = false
   /** Dernier toast « a perdu la connexion » par téléphone (temps réel). */
   private readonly leaveToastAt = new Map<string, number>()
   /** Dernière touche de retour (Échap / Retour arrière) et son instant (temps réel). */
@@ -277,7 +288,14 @@ export class Runner {
       const text = e.parts.map(p => (p.colorIndex !== undefined ? '{color}' : p.text)).join('')
       // le lecteur émet 'hide' à max(durée conseillée, fin réelle de la voix) : c'est lui qui retire le
       // sous-titre ; la durée locale n'est qu'un filet (voix en retard sur une machine chargée)
-      showSubtitle({ text, colorIndex: e.colorIndex ?? null, seconds: e.durationMs / 1000 + SUBTITLE_SAFETY_S })
+      const seconds = e.durationMs / 1000 + SUBTITLE_SAFETY_S
+      const colorIndex = e.colorIndex ?? null
+      // Changement de langue pendant la réplique (tech, vague 2) : sans voix, le sous-titre suit la
+      // langue (clé du catalogue, retraduite) ; avec la voix, il finit dans la langue de la voix,
+      // nom de couleur compris (texte figé + langue). Jamais de mélange des deux langues.
+      const key = `narrator.${e.lineId}`
+      const byKey = !e.voiced && hasKey(key) && narratorText({ key, colorIndex: e.colorIndex }, e.lang) === e.text
+      showSubtitle(byKey ? { key, colorIndex, seconds } : { text, colorIndex, seconds, lang: e.lang })
       shownSub = { bus: e.id, vm: useHud.getState().subtitle?.id ?? -1 }
     })
     cameraBeats.on(b => {
@@ -410,6 +428,7 @@ export class Runner {
       if (n >= max) this.acc = Math.min(this.acc, TICK)
       gameView.alpha = Math.min(1, Math.max(0, this.acc / TICK))
     }
+    if (this.displayLost) this.holdForDisplay()
     if (this.phase === 'round' && this.realTime - this.lastSubCheck > 0.2) {
       this.lastSubCheck = this.realTime
       this.checkSubstitutes()
@@ -482,6 +501,7 @@ export class Runner {
     }
     this.tickCount++
     const events = sim.step(inputs)
+    if (kind === 'demo') demoFuture.follow(st)
     this.lastEvents = events
     gameView.sim = st
     for (const e of events) {
@@ -653,31 +673,65 @@ export class Runner {
     this.router.reset()
   }
 
-  /** Écran titre : une vraie manche de bots au coucher accéléré, qui boucle (GDD §15.1). */
+  /**
+   * Écran titre : une vraie manche de bots au coucher accéléré, qui boucle (GDD §15.1). La démo de la
+   * carte suivante est préparée pendant les temps morts (simulation, bots, géométries des tours) :
+   * la bascule, à la coupe de caméra, ne fait plus qu'échanger les pointeurs (polish tech, vague 2 :
+   * à-coup de 62 à 77 ms à chaque changement de carte avant).
+   */
   private startDemo(): void {
-    const seed = freshSeed()
-    const team = demoTeam(6, seed)
-    const maps = ['parasols', 'aiguilles', 'geantes', 'cadran'] as const
-    this.demoMap = (this.demoMap + 1) % maps.length
-    const sim = createSimulation({
-      mode: 'demo',
-      seed,
-      mapId: maps[this.demoMap]!,
-      birds: team.map((_, i) => ({ slot: i, assist: false })),
-      sunSeconds: RULES.titleDemoSunSeconds,
-      countdown: false,
-    })
-    this.setSim(sim, 'demo')
+    this.demoMap = (this.demoMap + 1) % DEMO_MAPS.length
+    const prepared = this.nextDemo?.mapIndex === this.demoMap ? this.nextDemo : null
+    this.nextDemo = null
+    const demo = prepared ?? this.buildDemo(this.demoMap)
+    this.setSim(demo.sim, 'demo')
+    demoFuture.begin(demo.sim.state)
     gameView.players = []
-    team.forEach((spec, i) => {
-      const bot = createBot({ slot: i, personality: spec.personality, level: spec.level, seed: hashSeed(seed, i) })
+    demo.bots.forEach((bot, i) => {
       this.simBots.set(i, bot)
       this.router.set(i, { kind: 'bot', bot })
       gameView.players[i] = { slot: i, colorIndex: i, name: '', kind: 'bot', assist: false }
     })
+    this.scheduleDemoPrep()
   }
   private demoMap = -1
   private demoLoops = 0
+  /** Démo de la carte suivante, préparée pendant un temps mort (null tant qu'elle ne l'est pas). */
+  private nextDemo: { mapIndex: number; sim: Simulation; bots: Bot[] } | null = null
+  private demoPrepPending = false
+
+  private buildDemo(mapIndex: number): { mapIndex: number; sim: Simulation; bots: Bot[] } {
+    const seed = freshSeed()
+    const team = demoTeam(6, seed)
+    const sim = createSimulation({
+      mode: 'demo',
+      seed,
+      mapId: DEMO_MAPS[mapIndex]!,
+      birds: team.map((_, i) => ({ slot: i, assist: false })),
+      sunSeconds: RULES.titleDemoSunSeconds,
+      countdown: false,
+    })
+    const bots = team.map((spec, i) => createBot({ slot: i, personality: spec.personality, level: spec.level, seed: hashSeed(seed, i) }))
+    // jumelle de la démo (bots neufs, mêmes graines) : la cinématique du titre connaît l'avenir (polish 2, title)
+    demoFuture.prebuild(sim.state, team.map((spec, i) => createBot({ slot: i, personality: spec.personality, level: spec.level, seed: hashSeed(seed, i) })))
+    return { mapIndex, sim, bots }
+  }
+
+  /** Prépare la démo suivante (autre carte) au premier temps mort, puis ses tours par tranches. */
+  private scheduleDemoPrep(): void {
+    if (this.demoPrepPending || typeof requestIdleCallback !== 'function') return
+    this.demoPrepPending = true
+    requestIdleCallback(
+      () => {
+        this.demoPrepPending = false
+        const next = (this.demoMap + 1) % DEMO_MAPS.length
+        if (this.nextDemo?.mapIndex === next) return
+        this.nextDemo = this.buildDemo(next)
+        prepareTowers(this.nextDemo.sim.state.towers)
+      },
+      { timeout: 5000 },
+    )
+  }
 
   /** Chaque boucle de la démo : une autre carte (coupe de caméra). */
   private onDemoLoop(): void {
@@ -855,6 +909,8 @@ export class Runner {
   /** Quitte la partie en cours (pause, directeurs, résultats). */
   private leaveMatch(): void {
     if (this.paused) this.setPaused(false, -1)
+    this.hiddenPause = false
+    this.displayPause = false
     this.holdUntil = 0
     this.narrator.clear()
     this.hints.clear()
@@ -1159,6 +1215,31 @@ export class Runner {
     this.startRound(0)
   }
 
+  /** Son de l'onglet remplacé : fondu vers le silence (et retour à « Reprendre ici »). */
+  private replacedMuted = false
+  private muteReplaced(muted: boolean): void {
+    const e = getAudio()?.engine
+    if (!e || this.replacedMuted === muted) return
+    this.replacedMuted = muted
+    const g = e.masterIn.gain
+    const t = e.ctx.currentTime
+    g.cancelScheduledValues(t)
+    g.setValueAtTime(g.value, t)
+    g.setTargetAtTime(muted ? 0 : 1, t, 0.12)
+  }
+
+  /**
+   * « Reprendre ici » (onglet dupliqué) : cet onglet reprend la salle que l'autre lui avait prise.
+   * L'autre onglet passe à son tour en « ouvert dans un autre onglet » ; les téléphones reviennent ici.
+   */
+  takeOver(): void {
+    if (this.session.status !== 'replaced') return
+    this.tookOver = true
+    this.muteReplaced(false)
+    playUi('confirm')
+    this.session.takeOver()
+  }
+
   quitToLobby(): void {
     if (this.phase === 'lobby') return
     playUi('back')
@@ -1195,11 +1276,67 @@ export class Runner {
 
   resume(): void {
     if (!this.paused) return
-    // PC en arrière-plan : on ne reprend pas une manche que personne ne voit
+    // PC en arrière-plan, ou image perdue : on ne reprend pas une manche que personne ne voit
     if (this.hiddenPause && document.hidden) return
+    if (this.displayLost) return
     this.hiddenPause = false
+    this.displayPause = false
     this.setPaused(false, -1)
     this.save(true)
+  }
+
+  /** Fin d'une pause « depuis l'écran » (onglet revenu, image revenue) : reprise en « 3, 2, 1 ». */
+  private resumeWithCount(): void {
+    this.setPaused(false, -1)
+    const st = this.sim?.state
+    if (st && st.sun.phase !== 'countdown') {
+      this.holdUntil = this.realTime + RESUME_HOLD_S
+      this.holdShown = -1
+      this.substituteGraceUntil = Math.max(this.substituteGraceUntil, this.holdUntil + 2)
+    }
+    this.save(true)
+  }
+
+  // ─── Image (contexte WebGL) ────────────────────────────────────────────
+
+  /**
+   * Contexte WebGL perdu (pilote réinitialisé, GPU saturé, veille) : la simulation avançait à
+   * l'aveugle. Manche en pause « depuis l'écran » (les téléphones l'affichent, sans « Reprendre »),
+   * sauvegarde immédiate (« Recharger » reprendra d'ici), surcouche papier côté UI.
+   */
+  onDisplayLost(): void {
+    if (this.displayLost) return
+    this.displayLost = true
+    console.warn('[ombres] contexte WebGL perdu : partie en pause')
+    useUi.setState({ display: 'lost' })
+    this.holdForDisplay()
+    this.save(true)
+  }
+
+  /** Image revenue : la surcouche s'en va, la manche mise en pause par la perte reprend en « 3, 2, 1 ». */
+  onDisplayRestored(): void {
+    if (!this.displayLost) return
+    this.displayLost = false
+    console.info('[ombres] contexte WebGL rendu : reprise')
+    useUi.setState({ display: 'ok' })
+    if (!this.displayPause) return
+    this.displayPause = false
+    if (!this.paused || this.phase !== 'round') return
+    if (document.hidden) {
+      // l'onglet est caché : la reprise attendra son retour (onVisibilityChange)
+      this.hiddenPause = true
+      this.markViews()
+      return
+    }
+    this.resumeWithCount()
+  }
+
+  /** Image absente pendant une manche qui tourne : pause (appelée aussi à chaque frame, sans coût). */
+  private holdForDisplay(): void {
+    if (this.phase !== 'round' || this.paused || this.roundResult) return
+    this.pause(-1)
+    this.displayPause = this.paused
+    this.markViews()
   }
 
   /**
@@ -1218,14 +1355,13 @@ export class Runner {
     if (!this.hiddenPause) return
     this.hiddenPause = false
     if (!this.paused || this.phase !== 'round') return
-    this.setPaused(false, -1)
-    const st = this.sim?.state
-    if (st && st.sun.phase !== 'countdown') {
-      this.holdUntil = this.realTime + RESUME_HOLD_S
-      this.holdShown = -1
-      this.substituteGraceUntil = Math.max(this.substituteGraceUntil, this.holdUntil + 2)
+    if (this.displayLost) {
+      // l'image manque toujours : la reprise attendra son retour (onDisplayRestored)
+      this.displayPause = true
+      this.markViews()
+      return
     }
-    this.save(true)
+    this.resumeWithCount()
   }
 
   // ─── Joueurs ───────────────────────────────────────────────────────────
@@ -1534,7 +1670,21 @@ export class Runner {
   }
 
   private onHostStatus(s: HostSessionStatus): void {
+    // onglet dupliqué : l'onglet remplacé se tait (sinon deux musiques jouent l'une sur l'autre)
+    if (s === 'replaced') this.muteReplaced(true)
+    else if (s === 'online') this.muteReplaced(false)
     if (s === 'online' && this.hostStatus !== 'online') this.substituteGraceUntil = this.realTime + RULES.playerDropToBotSeconds + 3
+    if (s === 'online' && this.tookOver) {
+      this.tookOver = false
+      // la manche était figée dans cet onglet : elle repart en « 3, 2, 1 », téléphones remis à jour
+      if (this.phase === 'round' && !this.paused && !this.roundResult && this.sim?.state.sun.phase !== 'countdown') {
+        this.holdUntil = this.realTime + RESUME_HOLD_S
+        this.holdShown = -1
+        this.substituteGraceUntil = Math.max(this.substituteGraceUntil, this.holdUntil + 2)
+      }
+      this.markRoster()
+      this.markViews()
+    }
     this.hostStatus = s
     if (s === 'online') this.everOnline = true
     useLobby.setState({ connection: s === 'online' ? 'online' : s === 'connecting' || s === 'idle' ? 'connecting' : 'offline' })
@@ -1545,7 +1695,7 @@ export class Runner {
   private syncHostLink(): void {
     const s = this.hostStatus
     const phones = this.roster.phones().length > 0
-    const link = s === 'replaced' ? 'lost' : s !== 'online' && this.everOnline && phones && this.phase !== 'boot' ? 'reconnecting' : 'ok'
+    const link = s === 'replaced' ? 'replaced' : s !== 'online' && this.everOnline && phones && this.phase !== 'boot' ? 'reconnecting' : 'ok'
     if (useUi.getState().hostLink !== link) useUi.setState({ hostLink: link })
   }
 
@@ -1704,6 +1854,9 @@ export class Runner {
 
   /** Salon : un téléphone parti depuis longtemps libère sa place. */
   private dropStalePhones(): void {
+    // PC coupé du serveur ou onglet remplacé par un autre : ce sont les téléphones qu'on ne voit plus,
+    // pas eux qui sont partis (« Reprendre ici » doit retrouver le salon entier)
+    if (this.hostStatus !== 'online') return
     for (const p of this.roster.phones()) {
       if (!p.phoneId) continue
       const info = this.hub.phone(p.phoneId)
@@ -1844,7 +1997,7 @@ export class Runner {
       deadline: this.deadline,
       paused: this.paused,
       pausedBy: this.pausedBy,
-      resuming: this.paused && this.hiddenPause,
+      resuming: this.paused && (this.hiddenPause || this.displayPause),
       goals: slot => this.goals.goals(slot),
       titles: this.titles,
       winners: this.winners,
@@ -1930,6 +2083,12 @@ export class Runner {
       quitToLobby: () => this.quitToLobby(),
       continueResults: () => this.continueResults(true),
       rematch: () => this.rematch(),
+      takeOver: () => this.takeOver(),
+      reloadPage: () => {
+        // la sauvegarde est écrite avant le rechargement : la partie reprend à cet instant
+        this.save(true)
+        location.reload()
+      },
     })
   }
 
@@ -1996,7 +2155,8 @@ export class Runner {
       roundResult: this.roundResult ? { index: this.roundResult.index } : null,
       interlude: this.interlude,
       deadlineLeft: this.deadline !== null ? Math.max(0, this.deadline - now()) : null,
-      paused: this.paused,
+      // pause due à l'image perdue : après « Recharger », la manche repart en « 3, 2, 1 »
+      paused: this.paused && !this.displayPause,
       pausedBy: this.pausedBy,
       narrator: this.narrator.exportMemory(),
       goals: this.roster.players.filter(p => p.kind !== 'bot').map(p => ({ slot: p.slot, ...this.goals.goals(p.slot) })),

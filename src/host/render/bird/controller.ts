@@ -6,7 +6,7 @@ import { RULES } from '../../../sim/rules.ts'
 import { MAX_PLAYERS, PLAYER_COLORS } from '../../../shared/players.ts'
 import type { GameView } from '../../view.ts'
 import { ANCHOR_STRIDE, PERCH_CROWN_LIFT_M, anchorOffset, birdAnchors, birdAnimEvents, crownLift, type WingbeatEvent } from './anchors.ts'
-import { BirdAnimator, emptyFrame, frameFromStates, type BirdFrame, type BirdMode } from './animator.ts'
+import { BirdAnimator, emptyFrame, frameFromStates, type AnimContext, type BirdFrame, type BirdMode } from './animator.ts'
 import { CROWN_HEIGHT, CROWN_WIDTH, CrownMesh } from './crown.ts'
 import type { BirdDetail } from './geometry.ts'
 import { glyphIndex } from './glyphs.ts'
@@ -26,8 +26,10 @@ export interface BirdsOptions {
   castShadows: boolean
 }
 
-/** Envergure visée à l'écran par l'échelle automatique (px en 1080p). */
+/** Envergure visée à l'écran par l'échelle automatique (px en 1080p)… */
 const AUTO_SCALE_SPAN_PX = 60
+/** …et au-delà de 8 oiseaux (polish vague 2 : médiane ≥ 60 px en plan d'arène, HAUT compris). */
+const AUTO_SCALE_SPAN_PX_CROWDED = 66
 /** Au-delà de ce nombre d'oiseaux, le plafond de l'échelle cosmétique passe à RULES.birdRenderScaleMaxCrowded. */
 const CROWDED_BIRDS = 8
 /** Taille minimale de la couronne à l'écran (px en 1080p, ART_BIBLE §6.7 : ≥ 14 px). */
@@ -68,6 +70,8 @@ class BirdSlot {
   accentOn = true
   /** Dernière envergure affichée (px 1080p). */
   spanShown = 60
+  /** Dernière force transmise à l'âme de l'ombre (−1 = jamais). */
+  casterStrength = -1
 
   constructor(readonly slot: number) {
     // Créé au niveau « far » : le caster de l'ombre garde cette géométrie légère.
@@ -78,6 +82,7 @@ class BirdSlot {
   }
 }
 
+const PROBE_ANCHORS = ['bandL', 'bandR', 'chest'] as const
 const _v = new Vector3()
 const _w = new Vector3()
 const _up = new Vector3()
@@ -98,6 +103,8 @@ export class BirdsController {
   private crownTime = 0
   /** Modes de mise en scène par slot (podium). */
   readonly modes: (BirdMode | undefined)[] = new Array(MAX_PLAYERS)
+  /** Contexte d'animation réutilisé (pas d'objet alloué par oiseau et par frame). */
+  private readonly animCtx: AnimContext = { renderScale: 1, detail: 0, mode: 'fly' }
   /** Événement réutilisé (pas d'allocation par battement) : les abonnés ne doivent pas le conserver. */
   private readonly beatEvent: WingbeatEvent = { type: 'wingbeat', slot: 0, amp: 0, power: false, x: 0, y: 0, z: 0 }
 
@@ -158,7 +165,9 @@ export class BirdsController {
     const px1080 = viewportH / 1080
     camera.getWorldPosition(_w)
     // Beaucoup d'oiseaux : plafond cosmétique relevé (polish B1, on retrouve le sien à 9-12).
-    const scaleMax = sim.birds.length > CROWDED_BIRDS ? RULES.birdRenderScaleMaxCrowded : RULES.birdRenderScaleMax
+    const crowded = sim.birds.length > CROWDED_BIRDS
+    const scaleMax = crowded ? RULES.birdRenderScaleMaxCrowded : RULES.birdRenderScaleMax
+    const spanTarget = crowded ? AUTO_SCALE_SPAN_PX_CROWDED : AUTO_SCALE_SPAN_PX
 
     for (const b of sim.birds) {
       const s = this.ensure(b.slot)
@@ -174,7 +183,7 @@ export class BirdsController {
       const spanPx1 = (RULES.wingspan * pxPerMeterAt1) / dist / px1080
       const renderScale =
         this.options.renderScale === 'auto'
-          ? clamp(AUTO_SCALE_SPAN_PX / Math.max(spanPx1, 1), 1, scaleMax)
+          ? clamp(spanTarget / Math.max(spanPx1, 1), 1, scaleMax)
           : this.options.renderScale
       const detail = smoothstep(160, 520, spanPx1)
       // Niveau de détail du maillage, avec hystérésis (pas de clignotement au zoom).
@@ -189,7 +198,11 @@ export class BirdsController {
         s.fresh = false
       }
       const mode = this.modes[b.slot] ?? 'fly'
-      const pose = s.animator.update(f, dt, { renderScale, detail, mode })
+      const actx = this.animCtx
+      actx.renderScale = renderScale
+      actx.detail = detail
+      actx.mode = mode
+      const pose = s.animator.update(f, dt, actx)
       rig.applyPose(pose)
       if (s.animator.beat > 0) {
         const e = this.beatEvent
@@ -211,32 +224,50 @@ export class BirdsController {
         const hex = PLAYER_COLORS[ci]?.hex ?? '#888888'
         U.uPlayer.value.setRGB(...hexToLinear(hex))
       }
-      U.uGlyph.value = view.colorblind ? glyphIndex(ci) : -1
-      U.uHidden.value = clamp01(springTo(s.hidden, b.hidden ? 1 : 0, 9, 1, dt))
+      // Uniforms scalaires : écrits seulement quand leur valeur (quantifiée au 1/1024) change. Un
+      // nombre flottant rangé dans un objet { value } est mis en boîte à chaque écriture : écrire
+      // sans condition allouait ~10 boîtes par oiseau et par frame (polish vague 2).
+      const glyph = view.colorblind ? glyphIndex(ci) : -1
+      if (U.uGlyph.value !== glyph) U.uGlyph.value = glyph
+      springTo(s.hidden, b.hidden ? 1 : 0, 9, 1, dt)
+      const hidden = Math.round(clamp01(s.hidden.x) * 1024) / 1024
+      if (U.uHidden.value !== hidden) U.uHidden.value = hidden
       const charge = b.flapCooldown > 0 ? clamp01(1 - f.flapCooldown / RULES.flapCooldown) : 1
       if (charge >= 1 && s.prevCharge < 1) s.tipFlash = 1
       s.prevCharge = charge
       s.tipFlash = Math.max(0, s.tipFlash - dt / 0.35)
-      U.uTipCharge.value = charge
-      U.uTipFlash.value = s.tipFlash * s.tipFlash
-      U.uDetail.value = detail
-      U.uPerch.value = mode === 'perch' ? 1 : 0
+      const chargeQ = Math.round(charge * 1024) / 1024
+      if (U.uTipCharge.value !== chargeQ) U.uTipCharge.value = chargeQ
+      const flash = Math.round(s.tipFlash * s.tipFlash * 1024) / 1024
+      if (U.uTipFlash.value !== flash) U.uTipFlash.value = flash
+      const detailQ = Math.round(detail * 1024) / 1024
+      if (U.uDetail.value !== detailQ) U.uDetail.value = detailQ
+      const perch = mode === 'perch' ? 1 : 0
+      if (U.uPerch.value !== perch) U.uPerch.value = perch
 
       // Loin (< 70 px d'envergure affichée) : bande d'aile élargie, cape et selle agrandies,
       // cerne réduit (coque fine, pièces colorées sans cerne interne) — polish B1.
       const spanShown = spanPx1 * pose.scale
       s.spanShown = spanShown
-      const farK = 1 - smoothstep(FAR_FULL_PX, FAR_NONE_PX, spanShown)
-      const band = rig.asset.model.band
-      const tipX = rig.asset.model.wingTipX
-      U.uBand.value.set(lerp(band[0], BAND_FAR[0] * tipX, farK), lerp(band[1], BAND_FAR[1] * tipX, farK))
-      U.uAccentScale.value = 1 + (ACCENT_SCALE_FAR - 1) * farK
-      U.uHullWidth.value = lerp(HULL_WIDTH_PX, HULL_WIDTH_FAR_PX, farK)
+      const farK = Math.round((1 - smoothstep(FAR_FULL_PX, FAR_NONE_PX, spanShown)) * 1024) / 1024
+      if (U.uFar.value !== farK) {
+        const band = rig.asset.model.band
+        const tipX = rig.asset.model.wingTipX
+        U.uBand.value.set(lerp(band[0], BAND_FAR[0] * tipX, farK), lerp(band[1], BAND_FAR[1] * tipX, farK))
+        U.uAccentScale.value = 1 + (ACCENT_SCALE_FAR - 1) * farK
+        U.uFar.value = farK
+        U.uHullWidth.value = lerp(HULL_WIDTH_PX, HULL_WIDTH_FAR_PX, farK)
+      }
       if (s.accentOn ? spanShown < ACCENT_ID_OFF_PX : spanShown > ACCENT_ID_ON_PX) s.accentOn = !s.accentOn
-      U.uAccentOn.value = s.accentOn ? 1 : 0
+      const accentOn = s.accentOn ? 1 : 0
+      if (U.uAccentOn.value !== accentOn) U.uAccentOn.value = accentOn
 
       // Âme de l'ombre : 1,0 en BAS, 0,6 en HAUT (ART_BIBLE §5.3).
-      s.caster?.setStrength(1 - 0.4 * smoothstep(RULES.strongMaxAlt - 1, RULES.strongMaxAlt + 1, f.z))
+      const strength = Math.round((1 - 0.4 * smoothstep(RULES.strongMaxAlt - 1, RULES.strongMaxAlt + 1, f.z)) * 1024) / 1024
+      if (strength !== s.casterStrength) {
+        s.casterStrength = strength
+        s.caster?.setStrength(strength)
+      }
       birdAnchors.spanPx[b.slot] = spanPx1 * pose.scale
       birdAnchors.scale[b.slot] = pose.scale
     }
@@ -255,8 +286,26 @@ export class BirdsController {
       s.rig.writeAnchors(birdAnchors.data, i * ANCHOR_STRIDE, _v)
       birdAnchors.frame[i] = this.frameNo
     }
+    if (birdAnchors.screen) this.probeScreen(birdAnchors.screen, camera)
 
     this.updateCrown(sim.crownSlot, dt, pxPerMeterAt1 / px1080, camera)
+  }
+
+  /** Sonde des outils (?debug) : NDC des milieux de bandes et de la poitrine, par slot. */
+  private probeScreen(out: Float32Array, camera: Camera): void {
+    const d = birdAnchors.data
+    birdAnchors.probeCamera = camera
+    birdAnchors.probeRoot = this.root
+    for (let i = 0; i < MAX_PLAYERS; i++) {
+      if (!this.slots[i]) continue
+      const names = PROBE_ANCHORS
+      for (let k = 0; k < names.length; k++) {
+        const o = anchorOffset(i, names[k]!)
+        _v.set(d[o]!, d[o + 1]!, d[o + 2]!).project(camera)
+        out[i * 6 + k * 2] = _v.x
+        out[i * 6 + k * 2 + 1] = _v.y
+      }
+    }
   }
 
   /**

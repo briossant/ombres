@@ -1,0 +1,8 @@
+{
+ "bill": {"file": "bill.wav", "source": "kyutai/tts-voices : voice-zero/bill_boerst.wav", "lang": "en",
+          "license": "CC0 (LibriVox, sélection Voice-Zero) — la voix bill_boerst du lot Pocket actuel",
+          "text": "This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit librivox.org."},
+ "frm":  {"file": "frm.wav", "source": "kyutai/tts-voices : cml-tts/fr/4193_3103_000004-0001_enhanced.wav", "lang": "fr",
+          "license": "CC-BY-4.0 (CML-TTS, locuteur 4193 ; nettoyé par Kyutai avec ai-coustics) — voix masculine française grave (F0 87 Hz), posée (11,4 car/s)",
+          "text": "Or, si l'eau n'est pas absolument incompressible, elle est du moins très peu compressible."}
+}

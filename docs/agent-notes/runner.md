@@ -196,3 +196,23 @@ Rien de visible sans `?debug`.
 - **Chargement** (G12, `loader.ts`) : chauffe honnête — les 30 premières images mènent la barre à 95 %, la stabilité (8 images < 50 ms) au reste ; 100 % seulement à la fin ; délai limite 6 s (au lieu de 20 s).
 - Demandes traitées : `reduceFlashes` → `markViews()` (phone P4) ; sous-titre du narrateur retiré au `hide` du lecteur, la durée locale devient un filet de 4 s (audio A8).
 - `players.ts` : `uiTitleId(award)` (le miroir `TitleId` de l'UI ne connaît pas encore `souverain`, demande hostui).
+
+## 12. Polish vague 2 (correcteur tech) — détail et preuves : docs/polish/fix2-tech.md
+
+- **Image perdue** (contexte WebGL) : `<DisplayGuard/>` (dans le `<Canvas>`, `runner/DisplayGuard.tsx`) écoute
+  `webglcontextlost` / `webglcontextrestored` → `runner.onDisplayLost()` / `onDisplayRestored()`. Perte : manche en
+  pause « depuis l'écran » (`displayPause`, téléphones sans « Reprendre », `resume()` refusé), sauvegarde immédiate,
+  `useUi.display = 'lost'` (surcouche papier `DisplayLost.tsx`). Une manche qui démarre pendant la perte est mise en
+  pause à la première image (`holdForDisplay` dans `frame`). Retour : reprise en « 3, 2, 1 » (`resumeWithCount`,
+  partagé avec l'onglet revenu). Au bout de 3 s sans retour, « Recharger » (`uiActions.reloadPage` : sauvegarde puis
+  `location.reload()`) ; la pause due à la perte n'est pas sauvegardée (`paused && !displayPause`) : après
+  rechargement, même instant, « 3, 2, 1 ». `?debug` : `window.__ombres.gl` = le WebGLRenderer (`renderer.info`).
+- **Onglet dupliqué** : `HostLink` vaut `'replaced'` (plus `'lost'`) → surcouche dédiée et « Reprendre ici »
+  (`uiActions.takeOver` → `runner.takeOver()` → `HostSession.takeOver()`). L'onglet remplacé se tait (fondu de
+  `engine.masterIn` à 0, rendu à « Reprendre ici » ou au retour en ligne) ; après la reprise, la manche repart en
+  « 3, 2, 1 » (`tookOver`). `dropStalePhones` ne retire plus de téléphone du salon tant que le PC n'est pas en ligne.
+- **Démo du titre** : la démo de la carte suivante (simulation, bots) est construite au premier temps mort
+  (`scheduleDemoPrep`, requestIdleCallback) puis ses tours par tranches de 4 ms (`render/world/prebuild.ts`
+  `prepareTowers`) ; `startDemo()` ne fait plus qu'échanger (0,1 ms au lieu de 3-7 ms, plus de longue tâche).
+- **Sous-titre et changement de langue** : réplique sans voix → `showSubtitle({ key })` (retraduite avec la langue) ;
+  réplique voisée → texte figé + `lang` (le nom de couleur s'écrit dans la langue de la voix jusqu'à la fin).

@@ -1,5 +1,5 @@
 // Racine de l'interface du PC : monte l'écran courant (avec transition), le
-// HUD, les surcouches (pause, réglages, reconnexion) et les toasts, au-dessus
+// HUD, les surcouches (pause, réglages, reconnexion, image interrompue) et les toasts, au-dessus
 // du canvas 3D. À monter une seule fois par l'App de phase 3 :
 //   <><Canvas …/><UiRoot /></>
 // Styles de base en premier : les styles d'écran, importés ensuite, les précisent.
@@ -22,6 +22,7 @@ import { RoundResults } from './screens/RoundResults.tsx'
 import { MatchResults } from './screens/MatchResults.tsx'
 import { Credits } from './screens/Credits.tsx'
 import { Reconnect } from './screens/Reconnect.tsx'
+import { DisplayLost } from './screens/DisplayLost.tsx'
 import { Toasts } from './screens/Toasts.tsx'
 import { Subtitle } from './hud/Announce.tsx'
 
@@ -84,6 +85,7 @@ export function UiRoot() {
   const overlay = useUi(s => s.overlay)
   const screen = useUi(s => s.screen)
   const hostLink = useUi(s => s.hostLink)
+  const display = useUi(s => s.display)
 
   useEffect(() => {
     const el = root.current
@@ -110,7 +112,9 @@ export function UiRoot() {
           et au podium (ajout qa : la réplique du champion n'était pas sous-titrée). */}
       {screen === 'roundResults' || screen === 'matchResults' ? <Subtitle /> : null}
       {screen !== 'loading' ? <Toasts /> : null}
-      {hostLink !== 'ok' && screen !== 'loading' ? <Reconnect /> : null}
+      {/* onglet dupliqué : dès le chargement (l'autre onglet a la salle) ; reconnexion : après */}
+      {hostLink === 'replaced' || (hostLink !== 'ok' && screen !== 'loading') ? <Reconnect key={hostLink} /> : null}
+      {display === 'lost' ? <DisplayLost /> : null}
     </div>
   )
 }

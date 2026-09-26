@@ -117,6 +117,30 @@ export function towerCover(
   return covered / total
 }
 
+/**
+ * Distance 3D (m) d'un point (la caméra) à la surface de tour la plus proche au-dessus de `minZ` m
+ * (troncs de cône exacts, inclinaison du gnomon comprise). Infinity sans tour. Polish vague 2 : un
+ * plan serré (punch-in) ne passe pas à moins de ~40 m d'une tour (elle y serait dissoute en trame).
+ */
+export function towerClearance(sim: SimState, x: number, y: number, z: number, minZ = 20): number {
+  let best = Infinity
+  for (const t of sim.towers) {
+    if (t.height < minZ) continue
+    for (const g of t.segments) {
+      if (g.z1 < minZ) continue
+      const zc = Math.max(Math.max(minZ, g.z0), Math.min(g.z1, z))
+      const k = g.z1 > g.z0 ? (zc - g.z0) / (g.z1 - g.z0) : 0
+      const r = g.z1 > g.z0 ? g.r0 + (g.r1 - g.r0) * k : Math.max(g.r0, g.r1)
+      const ox = (g.ox0 ?? 0) + ((g.ox1 ?? 0) - (g.ox0 ?? 0)) * k
+      const oy = (g.oy0 ?? 0) + ((g.oy1 ?? 0) - (g.oy0 ?? 0)) * k
+      const dh = Math.max(0, Math.hypot(x - t.x - ox, y - t.y - oy) - r)
+      const d = Math.hypot(dh, z - zc)
+      if (d < best) best = d
+    }
+  }
+  return best
+}
+
 /** sin de l'angle sous lequel on voit une section horizontale (1 = vue de dessus). */
 function sinDepression(cx: number, cy: number, cz: number, x: number, y: number, z: number): number {
   const dh = Math.hypot(x - cx, y - cy)

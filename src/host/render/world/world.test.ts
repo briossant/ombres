@@ -150,7 +150,9 @@ describe('texture de territoire', () => {
     const g = fakeGrid()
     const tex = new TerritoryTexture(g.cols, g.rows)
     const uploads: THREE.Box2[] = []
-    const renderer = { copyTextureToTexture: (_s: unknown, _d: unknown, box: THREE.Box2) => uploads.push(box.clone()) } as unknown as THREE.WebGLRenderer
+    // seuls les envois vers la texture de territoire comptent (le champ de distance aux bords, polish 2,
+    // part par le même chemin, sans rectangle)
+    const renderer = { copyTextureToTexture: (_s: unknown, d: unknown, box: THREE.Box2) => d === tex.texture && uploads.push(box.clone()) } as unknown as THREE.WebGLRenderer
     tex.update(renderer, g, 0) // premier affichage : envoi complet (needsUpdate)
     expect(uploads.length).toBe(0)
     // on peint deux cellules éloignées à t = 1 s
@@ -188,5 +190,39 @@ describe('texture de territoire', () => {
     uploads.length = 0
     tex.update(renderer, g, 3.0)
     expect(uploads.length).toBe(0)
+  })
+
+  it('champ de distance aux bords : 0 sur un bord, borné loin des bords, recalculé ≤ 10 Hz', () => {
+    const g = fakeGrid(128, 96)
+    const tex = new TerritoryTexture(g.cols, g.rows)
+    let edgeUploads = 0
+    const renderer = { copyTextureToTexture: (_s: unknown, d: unknown) => void (d === tex.edgeTexture && edgeUploads++) } as unknown as THREE.WebGLRenderer
+    // un grand carré peint de 40 × 40 cellules (10 × 10 texels du champ)
+    for (let y = 8; y < 48; y++)
+      for (let x = 8; x < 48; x++) {
+        const i = y * g.cols + x
+        g.owner[i] = 2
+        g.level[i] = RULES.levelStrong
+      }
+    g.version++
+    tex.update(renderer, g, 0)
+    expect(edgeUploads).toBe(1)
+    const e = tex.edgeTexture.image.data as Uint8Array
+    const at = (cx: number, cy: number) => e[Math.floor(cy / 4) * tex.edgeCols + Math.floor(cx / 4)]!
+    expect(at(8, 20)).toBe(0) // sur le bord gauche du carré
+    expect(at(27, 27)).toBeGreaterThan(at(12, 27)) // plus loin du bord au centre
+    expect(at(27, 27)).toBeGreaterThan(0)
+    expect(at(g.cols - 4, g.rows - 4)).toBe(255) // sable nu loin de tout bord : borné
+    // nouvelle peinture 50 ms plus tard : le champ attend 100 ms
+    const i = 30 * g.cols + 30
+    g.owner[i] = 5
+    g.dirty = { x0: 30, y0: 30, x1: 30, y1: 30 }
+    g.version++
+    tex.update(renderer, g, 0.05)
+    tex.update(renderer, g, 0.08)
+    expect(edgeUploads).toBe(1)
+    tex.update(renderer, g, 0.2)
+    expect(edgeUploads).toBe(2)
+    expect(at(30, 30)).toBe(0)
   })
 })

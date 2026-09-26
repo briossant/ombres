@@ -128,17 +128,11 @@ export interface PebblesProps {
 }
 
 export function Pebbles({ arena, towers, count, shadows }: PebblesProps) {
-  const meshes = useMemo(() => {
-    const inst = scatter(count, arena, towers)
-    const n = inst.length / 4
-    const quad = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
-    const make = (isShadow: boolean) => {
-      const g = new THREE.InstancedBufferGeometry()
-      g.index = quad.index
-      g.setAttribute('position', quad.getAttribute('position'))
-      g.setAttribute('inst', new THREE.InstancedBufferAttribute(inst, 4))
-      g.instanceCount = n
-      const m = new THREE.ShaderMaterial({
+  // Matériaux gardés d'une carte à l'autre (polish tech, vague 2) : recréés à chaque carte, leur
+  // programme était détruit puis recompilé (≈ 10-20 ms de plus sur l'image du changement de carte).
+  const materials = useMemo(() => {
+    const make = (isShadow: boolean) =>
+      new THREE.ShaderMaterial({
         name: isShadow ? 'world.pebbleShadow' : 'world.pebble',
         transparent: true,
         depthWrite: false,
@@ -149,6 +143,26 @@ export function Pebbles({ arena, towers, count, shadows }: PebblesProps) {
         vertexShader: VERT,
         fragmentShader: FRAG,
       })
+    return { pebbles: make(false), shadows: make(true) }
+  }, [])
+  useEffect(
+    () => () => {
+      materials.pebbles.dispose()
+      materials.shadows.dispose()
+    },
+    [materials],
+  )
+  const meshes = useMemo(() => {
+    const inst = scatter(count, arena, towers)
+    const n = inst.length / 4
+    const quad = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
+    const make = (isShadow: boolean) => {
+      const g = new THREE.InstancedBufferGeometry()
+      g.index = quad.index
+      g.setAttribute('position', quad.getAttribute('position'))
+      g.setAttribute('inst', new THREE.InstancedBufferAttribute(inst, 4))
+      g.instanceCount = n
+      const m = isShadow ? materials.shadows : materials.pebbles
       const mesh = new THREE.Mesh(g, m)
       mesh.frustumCulled = false
       mesh.renderOrder = isShadow ? 1 : 2
@@ -156,13 +170,10 @@ export function Pebbles({ arena, towers, count, shadows }: PebblesProps) {
       return mesh
     }
     return { pebbles: make(false), shadows: make(true), quad }
-  }, [arena, towers, count])
+  }, [arena, towers, count, materials])
   useEffect(
     () => () => {
-      for (const m of [meshes.pebbles, meshes.shadows]) {
-        m.geometry.dispose()
-        ;(m.material as THREE.Material).dispose()
-      }
+      for (const m of [meshes.pebbles, meshes.shadows]) m.geometry.dispose()
       meshes.quad.dispose()
     },
     [meshes],

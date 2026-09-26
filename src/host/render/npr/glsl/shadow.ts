@@ -19,7 +19,7 @@ uniform highp sampler2D uShadowMapFocus;
 uniform vec4 uShadowArea;     // (cx, cz, demi-taille, plage de hauteur)
 uniform vec4 uShadowAreaFar;
 uniform vec4 uShadowAreaFocus; // (cx, cz, demi-taille, active)
-uniform float uShadowRes, uShadowResFar, uShadowResFocus, uShadowSmooth;
+uniform float uShadowRes, uShadowResFar, uShadowResFocus, uShadowSmooth, uShadowSmoothPx;
 vec4 shadowTaps(highp sampler2D map, float res, vec2 uv, float ref){
   vec2 tc = uv * res - 0.5;
   vec2 f = fract(tc);
@@ -76,7 +76,7 @@ vec4 sampleShadowSmooth(vec3 wp, float bias){
 // escaliers de texels, quelle que soit la distance), 4 taps sinon. dp0 = |fwidth(p0)| en m/px,
 // calculé par l'appelant HORS branche (p0 = shadowProject(wp)).
 vec4 shadowPick(highp sampler2D map, float res, float half_, vec2 uv, float ref, float dp0){
-  return dp0 * res < 2.0 * half_ && uShadowSmooth > 0.5 ? shadowTaps9(map, res, uv, ref) : shadowTaps(map, res, uv, ref);
+  return dp0 * res * uShadowSmoothPx < 2.0 * half_ && uShadowSmooth > 0.5 ? shadowTaps9(map, res, uv, ref) : shadowTaps(map, res, uv, ref);
 }
 vec4 sampleShadowAuto(vec3 wp, float bias, float dp0){
   vec2 p0 = shadowProject(wp);

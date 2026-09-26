@@ -1,0 +1,2506 @@
+[
+{
+"path": "cml-tts/fr/10087_11650_000028-0002.wav",
+"f0": 196.9,
+"dur": 7.24,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/10177_10625_000134-0003.wav",
+"f0": 201.5,
+"dur": 7.56,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/10179_11051_000005-0001.wav",
+"f0": 284.1,
+"dur": 7.96,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/12080_11650_000047-0001.wav",
+"f0": 230.4,
+"dur": 8.68,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/12205_11650_000004-0002.wav",
+"f0": 177.7,
+"dur": 6.68,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/12977_10625_000037-0001.wav",
+"f0": 213.3,
+"dur": 6.68,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/1406_1028_000009-0003.wav",
+"f0": 99.1,
+"dur": 6.56,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.99,
+"text": "Il en pencha aussitôt l'ouverture contre terre, mais il n'en sortit rien, ce qui le surprie extrêmement."
+},
+{
+"path": "cml-tts/fr/1591_1028_000108-0004.wav",
+"f0": 215.7,
+"dur": 7.04,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/1770_1028_000036-0002.wav",
+"f0": 134.1,
+"dur": 7.84,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.99,
+"text": "Elle le fit entrer dans un bel appartement. C'était un grand bâtiment carré qui répondait à la magnificence du palais."
+},
+{
+"path": "cml-tts/fr/2114_1656_000053-0001.wav",
+"f0": 117.7,
+"dur": 8.88,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.96,
+"text": "Je me laissais entraîner hors de la cabane où je vis en effet six de nos hommes qui nous attendaient la viron à la main."
+},
+{
+"path": "cml-tts/fr/2154_2576_000020-0003.wav",
+"f0": 177.9,
+"dur": 8.48,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/2216_1745_000007-0001.wav",
+"f0": 126.0,
+"dur": 7.56,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.96,
+"text": "Lecteur, c'est peut-être la haine que tu veux que j'invoque dans le commencement de cet ouvrage."
+},
+{
+"path": "cml-tts/fr/2223_1745_000009-0002.wav",
+"f0": 128.1,
+"dur": 7.28,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.99,
+"text": "Il ne doit pas avoir plus de 8 ans, et cependant il ne s'amuse pas comme il serait convenable."
+},
+{
+"path": "cml-tts/fr/2465_1943_000152-0002.wav",
+"f0": 211.0,
+"dur": 7.72,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/296_1028_000022-0001.wav",
+"f0": 122.3,
+"dur": 8.52,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.98,
+"text": "Seigneur, lui reprendit le sultan, je vous suis fort obligé de la bonne opinion que vous avez de moi."
+},
+{
+"path": "cml-tts/fr/3267_1902_000075-0001.wav",
+"f0": 232.6,
+"dur": 8.6,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/4193_3103_000004-0001.wav",
+"f0": 89.0,
+"dur": 6.48,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "Or, si l'eau n'est pas absolument incompressible, elle est du moins très peu compressible."
+},
+{
+"path": "cml-tts/fr/4482_3103_000063-0001.wav",
+"f0": 114.0,
+"dur": 6.52,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "Tout le monde sait que les poissons forment la quatrième et dernière classe de l'embranchement des vertibrées."
+},
+{
+"path": "cml-tts/fr/4724_3731_000031-0001.wav",
+"f0": 133.4,
+"dur": 8.72,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.96,
+"text": "d'où vient donc que son influence agit différemment sur ces deux hommes-ci ?"
+},
+{
+"path": "cml-tts/fr/4937_3731_000004-0001.wav",
+"f0": 136.2,
+"dur": 6.6,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "Le sauvetier cruvoire tout l'argent que la Terre avait depuis plus de 100 ans produit pour l'usage des gens."
+},
+{
+"path": "cml-tts/fr/5207_3078_000031-0002.wav",
+"f0": 200.5,
+"dur": 7.36,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/5476_3103_000072-0001.wav",
+"f0": 182.6,
+"dur": 7.76,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/577_394_000070-0001.wav",
+"f0": 231.6,
+"dur": 7.68,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/5790_4893_000052-0001.wav",
+"f0": 117.0,
+"dur": 7.36,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "presse à la princesse de lui donner une audience particulière pour s'églertir des reproches injustes qu'elle lui y avait fait."
+},
+{
+"path": "cml-tts/fr/579_2548_000015-0001.wav",
+"f0": 204.3,
+"dur": 6.8,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/5830_4703_000037-0001.wav",
+"f0": 226.3,
+"dur": 7.28,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/6318_7016_000027-0002.wav",
+"f0": 191.9,
+"dur": 8.76,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/7142_2432_000124-0003.wav",
+"f0": 131.7,
+"dur": 7.04,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "Mais avant de déborder, je fais quelques observations pour calculer la distance parcourue et je les note sur mon journal."
+},
+{
+"path": "cml-tts/fr/7400_2928_000100-0001.wav",
+"f0": 194.5,
+"dur": 6.8,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/7591_6742_000149-0002.wav",
+"f0": 192.6,
+"dur": 6.6,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/7601_7727_000062-0001.wav",
+"f0": 95.2,
+"dur": 7.04,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.85,
+"text": "Nos enfants, dit la fiancée, seront plus beaux, plus beaux encore, hélas !"
+},
+{
+"path": "cml-tts/fr/7762_8734_000048-0002.wav",
+"f0": 196.3,
+"dur": 7.72,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/8128_7016_000047-0002.wav",
+"f0": 134.6,
+"dur": 6.52,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.91,
+"text": "au bout d'un quart d'heure, passés dans les plus mortels angoisses, on entend l'heure."
+},
+{
+"path": "cml-tts/fr/928_486_000075-0001.wav",
+"f0": 257.4,
+"dur": 7.96,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "cml-tts/fr/9834_9697_000150-0003.wav",
+"f0": 111.6,
+"dur": 6.84,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "Mais, ajouta-t-il, un bonheur si étrange sera peut-être bientôt évanoui."
+},
+{
+"path": "unmute-prod-website/default_voice.wav",
+"f0": 270.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": false
+},
+{
+"path": "unmute-prod-website/degaulle-2.wav",
+"f0": 148.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": false,
+"lang": "fr",
+"lang_p": 0.97,
+"text": "L'honneur, le bon sens, l'intérêt supérieur de la patrie commande à tous les Français libres."
+},
+{
+"path": "unmute-prod-website/developpeuse-3.wav",
+"f0": 232.7,
+"dur": 13.36,
+"emb": true,
+"emb_enh": false
+},
+{
+"path": "unmute-prod-website/ex04_narration_longform_00001.wav",
+"f0": 225.4,
+"dur": 20.0,
+"emb": true,
+"emb_enh": false
+},
+{
+"path": "unmute-prod-website/fabieng-enhanced-v2.wav",
+"f0": 136.8,
+"dur": 11.52,
+"emb": true,
+"emb_enh": false,
+"lang": "fr",
+"lang_p": 0.97,
+"text": "Bonjour à tous, ravi d'être avocatés aujourd'hui pour pouvoir discuter et de nouveaux sujets au programme du divertissement, mais aussi de la péragogie."
+},
+{
+"path": "unmute-prod-website/p329_022.wav",
+"f0": 200.3,
+"dur": 8.36,
+"emb": true,
+"emb_enh": false
+},
+{
+"path": "voice-donations/0a67.wav",
+"f0": 139.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "tl",
+"lang_p": 0.56,
+"text": "Good day, good morning, good evening, and also God bless you."
+},
+{
+"path": "voice-donations/1410.wav",
+"f0": 122.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.95,
+"text": "behind us at the Freud's Club is down music how to be mixed there are other challenges other brilliant foot tours the ability"
+},
+{
+"path": "voice-donations/1dd0.wav",
+"f0": 134.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.62,
+"text": "I consent to my voice being used for voiceconning. The writers performed to classical music but addition could be sold out from the public server."
+},
+{
+"path": "voice-donations/2181.wav",
+"f0": 122.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "Security Parameter. Je suis d'accord pour que ma voix soit utilisée pour le clenage vocal, il y avait un électeur inscrit dans d'autres parties, l'avantage est spécifié en fonction du paramètre de sécurité."
+},
+{
+"path": "voice-donations/245e.wav",
+"f0": 127.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.93,
+"text": "His whole body was quibbry with sensation. Front license plates are aligned towards the center or right of the face here."
+},
+{
+"path": "voice-donations/29da.wav",
+"f0": 120.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "cloning, the inlay colour is moulded first at the top of every stalk grows certain round and prickly knobs."
+},
+{
+"path": "voice-donations/30c5.wav",
+"f0": 111.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "a long period of industrial stagnation ensued Hill-L was doing all this awesome feedback and stuff"
+},
+{
+"path": "voice-donations/3973.wav",
+"f0": 202.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/4189.wav",
+"f0": 138.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "hi",
+"lang_p": 0.93,
+"text": "the Electric Radio format involves prescribed playlist आब येद थो मैं दे पो भोल दिया टेकेन दिगन जितना यूस करे उस मी्से कर लेई चितना नाखरन जाय नाखरे"
+},
+{
+"path": "voice-donations/468c.wav",
+"f0": 126.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.73,
+"text": "The yellow and peacock blue uniforms were very much as they are today."
+},
+{
+"path": "voice-donations/4b13.wav",
+"f0": 131.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.89,
+"text": "for voice cloning during this period elections were considered to be neither free nor fair, like its relatives, its lack of teeth."
+},
+{
+"path": "voice-donations/4b70.wav",
+"f0": 198.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/5b55.wav",
+"f0": 127.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.92,
+"text": "voice being used for voice cloning. This has been criticized by the scientific community. This will be deployed in very depth. Infantry, combat columns."
+},
+{
+"path": "voice-donations/6148.wav",
+"f0": 114.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "The doors are short to prevent the spirit of the rise from escaping. They serve as landmarks on the developing physical maps of Genome."
+},
+{
+"path": "voice-donations/617b.wav",
+"f0": 118.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.93,
+"text": "voice cloning. Each group is also known by more than one name. The eyes are rounded and should be deep sapphire blue."
+},
+{
+"path": "voice-donations/7020.wav",
+"f0": 86.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.92,
+"text": "The last 10 seconds of your recording will be used for as the voice sample. Try to use the same tone throughout the recording to make it easier to verify that it's you."
+},
+{
+"path": "voice-donations/7909.wav",
+"f0": 104.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.84,
+"text": "being used for voice cloning. It can also be made from scratch using floor. The stage of the hall is one of the largest in the country."
+},
+{
+"path": "voice-donations/7b2b.wav",
+"f0": 146.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.83,
+"text": "traffic calming and low speed limits a row of small Austin Derms was present down to the middle of the back"
+},
+{
+"path": "voice-donations/8935.wav",
+"f0": 108.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "workers. He is known for his landscapes with villages and cityscapes with genre scenes."
+},
+{
+"path": "voice-donations/8dc9.wav",
+"f0": 139.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.64,
+"text": "I constant on my voice being used for voice clothing now come days to write a number of the figures that indicates my typical pose"
+},
+{
+"path": "voice-donations/8f15.wav",
+"f0": 122.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.88,
+"text": "see something like whatever i want to say like this is for the eipurpose and i want to clone my voice is okay and that is"
+},
+{
+"path": "voice-donations/92f0.wav",
+"f0": 109.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.53,
+"text": "color. Nearly have stayed stationed for less than three months."
+},
+{
+"path": "voice-donations/9a2e.wav",
+"f0": 127.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.87,
+"text": "to drama schools. It consists of a furry duck and a marina."
+},
+{
+"path": "voice-donations/9a66.wav",
+"f0": 194.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/AHmad.wav",
+"f0": 138.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.78,
+"text": "The couple would marry both on the show and in real life. It has two primary schools and one maternity and child welfare centre."
+},
+{
+"path": "voice-donations/ASEN.wav",
+"f0": 111.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.77,
+"text": "being used or voice-gloning. She was the second vessel to be built. Labor candidates stood for the first time."
+},
+{
+"path": "voice-donations/Aadi.wav",
+"f0": 129.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.95,
+"text": "these sticks are cut from trees or bushes which are dedicated to the ancestor will be horrible in the press."
+},
+{
+"path": "voice-donations/AbD.wav",
+"f0": 113.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.68,
+"text": "include space for commercial lease. This suggests they had a more recent origin than many other algae."
+},
+{
+"path": "voice-donations/Abhinox.wav",
+"f0": 141.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.9,
+"text": "some of our most community concerns are given outdoors. These events are also a major revenue source for the promotion."
+},
+{
+"path": "voice-donations/Abo_Ayman.wav",
+"f0": 106.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.33,
+"text": "these broadcasts must be maintained in the public file. Nothing would remain tenable but the system of the idealist."
+},
+{
+"path": "voice-donations/Abob_Malay.wav",
+"f0": 128.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "ms",
+"lang_p": 0.79,
+"text": "email untuk kontak jika anda perlukan atau jika anda memilih untuk mencari, tidak memulai pilihan, pilihan yang terbaik, perlukan mereka untuk"
+},
+{
+"path": "voice-donations/Adarsh_Bulla.wav",
+"f0": 131.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.77,
+"text": "being used for voice cloning they both used to play squash when they were younger the fight is strong and direct"
+},
+{
+"path": "voice-donations/AgentCobra.wav",
+"f0": 140.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.84,
+"text": "sent to a bush being used for bush-scrolling such a major would be there the abundance of the corpse nowadays most hops are imported"
+},
+{
+"path": "voice-donations/Ajith.wav",
+"f0": 124.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.54,
+"text": "used for voice cloning. There are many other sites of similar or greater size. Painful subjects these serve very painful."
+},
+{
+"path": "voice-donations/Alejandro_espanol_latino.wav",
+"f0": 139.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "do not imply the theory to revert. Grace has won numerous awards for his crime novels."
+},
+{
+"path": "voice-donations/Allen.wav",
+"f0": 103.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "on demand, usually when a number of passengers is met. The software uses a logo of a small penguin wearing a red scarf."
+},
+{
+"path": "voice-donations/AmitNag.wav",
+"f0": 136.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.85,
+"text": "of rehabilitation and physical well-being. For decades, the profession has been firmly rooted in a biomechanical model, viewing the body as a complex and elegant"
+},
+{
+"path": "voice-donations/Andrea.wav",
+"f0": 181.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Andrea_(Spanish).wav",
+"f0": 166.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Antoine_Vala.wav",
+"f0": 143.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.98,
+"text": "El samario tiene cinco isótopos naturales y el neodimio 7. Su nombre significa el Montículo en Alborleda, Arboleda Oscura."
+},
+{
+"path": "voice-donations/Antoni.wav",
+"f0": 109.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "to my voice being used for voice cloning. They were indecisive and frightened by government hours for their leaders. Several companies attempted this business."
+},
+{
+"path": "voice-donations/Aon.wav",
+"f0": 249.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Arjun_Z.wav",
+"f0": 126.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "The house was later named Historic Building. The pupil should be as free as possible from connective tissue."
+},
+{
+"path": "voice-donations/Aryobe.wav",
+"f0": 118.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.92,
+"text": "cloning. She later withdraws the charges. Melody, listen are the most common."
+},
+{
+"path": "voice-donations/BLUE.wav",
+"f0": 137.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.44,
+"text": "I am consistent with my work, I should get up again in moonlight."
+},
+{
+"path": "voice-donations/Bijay.wav",
+"f0": 178.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Blake.wav",
+"f0": 204.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Bobby_McFern.wav",
+"f0": 99.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "Many damsel bugs catch and hold prey with their four legs similar to mantids."
+},
+{
+"path": "voice-donations/Breaking_1.wav",
+"f0": 142.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.94,
+"text": "de voz. En tercer lugar podrías tomar información de otra persona sin consentimiento. La empresa"
+},
+{
+"path": "voice-donations/BrokenHypocrite.wav",
+"f0": 119.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "models. I don't really know what else to say, so I will just continue to keep talking. I am looking at my bookshelf now."
+},
+{
+"path": "voice-donations/Butter.wav",
+"f0": 78.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "I would like to buy an avocado. One that is green on the outside and green."
+},
+{
+"path": "voice-donations/CPS_001.wav",
+"f0": 137.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "being used for cloning the exploit was supposedly passed in the latest version of the game. He served on various points of the war until its end."
+},
+{
+"path": "voice-donations/Chujus.wav",
+"f0": 90.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.96,
+"text": "esto de la Inteligencia Artificial es absolutamente maravilloso, es una delicia poder clonar algunas cosas y poderla..."
+},
+{
+"path": "voice-donations/Cicada.wav",
+"f0": 138.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "for voice cloning. It was taken off and we had the hearing as normal. However, after two years the funding was failing miserably."
+},
+{
+"path": "voice-donations/ClassicWizard.wav",
+"f0": 129.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "you will ask you to read a short text out loud. Afterwards, you can say whatever you want. Have fun with it. The TT-S is good at reproducing tone and mannerisms of the voice."
+},
+{
+"path": "voice-donations/Curlinvictus.wav",
+"f0": 103.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.91,
+"text": "being used for a voice cloning. She tried to reinvent herself as a singer but without success, no half so good as your mother."
+},
+{
+"path": "voice-donations/Darius.wav",
+"f0": 80.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "lv",
+"lang_p": 0.73,
+"text": "Un ir vajadzēt, ka tīties ir braukas, ar jārītās, ko tur tur tūna, ka mani mani mani. Es nevaru 10 sekundu, ko tur tur tūna, ka viņa vajadzēt."
+},
+{
+"path": "voice-donations/Darya_khan.wav",
+"f0": 127.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.95,
+"text": "Leningla Cross is a popular sport in the area as in the tempest the wooden building sees it is spying the need of the town"
+},
+{
+"path": "voice-donations/Deepak.wav",
+"f0": 145.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "And, you know, that's it. I think it's good."
+},
+{
+"path": "voice-donations/Dhruv_Rao.wav",
+"f0": 170.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Dil.wav",
+"f0": 145.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "it's easier to deal with the Vettas of Uniqueness. He was the God of the Oaks, the Thunder and the Rain."
+},
+{
+"path": "voice-donations/Enrique.wav",
+"f0": 101.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.57,
+"text": "voice being used for voice cloning. His position on the football pitch was right-winger, however the position was usually ambiguous."
+},
+{
+"path": "voice-donations/Enrique_(Spanish).wav",
+"f0": 102.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.99,
+"text": "La lluvia cae sobre Zaragoza mientras Jorge juega la gedrez con su perro rayo que gruñe y corre alrededor del viejo reloj de cuerda."
+},
+{
+"path": "voice-donations/Erick.wav",
+"f0": 104.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.98,
+"text": "en vol au-dessus de l'eau et des champs, généralement à basse altitude. C'était un concours de talent pour trouver un chanteur pop."
+},
+{
+"path": "voice-donations/Ernesto_Y.wav",
+"f0": 138.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.65,
+"text": "in flashback. A strip showing eyes only was caught of this picture of moss covers."
+},
+{
+"path": "voice-donations/Eshan.wav",
+"f0": 203.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Esteban_Aguirre_Arias.wav",
+"f0": 145.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.55,
+"text": "From the 7th to the bright, which is the other bright, the drum back is that we know it high-ceiling."
+},
+{
+"path": "voice-donations/Ferdinand.wav",
+"f0": 108.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "to contact if you need it or if you need to withdraw your authorization. This is a test of the emergency broadcast."
+},
+{
+"path": "voice-donations/FlorDaddy.wav",
+"f0": 106.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.74,
+"text": "Thus, Oseoblast's activities are self-regulated by a negative feedback system. I was reporting how people justified it."
+},
+{
+"path": "voice-donations/Fred_Mara.wav",
+"f0": 121.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "tl",
+"lang_p": 0.77,
+"text": "And my voice being used for voice cloning, both ships were lost during this last voyage. He has been married four times and has two children."
+},
+{
+"path": "voice-donations/Giovanne.wav",
+"f0": 143.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.5,
+"text": "cloning there are no records of origins of the name blue is selected color scheme of the station"
+},
+{
+"path": "voice-donations/Glenn.wav",
+"f0": 331.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Goku.wav",
+"f0": 124.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.9,
+"text": "that tragedy success might include in such a hero they continued with their"
+},
+{
+"path": "voice-donations/Gonzalo-1.wav",
+"f0": 144.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "and collect text text or text I pronounce that wrong but I don't really care I'm gonna see if this actually works"
+},
+{
+"path": "voice-donations/Gonzalo.wav",
+"f0": 149.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.95,
+"text": "and an Istonewap on this onmute.ch website."
+},
+{
+"path": "voice-donations/Greggy.wav",
+"f0": 102.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "cloning. There are of hiking trails around the chasm. Rock climbing is allowed by permit. He was narrowly defeated in the second round of voting."
+},
+{
+"path": "voice-donations/Haku.wav",
+"f0": 228.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Hannah.wav",
+"f0": 229.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Hardik_Clone.wav",
+"f0": 149.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.95,
+"text": "reader short text aloud log afterwards you can say whatever you want to have fun with it"
+},
+{
+"path": "voice-donations/Hillbilly_Jim.wav",
+"f0": 175.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Hkl.wav",
+"f0": 196.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Hugo_the_frenchie.wav",
+"f0": 141.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.92,
+"text": "been used for voice cloning. I know them and they are mad about working to a plan. Main cabin trim is of hash wood."
+},
+{
+"path": "voice-donations/Ilyass_yea.wav",
+"f0": 100.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.88,
+"text": "Since my first being used for voice cloning, Jarrah Badi-Gard was high up in the following."
+},
+{
+"path": "voice-donations/Imran_475.wav",
+"f0": 165.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Imran_from_I_India.wav",
+"f0": 165.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Indian_guy.wav",
+"f0": 114.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.78,
+"text": "I consent to my voice being used for voice cloning but we want to avoid that if possible. He launched the fight via anaconda choke submission in the second round."
+},
+{
+"path": "voice-donations/Ineedthisnow.wav",
+"f0": 117.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.5,
+"text": "its floor is thrown with a thick layer of gum leaves. He was also lacking confidence due to the accent he believed he had."
+},
+{
+"path": "voice-donations/JJis2123.wav",
+"f0": 140.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.88,
+"text": "version were made of pot or monkey metal that quickly reportedly destroyed an entire valley."
+},
+{
+"path": "voice-donations/JOSHE.wav",
+"f0": 110.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.97,
+"text": "We are moving like the army on the creep, but we will go to Got the credit and money that we were happy with"
+},
+{
+"path": "voice-donations/James.wav",
+"f0": 210.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Jaspino.wav",
+"f0": 74.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.44,
+"text": "And as one of the nation's fastest player, each sport that develops in the AC represents a single reactive self."
+},
+{
+"path": "voice-donations/Jaw.wav",
+"f0": 121.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "also written, plays and poetry, whilst expanded into directing and writing as well as theater."
+},
+{
+"path": "voice-donations/Jay.wav",
+"f0": 144.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "the TTS is good at reproducing the tone and mannerism of the voice. The last 10 seconds of your recording will be used as the voice sample. Try to use the same"
+},
+{
+"path": "voice-donations/Jeff_Andrew.wav",
+"f0": 82.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "calling his professor of psychiatry and behavioral sciences and of global health. The remainder of the inner world is some material."
+},
+{
+"path": "voice-donations/Jeffrey.wav",
+"f0": 121.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "They play by the bay every day. The boy enjoys making noise. How now, brown cow? She tries to buy the bright kite."
+},
+{
+"path": "voice-donations/Jeremy_Q.wav",
+"f0": 95.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "I consent to my voice being used for voice cloning. Its presence is detected in solution by a pink color. This record does include exhibition matches and liquid matches."
+},
+{
+"path": "voice-donations/Jimmy.wav",
+"f0": 122.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "voice cloning. Elytra oblong with ten rows of punctures at each electron base. The old tradition still lives on though."
+},
+{
+"path": "voice-donations/Joaopedrobil1.wav",
+"f0": 110.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "pt",
+"lang_p": 0.55,
+"text": "meu voz, que eu vou usar para a voz coluna."
+},
+{
+"path": "voice-donations/John_Triguero.wav",
+"f0": 149.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.99,
+"text": "explosión también dejó al ejército muy corto de pólvora. Esta vez se consumieron las papeletas de madera utilizadas para levantar los zapatos."
+},
+{
+"path": "voice-donations/Juanrestrepo177777.wav",
+"f0": 93.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.95,
+"text": "boys cloning the size range from every small sample borons to large car boys he had one surviving so and two daughters"
+},
+{
+"path": "voice-donations/Karti.wav",
+"f0": 111.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 1.0,
+"text": "utilisé pour la cloning de la voix, symptômes à la hauteur, la crampation de la extrémité. Il peut complètement préserver sa propre position dans un vécu... ...ménéris."
+},
+{
+"path": "voice-donations/Kditz.wav",
+"f0": 104.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.84,
+"text": "text to speech for long time I have to use it in my video so I have to use it so can you give me my voice recording"
+},
+{
+"path": "voice-donations/Koorosh.wav",
+"f0": 112.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.63,
+"text": "So, I am Corucious Lanzavad, an Assistant Pathosite Universe of Hall. I am donating this voice to you."
+},
+{
+"path": "voice-donations/LC.wav",
+"f0": 105.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.78,
+"text": "I consent to my voice used by voice cloning. Procuring supplies was also a problem. The question is still debated."
+},
+{
+"path": "voice-donations/L_Roy.wav",
+"f0": 145.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.97,
+"text": "cela a causé une valeur de réellement état pour décliner les investisseurs qui ont été portés à l'étude de ce secteur. Un an après la fête, ils ont récordé 5 songs."
+},
+{
+"path": "voice-donations/Lake.wav",
+"f0": 129.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "ends. This retreat is designed to guide you back to the essence of your being, to the core of your soul, and to the heart of your connections with"
+},
+{
+"path": "voice-donations/Lammy.wav",
+"f0": 98.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.6,
+"text": "I consent to my voice being used for voice cloning. Hardening supplies all of the vocals. Forrest cover much of the area. But it is very good for not as low."
+},
+{
+"path": "voice-donations/Lara.wav",
+"f0": 178.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Latin_Accent.wav",
+"f0": 223.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Liquescent.wav",
+"f0": 164.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Louis.wav",
+"f0": 97.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.43,
+"text": "points, the museum is open to select weekdays for group tours. You'll have a chance to listen to your recording before submitting it."
+},
+{
+"path": "voice-donations/Lucas.wav",
+"f0": 135.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.93,
+"text": "3 Jips and Tails for Jips, Reyes and Forgiving Lens. Troops complete each other training and tour the area."
+},
+{
+"path": "voice-donations/MJDePedro.wav",
+"f0": 151.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Maisako.wav",
+"f0": 93.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "la",
+"lang_p": 0.41,
+"text": "it's as a beach and swarm in the river. The hill is high and was formed during the last glacial period."
+},
+{
+"path": "voice-donations/Manahen.wav",
+"f0": 115.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.98,
+"text": "en lugar en lugar de los buenos cualquiera sea nuestra edad nos resulta más fácil obrar mal que hacerlo bueno esto es parte de lo que"
+},
+{
+"path": "voice-donations/Marshal_Indian.wav",
+"f0": 123.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "I can send my voice being used for voice cloning. While begin working as an editor, sound carries across water you know."
+},
+{
+"path": "voice-donations/Midlands_Bedfordshire_Dialect.wav",
+"f0": 85.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "though, he quit playing trombone and focused on piano. The invention of certain drugs enabled human passengers to use the drive."
+},
+{
+"path": "voice-donations/Moses.wav",
+"f0": 116.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "id",
+"lang_p": 0.86,
+"text": "Artis Tone have border crossing rhodium chloride in the presence of lithium iodide is employed as catalyst."
+},
+{
+"path": "voice-donations/MrHat.wav",
+"f0": 116.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "fellow housemates with a toy gun after hiding for an hour. Sheddling repair of damage can also be a problem in high traffic locations."
+},
+{
+"path": "voice-donations/Mr_captain.wav",
+"f0": 109.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.86,
+"text": "for sparse voice cloning. The area attracts to is especially for its cycle trends. At the highest, Tenti movement had several hundred active members."
+},
+{
+"path": "voice-donations/Muhtasim's_Voice.wav",
+"f0": 111.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "bn",
+"lang_p": 0.78,
+"text": "is where our role models his families had known only that he had done some secret and important work"
+},
+{
+"path": "voice-donations/Mystery_Sir.wav",
+"f0": 100.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "survive but was blinded and was recovering in the hospital. 13 people died and thousands were suffered ill effects."
+},
+{
+"path": "voice-donations/Narrum.wav",
+"f0": 108.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "very short and not separate from the Calimilar margin. It is a powerful and important opera."
+},
+{
+"path": "voice-donations/Nick.wav",
+"f0": 117.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "voice cloning diagnosis is typically based on the symptoms. It seems there are always new rumors about it."
+},
+{
+"path": "voice-donations/P0LFR.wav",
+"f0": 155.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Pai_ve.wav",
+"f0": 117.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "Their eyes are brown at first, later graced white. The garden leaves with its asthmatic wife in a small village under martial law."
+},
+{
+"path": "voice-donations/Parthiban.wav",
+"f0": 155.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Prakash369.wav",
+"f0": 123.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.83,
+"text": "voice being used for voice cloning. The mantle is black and the bill is on gray. She did not have any children."
+},
+{
+"path": "voice-donations/Puzzle.wav",
+"f0": 113.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.93,
+"text": "use, our usable bag is washed by hand and hung open to dry. Political Doctrines pass, nations remain."
+},
+{
+"path": "voice-donations/Qasim_Wali_Khan.wav",
+"f0": 112.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.97,
+"text": "fun with the TT it's good at reproducing the tone and the mannerism of the voice the last 10 seconds of your recording will be used as a"
+},
+{
+"path": "voice-donations/RAJ.wav",
+"f0": 141.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "I consent to my vice being used for vice cloning. These properties are unprone. The succession culminates in a climax community in the forest."
+},
+{
+"path": "voice-donations/Rafaelpazv.wav",
+"f0": 119.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.48,
+"text": "it for boys cloning, Rickens billions in the tropics many memory counselors have at the banks of faders."
+},
+{
+"path": "voice-donations/Rahul.wav",
+"f0": 135.6,
+"dur": 7.08,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.48,
+"text": "You will have the chance to listen to your recording before submitting it."
+},
+{
+"path": "voice-donations/Raj25.wav",
+"f0": 113.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "used for voice cloning. The buildings have had a number of uses since then. The winner was announced in the letter column of the 10th H."
+},
+{
+"path": "voice-donations/Ramu.wav",
+"f0": 134.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "bn",
+"lang_p": 0.33,
+"text": "the first of the four to be shot."
+},
+{
+"path": "voice-donations/Ranjith.wav",
+"f0": 123.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "format, sorry, a scientific data format was for use at two highest bit rates. Rodik took the point and eventually prevailed the try break."
+},
+{
+"path": "voice-donations/Richard_cuban.wav",
+"f0": 84.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.96,
+"text": "Horacio Quiroga, narrador uruguayo, radicado en Argentina, es considerado uno de los mayores cuentistas latinoamericanos de todo el tiempo."
+},
+{
+"path": "voice-donations/Rony.wav",
+"f0": 103.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.99,
+"text": "o extraviado su alma, siempre puede tener otra. Morió de un paro cardíaco en su casa."
+},
+{
+"path": "voice-donations/Roscoe.wav",
+"f0": 94.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "My name is Roscoe and I host the Muscle Growth podcast Africa's top muscle-building podcast. Thank you"
+},
+{
+"path": "voice-donations/Rs.wav",
+"f0": 125.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "la",
+"lang_p": 0.51,
+"text": "wh티  imagin the energy and power which includes large wolf forces samjini lives wiith her parents and sisters."
+},
+{
+"path": "voice-donations/Rup.wav",
+"f0": 206.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/SSA150803.wav",
+"f0": 127.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "fr",
+"lang_p": 0.99,
+"text": "par nuant à mieux protéger leur capital et optimiser leur placement. J'ai juste 3 petites questions pour voir si nous pouvons vous aider à protéger et optimiser votre patrimoine. Ça vous va ?"
+},
+{
+"path": "voice-donations/SS_1684.wav",
+"f0": 113.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.93,
+"text": "being used for voice cloning. The musicians and singers come from all over the world. The band recorded its first demo tape during this time."
+},
+{
+"path": "voice-donations/STONE.wav",
+"f0": 143.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "yo",
+"lang_p": 0.7,
+"text": "The modern version all shares the same common feature. I consent to my voice being used for voice cloning. It instead operates under a different set of"
+},
+{
+"path": "voice-donations/Samsewak.wav",
+"f0": 112.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.89,
+"text": "Incuring activities are also heavily carried out. The couple has been together since then and they have two kids."
+},
+{
+"path": "voice-donations/Selfie.wav",
+"f0": 223.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Sheddy.wav",
+"f0": 131.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.87,
+"text": "Hey guys, my name is Israel. Big dee baam ba dee boom. Yeah, so what's going on? How you guys are doing today?"
+},
+{
+"path": "voice-donations/Siddh_Indian.wav",
+"f0": 119.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.92,
+"text": "The tar is tall from the ground to the tar's cast-iron spiral staircase. He places blame on ingrained gender roles."
+},
+{
+"path": "voice-donations/Sir_TJ.wav",
+"f0": 136.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "yo",
+"lang_p": 0.48,
+"text": "jay koo members subcribe to survey cannot manage to boat win and lose matters during recording during due to dope"
+},
+{
+"path": "voice-donations/Sirajo_x.wav",
+"f0": 105.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "la",
+"lang_p": 0.46,
+"text": "the anumerous variations of bainary such a flux that salutation shall be followed by the plane of the national anthem."
+},
+{
+"path": "voice-donations/Sp46.wav",
+"f0": 103.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "The family was well off and practiced mercantile activity. His father was a farmer and his mother was a housewife. Oh, how good is that?"
+},
+{
+"path": "voice-donations/Sr_Erick.wav",
+"f0": 112.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.9,
+"text": "being used for voice cloning. Glove colors are blue and white. The player with the highest total is the winner."
+},
+{
+"path": "voice-donations/Standollars.wav",
+"f0": 126.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.67,
+"text": "to my voice being used for voice cloning. This power has never been used. I had read of such hideous incarnate demons."
+},
+{
+"path": "voice-donations/TESLLA.wav",
+"f0": 144.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "fa",
+"lang_p": 0.39,
+"text": "ما regulation is good at reproducing tune and main enemies of the voice."
+},
+{
+"path": "voice-donations/Tahii.wav",
+"f0": 120.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "being used for vise cloning the dealer will use the remaining cards to draw form. It is a popular fish in the freshwater aquarium trade and is solid worldwide."
+},
+{
+"path": "voice-donations/TheFin.wav",
+"f0": 91.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "for voice cloning, the main sheet traveller is mounted to the bridge deck. These local enhancers can also affect the expression pattern of the transgene."
+},
+{
+"path": "voice-donations/The_Sustainabler.wav",
+"f0": 136.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "strictly regulate network neutrality on wireline networks. This is most likely the highest lake of any kind in the world."
+},
+{
+"path": "voice-donations/The_other_brother.wav",
+"f0": 101.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "my voice being used for voice cloning. Flows mean issued and sold debt. He also was in favour of the right of women to higher education."
+},
+{
+"path": "voice-donations/Titorium.wav",
+"f0": 105.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "out to be very good, but things are not what they seem. They often represent a distinct set of concerns."
+},
+{
+"path": "voice-donations/Tonmoy.wav",
+"f0": 133.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "One of the bullet stock is helmet inflicting a gaping wound with a skull. Starting prompt is, the step can be used to make a shut up."
+},
+{
+"path": "voice-donations/Umair.wav",
+"f0": 120.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "The list is currently organized by category. He was struck by a horse's hoof and con-gust."
+},
+{
+"path": "voice-donations/Vexat.wav",
+"f0": 127.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.93,
+"text": "voice being used for voice cronin. All the tests are repeated several times. His lyrics deal with politics, racism and general social issues."
+},
+{
+"path": "voice-donations/Victor_Garcia.wav",
+"f0": 91.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "for voice cloning. It softens water while removing oil and grease, generally what are unable to predict."
+},
+{
+"path": "voice-donations/Vinith___English_India.wav",
+"f0": 123.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.89,
+"text": "She can be seen in the deleted scenes of the home video release. He wished to design video games from an early age."
+},
+{
+"path": "voice-donations/Vitch.wav",
+"f0": 121.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.72,
+"text": "Outside the system were various types of vessels and tribute states. The image took occupy more land and to bring about further trade."
+},
+{
+"path": "voice-donations/Vivaldi.wav",
+"f0": 123.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.89,
+"text": "used for voice cloning. The female of the species has not yet been collected. Our currency was printed and minted with a new model."
+},
+{
+"path": "voice-donations/W_A_H.wav",
+"f0": 129.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.95,
+"text": "were no longer put pasted life. So this is my voice and I hope this one helps."
+},
+{
+"path": "voice-donations/Wealthiest.wav",
+"f0": 98.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "say in a voiceless user and you can try to basically use different tones, different"
+},
+{
+"path": "voice-donations/WhisperInEar.wav",
+"f0": 281.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/Yesid.wav",
+"f0": 117.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.99,
+"text": "Incluye una torre de cruce y un campanario. El disco de relay vendió más de 6 millones de copias como sencillo."
+},
+{
+"path": "voice-donations/Youfied.wav",
+"f0": 123.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "Paterson's success at a young age led him to be promoted for other offices. So can be seen in the deleted scenes of the home."
+},
+{
+"path": "voice-donations/Yuush.wav",
+"f0": 113.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "or real, if limited use. Because the tragus faces rear wards, it aids in collecting sounds from behind."
+},
+{
+"path": "voice-donations/a59a.wav",
+"f0": 122.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "is being used for recording cloning. The first level in a war will introduce a new technique or enemy type. Both titles are popular and found even now."
+},
+{
+"path": "voice-donations/a6f9.wav",
+"f0": 106.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.91,
+"text": "used for voice cloning. However, this level was created as the tutorial of the sequel. This still stands and is used for major events in the town."
+},
+{
+"path": "voice-donations/a96a.wav",
+"f0": 128.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.99,
+"text": "de la extensión de la vida por eso quiero seguir grabando esta información para poder cronar mi voz y así poder desarrollar mis vídeos"
+},
+{
+"path": "voice-donations/aepeak.wav",
+"f0": 149.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.32,
+"text": "the siblings were teammates in their local youth team. The citadel was destroyed and no more structures were built on the site."
+},
+{
+"path": "voice-donations/albertoforofo007.wav",
+"f0": 106.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "tl",
+"lang_p": 0.5,
+"text": "Views set on section with steep rates. It's contained an activity galactic nucleus."
+},
+{
+"path": "voice-donations/amazon_box.wav",
+"f0": 109.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "ru",
+"lang_p": 0.91,
+"text": "Так что буду говорить на русском целом. Да, вот, окей. Два видома. В угол особого записаны русские, английские, что можно было раз..."
+},
+{
+"path": "voice-donations/awais_shah.wav",
+"f0": 192.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/bathri.wav",
+"f0": 192.8,
+"dur": 9.37,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/bbe4.wav",
+"f0": 131.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.76,
+"text": "He made other claims about the killer that were simply wrong. They are available to read online and order in print."
+},
+{
+"path": "voice-donations/bc98.wav",
+"f0": 168.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/bevi.wav",
+"f0": 218.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/boom.wav",
+"f0": 139.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "This metal is very tactile and can be bent, coiled or rolled. Sam was one of the series of monkeys in space."
+},
+{
+"path": "voice-donations/c0a0.wav",
+"f0": 147.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.81,
+"text": "similar in size, shape and life history. We also played basketball and football at the same time."
+},
+{
+"path": "voice-donations/cybina.wav",
+"f0": 108.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.49,
+"text": "solves around a rabbit window who is irritated by a moth. The music is both energizing and cathartic."
+},
+{
+"path": "voice-donations/d4a9.wav",
+"f0": 99.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.89,
+"text": "Northscript tags are another way to place hidden content within a page, a sumptuous Rayleigh query was made to house this column."
+},
+{
+"path": "voice-donations/dce6.wav",
+"f0": 116.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "I can send to my voice being used for voice cloning on either side of the valley's tower, however not everyone struggled on the field."
+},
+{
+"path": "voice-donations/dwp.wav",
+"f0": 114.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "reasons of my voice. The last 10 seconds of this recording will be used as a voice sample. Try and use the same tone throughout the recording to make it easier to"
+},
+{
+"path": "voice-donations/e819.wav",
+"f0": 114.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "la",
+"lang_p": 0.51,
+"text": "a litle kaif yur rai on the bay. Guru as vast natural resource, impruding words, water and stone."
+},
+{
+"path": "voice-donations/edd4.wav",
+"f0": 141.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "being uncomfortable is what I want on the other side of discomfort is a land with opportunities"
+},
+{
+"path": "voice-donations/efeb.wav",
+"f0": 121.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "because I really want to use my voice. I'm making a lot of projects, struggling with life. I want to marry my girlfriend. I will."
+},
+{
+"path": "voice-donations/english_with_german_accent.wav",
+"f0": 111.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "get some sleep the rain falls mostly in the winter with relatively little rain in the summer"
+},
+{
+"path": "voice-donations/erihppas.wav",
+"f0": 239.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/f179.wav",
+"f0": 239.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/f9cf.wav",
+"f0": 73.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "by his situation. Their hometown is what gave name to the band."
+},
+{
+"path": "voice-donations/fa52.wav",
+"f0": 170.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/fc96.wav",
+"f0": 160.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/floyd2026.wav",
+"f0": 135.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "of proof vary in civil and criminal cases. A network of roads and canals connected the city to this land."
+},
+{
+"path": "voice-donations/gmaskell92.wav",
+"f0": 98.7,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.92,
+"text": "His work is noted for its stylistic, elegant and poetic fantasy. The doctor looked at the young man and knitted his fingers."
+},
+{
+"path": "voice-donations/gyroo.wav",
+"f0": 124.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.84,
+"text": "being used for voice cloning. He likes rather girly things such as sewing and dancing. These tips would have streamers of the word of great taffeta."
+},
+{
+"path": "voice-donations/hielos_1.wav",
+"f0": 118.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.29,
+"text": "It postulates that man rather than mother is the chief problem today. The station has two side platforms."
+},
+{
+"path": "voice-donations/hielos_2.wav",
+"f0": 128.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.57,
+"text": "de un perro imparado con tiros de espalda. Él fue imprimido en un trato de inmigración, fruta y taxivación."
+},
+{
+"path": "voice-donations/injul.wav",
+"f0": 124.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.77,
+"text": "The natural mashy brooks also fed into the river through the dome. Hawaiian labor were highly sought after due to their skilled qualities."
+},
+{
+"path": "voice-donations/kbrn1.wav",
+"f0": 136.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.7,
+"text": "can say whatever you want. Have fun with it. The TTS is good at producing the tone and mannerisms of the voice."
+},
+{
+"path": "voice-donations/oldNerd.wav",
+"f0": 101.8,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "It's about 15 degrees, it's raining, very cozy, a great day to hack. And I can't wait to hear my voice cloned."
+},
+{
+"path": "voice-donations/oldNerd2.wav",
+"f0": 100.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "day in Montreal. It's raining. It's nice and chilly. I got my sweater on. I'm programming, having a great time. Can't wait to hear my voice cloned."
+},
+{
+"path": "voice-donations/oldNerd3.wav",
+"f0": 117.1,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "I'm really happy that my voice is being cloned. I'm excited. It's a beautiful day in Montreal. It's raining 15 degrees. Can't wait to hear myself."
+},
+{
+"path": "voice-donations/ra_XOr.wav",
+"f0": 152.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/rewi.wav",
+"f0": 160.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/robert.wav",
+"f0": 112.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "I am 18 years old. I am also of legal age in my country of residence and I have read and agree with Gutierrez term and policy."
+},
+{
+"path": "voice-donations/rshah_1_0.wav",
+"f0": 127.5,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.86,
+"text": "services for the campus community in the chapel. He refused many titles and honor."
+},
+{
+"path": "voice-donations/sanjay.wav",
+"f0": 122.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.9,
+"text": "hastened to take monastic woes."
+},
+{
+"path": "voice-donations/siddharth_khanna.wav",
+"f0": 98.3,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.94,
+"text": "I don't have any problem in if my voice is getting utilized or used in a different personality throughout the globe. I am very much open to it."
+},
+{
+"path": "voice-donations/solace.wav",
+"f0": 108.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.53,
+"text": "spirits is involved in with many charities. Krish Kaur the pole's creator ranked it third on his own list."
+},
+{
+"path": "voice-donations/spanish-limaperu.wav",
+"f0": 192.8,
+"dur": 7.94,
+"emb": true,
+"emb_enh": true
+},
+{
+"path": "voice-donations/stein.wav",
+"f0": 91.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "I can send to my voice being used for voice cloning. An abrotor offers for only short periods of the year. He decorated the box with a catch in the graphics so it looked like an art piece."
+},
+{
+"path": "voice-donations/sujan_daikoawaj.wav",
+"f0": 105.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "used for voice cloning. However, this label was recreated as the tutorial of the sequel. This was the third time these two candidates had run against each other."
+},
+{
+"path": "voice-donations/surazy.wav",
+"f0": 125.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.87,
+"text": "The company services his private recording and publishes his album."
+},
+{
+"path": "voice-donations/taiyo.wav",
+"f0": 112.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.96,
+"text": "clothing yes can can can can can can large industry part to the West"
+},
+{
+"path": "voice-donations/temp-007.wav",
+"f0": 130.2,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.98,
+"text": "I consent to my voice being used for voice cloning. The flight is strong and red dark colors are dominant in lamps open dark"
+},
+{
+"path": "voice-donations/thepolishdane.wav",
+"f0": 121.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 1.0,
+"text": "used for voice cloning. Erosion processes vary in intensity. LG is the nearest rural locality."
+},
+{
+"path": "voice-donations/utk.wav",
+"f0": 130.4,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.93,
+"text": "at an early age that cvc is to be an engineer. Let us illustrate this with the help of an example."
+},
+{
+"path": "voice-donations/vinayak.wav",
+"f0": 118.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.99,
+"text": "This name added to the cup for a second time. Local news, weather and sports were seen in the initial source."
+},
+{
+"path": "voice-donations/virtu.wav",
+"f0": 113.5,
+"dur": 9.73,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.62,
+"text": "I consult to my voicebane used for the voice cloning. A fight breaks out and the car crashes. There are some music clubs in the city."
+},
+{
+"path": "voice-donations/willbas.wav",
+"f0": 117.6,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.89,
+"text": "and chops and the other otterless prana they are well shared as a symbol and support the use of hearing aids"
+},
+{
+"path": "voice-donations/yaemdluffy.wav",
+"f0": 120.0,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "en",
+"lang_p": 0.41,
+"text": "due to operating losses everywhere operated on the state"
+},
+{
+"path": "voice-donations/zerocool.wav",
+"f0": 101.9,
+"dur": 10.0,
+"emb": true,
+"emb_enh": true,
+"lang": "es",
+"lang_p": 0.98,
+"text": "una gran estrella. Ahora queremos ver cómo resulta esta voz para un texto clonado con voz clonada."
+}
+]

@@ -140,12 +140,31 @@ export const NPR = {
   uNSkyMid: color(),
   uNSkyHorizon: color(),
   uNSun: color(),
+  /** Rideau du Simoun : mix OKLab (sandShade, haze, 0,3), jour et nuit (polish 2 : plus de conversions par pixel). */
+  uStormVeil: color(),
+  uNStormVeil: color(),
   /** Lèvre de dernière lumière : sandLit de KF1 (corail). */
   uLipColor: color(),
   /** Même couleur en OKLab (bande de lumière rasante devant le front, polish W6). */
   uLipLab: vec3(),
   /** Plafond de chroma du lavis fort (0,12 à l'heure dorée, sans plafond sinon ; polish W12). */
   uPaintCMax: num(1),
+  /**
+   * Ombre sur la peinture en fin de journée (polish 2, W4 bis) : 0 jusqu'à l'après-midi, 1 de
+   * l'heure dorée au couchant (smoothstep 40° → 22° de l'horloge de palette). Pilote le glacis
+   * violet des ombres portées sur le lavis et le liseré « plomb de vitrail » du couchant.
+   */
+  uShadowCool: num(0),
+  /**
+   * Poids « couchant » du plafond de chroma (polish 2) : 0 à l'heure dorée (plafond pour tous les lavis),
+   * 1 de KF5 à KF1 : seuls les lavis clairs (L > ~0,64 : Safran, Anis, Lagon, Rose, Lilas, les « néons »)
+   * y restent plafonnés ; plafonné, un Corail à L 0,59 virait au brun.
+   */
+  uPaintCapDark: num(0),
+  /** Mètres par pixel sous lesquels le territoire est classé en B-spline 3×3 (sinon 4 taps) : 0,3. */
+  uTerrSmoothDu: num(0.3),
+  /** 1 = matière de fin de journée du polish 2 (densité d'aquarelle, bande de pigment) ; 0 = rendu d'avant (levier de mesure). */
+  uLook2: num(1),
 
   // ── soleil (repère three.js : Y en haut) ──
   /** Direction unitaire VERS le soleil, élévation de gameplay (bornée à 2° pour la projection). */
@@ -169,6 +188,8 @@ export const NPR = {
   uShadowResFocus: num(2048),
   /** Lissage B-spline des bords d'ombre quand un texel couvre plus d'un pixel (1 ; 0 = mesure A/B). */
   uShadowSmooth: num(1),
+  /** Taille d'un texel d'ombre (px) au-delà de laquelle la B-spline 3×3 remplace les 4 taps (W5 : 1). */
+  uShadowSmoothPx: num(1),
 
   // ── brume (ART_BIBLE §6.4) ──
   uFogK: num(0.0011),
@@ -196,6 +217,18 @@ export const NPR = {
   uOwnerCol: { value: Array.from({ length: OWNER_CODES }, () => new THREE.Vector4(0, 0, 0, 0)) },
   /** Variante « texte » (fil d'ombre). */
   uOwnerText: { value: Array.from({ length: OWNER_CODES }, () => new THREE.Color()) },
+  /**
+   * Ombre portée sur le lavis de chaque propriétaire (polish 2, palette.ts `updateOwnerShade`) :
+   * (direction OKLab ab de l'ombre, facteur de chroma, facteur de L). Recalculée à chaque frame
+   * selon l'heure (uShadowCool) : de jour la rotation W4, en fin de journée le glacis violet.
+   */
+  uOwnerShade: { value: Array.from({ length: OWNER_CODES }, () => new THREE.Vector4(1, 0, 0.85, 1)) },
+  /**
+   * Côté nuit de la Grande Ombre, par propriétaire (polish W6 + polish 2) : (direction ab du lavis
+   * éteint, facteur de chroma, décalage de L). Rotation W4 et chroma × 0,52 ; Safran : mauve 325°,
+   * L + 0,06 ; Corail : lie-de-vin 0°, L + 0,04 (sinon ocre brun et brun marron sur la moitié gelée).
+   */
+  uOwnerNight: { value: Array.from({ length: OWNER_CODES }, () => new THREE.Vector4(1, 0, 0.52, 0)) },
   uColorblind: num(0),
   /**
    * Ellipse d'empreinte par code propriétaire (x, z three du centre, demi-axe le long des

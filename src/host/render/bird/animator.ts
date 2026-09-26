@@ -15,7 +15,6 @@ import {
   damp,
   hash01,
   lerp,
-  lerpAngle,
   noise1,
   smoothstep,
   spring,
@@ -48,50 +47,63 @@ export interface BirdFrame {
   towerSlide: number
 }
 
-export const emptyFrame = (): BirdFrame => ({
-  x: 0,
-  y: 0,
-  z: RULES.altHigh,
-  vx: 0,
-  vy: 0,
-  vz: 0,
-  heading: 0,
-  turnRate: 0,
-  speed: RULES.speedHigh,
-  dive: 'none',
-  diveTime: 0,
-  stun: 0,
-  stunKind: 'none',
-  immune: 0,
-  flap: 0,
-  flapCooldown: 0,
-  hidden: false,
-  inStorm: false,
-  towerSlide: 0,
-})
+/**
+ * BirdFrame réécrit à chaque frame : une classe (forme propre, champs initialisés à des nombres),
+ * pas un littéral `{ x, y, z, … }` qui partage ses transitions de forme avec tous les littéraux
+ * commençant par `x` (polish vague 2, allocations par frame).
+ */
+class FrameState implements BirdFrame {
+  x = 0
+  y = 0
+  z: number = RULES.altHigh
+  vx = 0
+  vy = 0
+  vz = 0
+  heading = 0
+  turnRate = 0
+  speed: number = RULES.speedHigh
+  dive: DivePhase = 'none'
+  diveTime = 0
+  stun = 0
+  stunKind: StunKind = 'none'
+  immune = 0
+  flap = 0
+  flapCooldown = 0
+  hidden = false
+  inStorm = false
+  towerSlide = 0
+}
 
-/** Interpole l'état d'un oiseau entre le tick précédent et le courant. */
+export const emptyFrame = (): BirdFrame => new FrameState()
+
+/**
+ * Interpole l'état d'un oiseau entre le tick précédent et le courant. Interpolations écrites
+ * sur place (sans appels) : une frame, douze oiseaux, aucune boîte de flottant allouée.
+ */
 export function frameFromStates(cur: BirdState, prev: BirdState | undefined, alpha: number, out: BirdFrame): BirdFrame {
   const p = prev ?? cur
-  const a = clamp01(alpha)
-  out.x = lerp(p.x, cur.x, a)
-  out.y = lerp(p.y, cur.y, a)
-  out.z = lerp(p.z, cur.z, a)
-  out.vx = lerp(p.vx, cur.vx, a)
-  out.vy = lerp(p.vy, cur.vy, a)
-  out.vz = lerp(p.vz, cur.vz, a)
-  out.heading = lerpAngle(p.heading, cur.heading, a)
-  out.turnRate = lerp(p.turnRate, cur.turnRate, a)
-  out.speed = lerp(p.speed, cur.speed, a)
+  const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha
+  out.x = p.x + (cur.x - p.x) * a
+  out.y = p.y + (cur.y - p.y) * a
+  out.z = p.z + (cur.z - p.z) * a
+  out.vx = p.vx + (cur.vx - p.vx) * a
+  out.vy = p.vy + (cur.vy - p.vy) * a
+  out.vz = p.vz + (cur.vz - p.vz) * a
+  // Cap par le plus court chemin (écart ramené dans ]-π, π]).
+  let dh = (cur.heading - p.heading + Math.PI) % TAU
+  if (dh < 0) dh += TAU
+  out.heading = p.heading + (dh - Math.PI) * a
+  out.turnRate = p.turnRate + (cur.turnRate - p.turnRate) * a
+  out.speed = p.speed + (cur.speed - p.speed) * a
   out.dive = cur.dive
   out.diveTime = cur.diveTime
   // Un compteur qui vient de démarrer ne s'interpole pas depuis 0.
   const dt = 1 / RULES.tickHz
   out.stun = cur.stun > p.stun ? cur.stun + (1 - a) * dt : p.stun + (cur.stun - p.stun) * a
   out.stunKind = cur.stunKind
-  out.immune = lerp(p.immune, cur.immune, a)
-  out.flap = lerp(p.flap, cur.flap, a)
-  out.flapCooldown = lerp(p.flapCooldown, cur.flapCooldown, a)
+  out.immune = p.immune + (cur.immune - p.immune) * a
+  out.flap = p.flap + (cur.flap - p.flap) * a
+  out.flapCooldown = p.flapCooldown + (cur.flapCooldown - p.flapCooldown) * a
   out.hidden = cur.hidden
   out.inStorm = cur.inStorm
   out.towerSlide = cur.towerSlide
@@ -153,9 +165,11 @@ function powerStroke(t: number): number {
 export class BirdAnimator {
   readonly pose = new BirdPose()
   /** Graine cosmétique (décale les rafales de battements d'un oiseau à l'autre). */
-  private readonly seed: number
+  private readonly seed: number = 0
   private time = 0
-  private phase: number
+  // Champs numériques initialisés à un nombre (jamais `undefined`) : sinon leur représentation
+  // reste « valeur quelconque » et chaque écriture d'un flottant alloue une boîte (polish vague 2).
+  private phase = 0.5
   private readonly amp = spring(0.3)
   private freq = 0.6
   private readonly fold = spring(0)
@@ -178,7 +192,7 @@ export class BirdAnimator {
   private penPhase = 0
   // Rafales de battements en vol haut (battements « rares »).
   private burstLeft = 0
-  private nextBurst: number
+  private nextBurst = 0.5
   private burstIndex = 0
   // Coup d'aile et claquement.
   private powerT = -1
@@ -200,7 +214,7 @@ export class BirdAnimator {
   beat = 0
   beatPower = false
   /** Côté vers lequel la tête se tourne au podium (profil), stable par oiseau. */
-  private readonly perchSide: number
+  private readonly perchSide: number = 1
 
   constructor(seed = 0) {
     this.seed = seed
@@ -368,7 +382,7 @@ export class BirdAnimator {
       wingReset(w)
       // + si c'est l'aile intérieure du virage (virage à gauche = aile gauche intérieure).
       const inner = side * bankS
-      const tremble = storm * 0.06 * noise1(t * 11 + side * 3, this.seed)
+      const tremble = storm > 0 ? storm * 0.06 * noise1(t * 11 + side * 3, this.seed) : 0
       // Onde qui court vers la pointe, faible déphasage : l'aile reste tendue, jamais « cassée ».
       const flapBase = amp * 0.44 * sinP
       // Dièdre en « mouette » au plané : épaule relevée, main légèrement abaissée, pointe relevée.
@@ -409,7 +423,7 @@ export class BirdAnimator {
     const heading = f.heading
     P.yaw = heading + Math.PI / 2 + yawExtra
     P.pitch = this.pitch.x + pitchExtra
-    P.roll = roll + storm * 0.05 * noise1(t * 7, this.seed + 1)
+    P.roll = storm > 0 ? roll + storm * 0.05 * noise1(t * 7, this.seed + 1) : roll
 
     // Montée et descente du corps opposées au battement.
     P.bodyLift = -amp * 0.13 * cosP - power * 0.1
