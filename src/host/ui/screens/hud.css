@@ -107,8 +107,17 @@
   padding-top: 2px;
   white-space: nowrap;
 }
-.sandbar__glyph {
+.sandbar__chip {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
 }
 .sandbar__neutral {
   flex: 1 1 auto;
@@ -254,6 +263,13 @@
   display: flex;
   justify-content: center;
 }
+/* Podium : au-dessus de la grille des titres (ajout qa). */
+.ui-root[data-screen='matchResults'] .subtitle-wrap {
+  bottom: 300px;
+}
+.ui-root[data-screen='matchResults']:has(.match-res--dense) .subtitle-wrap {
+  bottom: 350px;
+}
 .recitatif {
   margin: 0;
   max-width: 1200px;
@@ -380,7 +396,9 @@
 .hint {
   left: 0;
   bottom: 96px;
-  transform: translateX(-50%);
+  /* Propriété `translate` (et non `transform`, écrasé par l'animation d'entrée .enter) ;
+     --hint-dx garde la bulle dans le cadre (WorldLayer), la pointe reste sur l'oiseau. */
+  translate: calc(-50% + var(--hint-dx, 0px)) 0;
   width: max-content;
   max-width: 440px;
   padding: 10px 18px 9px;
@@ -398,6 +416,7 @@
   left: 50%;
   bottom: -21px;
   margin-left: -17px;
+  translate: calc(-1 * var(--hint-dx, 0px)) 0;
 }
 .gain {
   position: absolute;

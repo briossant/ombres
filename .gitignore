@@ -15,3 +15,5 @@ assets-staging/**
 !assets-staging/**/*.py
 !assets-staging/**/*.js
 !assets-staging/**/*.html
+deploy/public/
+deploy/server.mjs

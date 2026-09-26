@@ -7,7 +7,7 @@ import { PLAYER_COLORS } from '../../../shared/players.ts'
 import { RULES } from '../../../sim/rules.ts'
 import { useSettings } from '../../settings.ts'
 import { fmtPct } from '../format.ts'
-import { Glyph, glyphKeyForColor } from '../glyphs.tsx'
+import { Glyph, Token, glyphKeyForColor } from '../glyphs.tsx'
 import { Icon } from '../icons.tsx'
 import { useHud, useRoster } from '../viewModel.ts'
 
@@ -43,7 +43,7 @@ export function SandBar({ width }: { width: number }) {
         <div className="sandbar__crown" style={{ width: Math.max(44, leader.frac * inner) }}>
           <span className="sandbar__crown-badge">
             <Icon name="crown" size={30} stroke={2} />
-            <Glyph glyph={glyphKeyForColor(leader.colorIndex)} size={20} />
+            <Token colorIndex={leader.colorIndex} size={24} />
           </span>
         </div>
       ) : null}
@@ -64,7 +64,12 @@ export function SandBar({ width }: { width: number }) {
               style={{ width: px, background: c?.hex, transitionDuration: `${RULES.hudBarAnimMs}ms` }}
             >
               {flashing ? <span key={flash.id} className={reduceFlashes ? 'sandbar__flash is-soft' : 'sandbar__flash'} /> : null}
-              {showGlyph ? <Glyph glyph={glyphKeyForColor(s.colorIndex)} size={18} className="sandbar__glyph" /> : null}
+              {/* glyphe en pastille : nu, la croix de Corail se lisait « + 33 % » (un gain) */}
+              {showGlyph ? (
+                <span className="sandbar__chip">
+                  <Glyph glyph={glyphKeyForColor(s.colorIndex)} size={15} />
+                </span>
+              ) : null}
               {showLabel ? <span className="sandbar__pct t-num">{fmtPct(s.frac, 1)}</span> : null}
             </div>
           )

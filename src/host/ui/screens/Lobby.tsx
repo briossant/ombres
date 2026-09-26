@@ -350,8 +350,13 @@ function StartButton() {
   const count = useRoster(s => s.slots.length)
   const humans = useRoster(s => s.slots.filter(x => x.kind !== 'bot' || x.substitute).length)
   const disabled = count === 0 || humans === 0
+  // Ajout runner : quand le premier joueur arrive, Lancer devient l'action par défaut (Entrée).
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!disabled) ref.current?.querySelector<HTMLElement>('[data-nav]')?.focus({ preventScroll: true })
+  }, [disabled])
   return (
-    <div className="start enter" style={{ ['--i' as string]: 3 }}>
+    <div className="start enter" style={{ ['--i' as string]: 3 }} ref={ref}>
       <Btn primary icon="resume" isDefault={!disabled} disabled={disabled} onClick={() => uiActions.startMatch()} hint={<Key>{t('host.key.enter')}</Key>}>
         {t('host.lobby.start')}
       </Btn>

@@ -65,7 +65,19 @@ export function WorldLayer() {
         } else {
           el.dataset.mode = 'tag'
           el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`
-          const shown = now < tagsUntil[slot] || hintSlots.some(h => h.slot === slot)
+          const hasHint = hintSlots.some(h => h.slot === slot)
+          if (hasHint) {
+            // bulle gardée dans le cadre (marge de sécurité) ; sa pointe reste sur l'oiseau
+            const hint = el.querySelector<HTMLElement>('.hint')
+            const half = (hint?.offsetWidth ?? 0) / 2
+            const m = width * EDGE_FRAC
+            let dx = 0
+            if (x - half < m) dx = m - (x - half)
+            else if (x + half > width - m) dx = width - m - (x + half)
+            dx = Math.max(-half + 34, Math.min(half - 34, dx))
+            el.style.setProperty('--hint-dx', `${dx.toFixed(0)}px`)
+          }
+          const shown = now < tagsUntil[slot] || hasHint
           el.classList.toggle('is-shown', shown)
           el.classList.toggle('is-hidden-bird', a.hidden)
         }

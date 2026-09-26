@@ -23,6 +23,7 @@ import { MatchResults } from './screens/MatchResults.tsx'
 import { Credits } from './screens/Credits.tsx'
 import { Reconnect } from './screens/Reconnect.tsx'
 import { Toasts } from './screens/Toasts.tsx'
+import { Subtitle } from './hud/Announce.tsx'
 
 function renderScreen(screen: ScreenId): ReactNode {
   switch (screen) {
@@ -42,6 +43,8 @@ function renderScreen(screen: ScreenId): ReactNode {
       return <MatchResults />
     case 'credits':
       return <Credits />
+    case 'cinematic':
+      return null
   }
 }
 
@@ -103,6 +106,9 @@ export function UiRoot() {
         {paused && screen === 'game' ? <Pause /> : null}
       </Fragment>
       {overlay === 'settings' ? <Settings /> : null}
+      {/* Réplique du vainqueur (narrateur) : sous-titrée aussi sur les résultats de manche (ajout runner)
+          et au podium (ajout qa : la réplique du champion n'était pas sous-titrée). */}
+      {screen === 'roundResults' || screen === 'matchResults' ? <Subtitle /> : null}
       {screen !== 'loading' ? <Toasts /> : null}
       {hostLink !== 'ok' && screen !== 'loading' ? <Reconnect /> : null}
     </div>

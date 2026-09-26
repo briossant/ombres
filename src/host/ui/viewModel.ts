@@ -27,6 +27,8 @@ export type ScreenId =
   | 'roundResults' // résultats de manche
   | 'matchResults' // podium, titres, revanche
   | 'credits'
+  /** Plan de mise en scène sans panneau (ajout runner) : montée de nuit, arrivée du podium. */
+  | 'cinematic'
 
 /** Surcouche par-dessus l'écran courant. La pause est un état à part (`paused`). */
 export type OverlayId = 'settings' | null

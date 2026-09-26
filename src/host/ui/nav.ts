@@ -34,6 +34,17 @@ interface Scope {
 
 const stack: Scope[] = []
 
+/** Sons de navigation (ajout qa, phase 3) : le runner branche l'audio (`playUi`). Défaut : muet. */
+export type NavSound = 'hover' | 'toggle' | 'slider'
+let navSound: (name: NavSound, value?: number) => void = () => undefined
+export function setNavSound(fn: (name: NavSound, value?: number) => void): void {
+  navSound = fn
+}
+/** Joue un son d'interface (curseurs, sélecteurs) : voir setNavSound. */
+export function uiSound(name: NavSound, value?: number): void {
+  navSound(name, value)
+}
+
 function activeScope(): Scope | undefined {
   return stack[stack.length - 1]
 }
@@ -89,7 +100,10 @@ function moveFocus(dir: Dir): void {
       best = el
     }
   }
-  if (best) focusEl(best)
+  if (best) {
+    focusEl(best)
+    navSound('hover')
+  }
 }
 
 function activate(): void {
@@ -151,7 +165,10 @@ function onPointerOver(e: PointerEvent): void {
   const el = (e.target as HTMLElement | null)?.closest?.('[data-nav]') as HTMLElement | null
   if (el && document.activeElement !== el && !el.hasAttribute('disabled')) {
     const scope = activeScope()
-    if (scope?.root.current?.contains(el)) focusEl(el)
+    if (scope?.root.current?.contains(el)) {
+      focusEl(el)
+      navSound('hover')
+    }
   }
 }
 
@@ -168,6 +185,15 @@ function onFocusOut(e: FocusEvent): void {
 
 const PAD_REPEAT_DELAY = 380
 const PAD_REPEAT_EVERY = 150
+/**
+ * Manettes réservées au jeu (ajout runner, phase 3) : une manette qui pilote un oiseau
+ * (salon, manche) garde A / B / stick pour PLONGER, COUP D'AILE et le cap ; seul Start
+ * reste à la navigation (pause, lancement). Défaut : aucune.
+ */
+let padClaimed: (index: number) => boolean = () => false
+export function setGamepadClaim(fn: (index: number) => boolean): void {
+  padClaimed = fn
+}
 let padRaf = 0
 const padPrev = new Map<number, boolean[]>()
 let padDir: Dir | null = null
@@ -189,10 +215,12 @@ function pollPads(now: number): void {
     const prev = padPrev.get(pad.index) ?? []
     const pressed = pad.buttons.map(b => b.pressed)
     const edge = (i: number) => pressed[i] && !prev[i]
-    if (edge(0)) dispatchKey('Enter')
-    if (edge(1)) dispatchKey('Escape')
+    const claimed = padClaimed(pad.index)
+    if (edge(0) && !claimed) dispatchKey('Enter')
+    if (edge(1) && !claimed) dispatchKey('Escape')
     if (edge(9)) activeScope()?.opts.onStart?.()
     padPrev.set(pad.index, pressed)
+    if (claimed) continue
     const ax = pad.axes[0] ?? 0
     const ay = pad.axes[1] ?? 0
     if (pressed[12] || ay < -0.6) dir = 'up'
@@ -247,6 +275,9 @@ export function useNavScope(root: RefObject<HTMLElement | null>, opts: NavScopeO
     let at = stack.length
     while (at > 0 && (stack[at - 1].opts.layer ?? 0) > layer) at--
     stack.splice(at, 0, scope)
+    // Élément qui avait le focus à l'ouverture (ajout qa) : il le retrouve à la fermeture
+    // (Réglages fermés → le focus revient sur « Réglages », pas sur « Jouer »).
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (opts.autoFocus !== false) {
       // Après l'animation d'entrée : sinon getBoundingClientRect est décalé.
       requestAnimationFrame(() => {
@@ -259,7 +290,11 @@ export function useNavScope(root: RefObject<HTMLElement | null>, opts: NavScopeO
       if (i >= 0) stack.splice(i, 1)
       const next = activeScope()
       const nextRoot = next?.root.current
-      if (nextRoot && next?.opts.autoFocus !== false) requestAnimationFrame(() => focusDefault(nextRoot))
+      if (nextRoot && next?.opts.autoFocus !== false)
+        requestAnimationFrame(() => {
+          if (opener?.isConnected && opener.hasAttribute('data-nav') && nextRoot.contains(opener)) focusEl(opener)
+          else focusDefault(nextRoot)
+        })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

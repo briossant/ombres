@@ -1890,3 +1890,25 @@ h2.t-title {
     font-size: 17px;
   }
 }
+
+/* Paysage court (iPhone : 659 × 393 px visibles) : la fin de partie tenait mal (le titre et le
+   bas des cases sortaient de l'écran). Ajout qa (phase 3). */
+@media (orientation: landscape) and (max-height: 430px) {
+  .result:has(.title-card) {
+    gap: 6px;
+    padding: 12px 16px;
+  }
+  .result:has(.title-card) .big-rank {
+    font-size: 52px;
+  }
+  .title-card {
+    padding: 6px 12px;
+  }
+  .title-card .t-title {
+    font-size: 20px;
+    line-height: 1.1;
+  }
+  .title-card .t-num {
+    font-size: 16px;
+  }
+}

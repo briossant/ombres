@@ -349,8 +349,29 @@
   top: 37%;
   height: 0;
 }
+/* Plus de 6 joueurs (ajout qa, demande staging → ui) : les plaques restent à 37 % comme en mode
+   normal et les cartes de titres se resserrent (ni description ni statistiques) ; avant, les
+   plaques montaient à 25 % et cachaient les oiseaux perchés, la grille couvrait les tours. */
 .match-res--dense .podium {
-  top: 25%;
+  top: 37%;
+}
+.match-res--dense .tcard {
+  padding: 8px 14px 10px;
+}
+.match-res--dense .tcard__title {
+  margin-top: 4px;
+  font-size: 24px;
+}
+.match-res--dense .tcard__stat {
+  font-size: 20px;
+}
+.match-res--dense .tcard__none {
+  margin-top: 4px;
+  font-size: 19px;
+}
+.match-res--dense .tcard__desc,
+.match-res--dense .tcard__stats {
+  display: none;
 }
 .podium__slot {
   position: absolute;

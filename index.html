@@ -3,8 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#e9d8b8" />
+    <meta name="theme-color" content="#f7f0e3" />
+    <meta name="description" content="Ombres — party game local : ton ombre peint le désert. À la nuit, le plus grand territoire gagne." />
     <title>Ombres</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f7f0e3'/%3E%3Cellipse cx='19' cy='24' rx='11' ry='4' fill='%23a18ea1'/%3E%3Ccircle cx='13' cy='13' r='8' fill='%23fff2c3' stroke='%232b1d23' stroke-width='2.2'/%3E%3C/svg%3E" />
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f7f0e3;
+        overscroll-behavior: none;
+      }
+      body {
+        cursor: default;
+        -webkit-tap-highlight-color: transparent;
+      }
+      canvas {
+        display: block;
+        outline: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

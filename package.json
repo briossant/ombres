@@ -10,7 +10,8 @@
     "start": "NODE_ENV=production node dist-server/server.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "check:boundaries": "node tools/check-boundaries.mjs"
+    "check:boundaries": "node tools/check-boundaries.mjs",
+    "deploy:prepare": "pnpm build && node tools/deploy-prepare.mjs"
   },
   "engines": {
     "node": ">=22"

@@ -171,7 +171,7 @@ export class QualityBench {
   }
 }
 
-/** Moyenne glissante sur ~2 s ; descente d'un cran si > 15 ms (entre deux manches). */
+/** Moyenne glissante sur ~2 s ; descente d'un cran si elle dépasse `limitMs()` (entre deux manches). */
 export class QualityMonitor {
   private buf = new Float32Array(120)
   private i = 0
@@ -189,9 +189,23 @@ export class QualityMonitor {
     return this.n ? s / this.n : 0
   }
 
-  /** À appeler entre deux manches : renvoie le niveau inférieur si la moyenne dépasse 15 ms. */
+  /**
+   * Seuil de descente (ms) : 15 ms, ou 1,15 × l'intervalle d'affichage à 60 Hz. Correctif qa : les
+   * intervalles d'images sont calés sur la synchro verticale, donc jamais sous 16,7 ms sur un écran
+   * 60 Hz (la cible : une TV) ; avec le seul seuil de 15 ms, le preset descendait d'un cran à
+   * CHAQUE entracte (High → Medium → Low en trois manches), même à 60 i/s constants.
+   * Intervalle d'affichage estimé = 20ᵉ centile des intervalles (plafonné à 60 Hz : à 30 i/s
+   * constants, 33 ms ne passe pas pour un écran 30 Hz).
+   */
+  limitMs(): number {
+    const s = Array.from(this.buf.subarray(0, this.n)).sort((a, b) => a - b)
+    const refresh = s.length ? s[Math.floor(s.length * 0.2)]! : 1000 / 60
+    return Math.max(15, Math.min(refresh, 1000 / 60) * 1.15)
+  }
+
+  /** À appeler entre deux manches : renvoie le niveau inférieur si la moyenne dépasse le seuil. */
   shouldDowngrade(level: QualityLevel): QualityLevel | null {
-    if (this.n < this.buf.length || this.average() <= 15) return null
+    if (this.n < this.buf.length || this.average() <= this.limitMs()) return null
     const i = QUALITY_LEVELS.indexOf(level)
     return i > 0 ? QUALITY_LEVELS[i - 1]! : null
   }

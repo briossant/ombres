@@ -487,7 +487,7 @@ export const host: StringTable = {
     'host.credits.thanks.moebius': 'Jean Giraud, known as Moebius, whose deserts inspired this one.',
     'host.credits.thanks.libre': 'The authors of free sounds, music and fonts who share their work.',
     'host.credits.thanks.you': 'And you, for playing until nightfall.',
-    'host.credits.license': 'Licence',
+    'host.credits.license': 'License',
     'host.credits.by': 'by',
     'host.credits.end': 'The sun always comes back.',
 

@@ -2,6 +2,7 @@
 // curseurs, cadre tremblé, sablier. Tout est papier + encre (ART_BIBLE §8).
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { Icon, type IconName } from './icons.tsx'
+import { uiSound } from './nav.ts'
 
 // ─── Case ──────────────────────────────────────────────────────────────────
 
@@ -123,9 +124,15 @@ export function Segmented<T extends string | number | boolean>({
     0,
     options.findIndex(o => o.value === value),
   )
+  // son de bascule (ajout qa) : hauteur selon la position de l'option
+  const change = (v: T) => {
+    if (v === value) return
+    uiSound('toggle', options.findIndex(o => o.value === v) / Math.max(1, options.length - 1))
+    onChange(v)
+  }
   const step = (d: number) => {
     const next = options[Math.min(options.length - 1, Math.max(0, idx + d))]
-    if (next && next.value !== value) onChange(next.value)
+    if (next && next.value !== value) change(next.value)
   }
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.code === 'ArrowLeft') {
@@ -147,7 +154,7 @@ export function Segmented<T extends string | number | boolean>({
       onKeyDown={onKeyDown}
       onClick={e => {
         // Entrée (clic synthétique sur la ligne) : option suivante, en boucle.
-        if (e.target === e.currentTarget) onChange(options[(idx + 1) % options.length].value)
+        if (e.target === e.currentTarget) change(options[(idx + 1) % options.length].value)
       }}
     >
       {label ? (
@@ -165,7 +172,7 @@ export function Segmented<T extends string | number | boolean>({
             className={k === idx ? 'seg__opt is-on' : 'seg__opt'}
             onClick={e => {
               e.stopPropagation()
-              onChange(o.value)
+              change(o.value)
             }}
           >
             {o.label}
@@ -180,7 +187,12 @@ export function Segmented<T extends string | number | boolean>({
 
 export function Slider({ value, onChange, label, icon, isDefault }: { value: number; onChange: (v: number) => void; label: ReactNode; icon?: IconName; isDefault?: boolean }) {
   const track = useRef<HTMLSpanElement>(null)
-  const set = (v: number) => onChange(Math.round(Math.min(1, Math.max(0, v)) * 20) / 20)
+  const set = (v: number) => {
+    const next = Math.round(Math.min(1, Math.max(0, v)) * 20) / 20
+    if (next === value) return
+    uiSound('slider', next)
+    onChange(next)
+  }
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.code === 'ArrowLeft') {
       e.preventDefault()

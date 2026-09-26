@@ -53,7 +53,9 @@ export function parseCredits(md: string): CreditEntry[] {
       .map(c => c.trim().replace(/`/g, ''))
     if (cells.length < 4) continue
     if (/^-+$/.test(cells[0].replace(/[:\s]/g, '')) || /fichier/i.test(cells[0])) continue
-    const [file, source, author, rawLicense, rawAttribution] = cells
+    const [rawFile, source, author, rawLicense, rawAttribution] = cells
+    // « tanpura_A2.ogg (réaccordé, bouclé) » : la note entre parenthèses ne fait pas partie du titre
+    const file = (rawFile ?? '').replace(/^(\S.*?)\s+\(.*\)\s*$/, '$1')
     // « SIL OFL 1.1 (fonts/OFL-x.txt, …) » → « SIL OFL 1.1 » : les détails restent dans le fichier.
     const license = (rawLicense ?? '').replace(/\*\*/g, '').replace(/\s*\(.*$/, '').trim()
     // Textes de licence et créations propres au projet (créditées en tête) : ignorés.
@@ -91,13 +93,27 @@ export function groupCredits(entries: CreditEntry[]): CreditGroup[] {
       }
       for (const [author, lic] of byAuthor) lines.push({ main: author, sub: [...lic].join(', ') })
     } else {
+      // Plusieurs fichiers tirés d'une même source (les 9 notes d'un tongue drum) : une seule ligne,
+      // au nom de la source (ajout qa : la liste des crédits commençait par « Tongue A3, Tongue C4… »).
+      const keyOf = (e: CreditEntry) => e.attribution ?? `${e.source.match(/https?:\/\/\S+/)?.[0] ?? e.title}|${e.author}`
+      const count = new Map<string, number>()
+      for (const e of list) count.set(keyOf(e), (count.get(keyOf(e)) ?? 0) + 1)
       for (const e of list) {
-        const key = `${e.title}|${e.author}`
-        if (seen.has(key)) continue
+        const key = keyOf(e)
+        // même titre et même auteur (police en latin + latin-ext) : une ligne ; une attribution imposée
+        // reste toujours affichée
+        const byTitle = e.attribution ? key : `${e.title}|${e.author}`
+        if (seen.has(key) || seen.has(byTitle)) continue
         seen.add(key)
+        seen.add(byTitle)
+        // titre de la source (« Calm Ambient 1 (Synthwave 4k) ») pour les morceaux et les lots,
+        // nom du fichier pour un échantillon isolé (« Oud A2 » plutôt que « a2.wav »)
+        const sourceTitle = e.source.match(/«\s*([^»]+?)\s*»/)?.[1]?.replace(/\.[a-z0-9]{2,4}$/i, '')
+        const useSource = (count.get(key) ?? 1) > 1 || (kind === 'music' && !/\/samples\//.test(e.file))
+        const title = (useSource && sourceTitle) || e.title
         // Une attribution imposée ou recommandée s'affiche telle quelle.
         if (e.attribution) lines.push({ main: e.attribution, sub: e.license })
-        else lines.push({ main: e.title, sub: [e.author, e.license].filter(Boolean).join(' · ') })
+        else lines.push({ main: title, sub: [e.author, e.license].filter(Boolean).join(' · ') })
       }
     }
     groups.push({ kind, lines })
