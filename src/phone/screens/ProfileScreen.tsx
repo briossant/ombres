@@ -51,7 +51,7 @@ export function ProfileScreen({ asSheet = false, onDone }: { asSheet?: boolean; 
           submit()
         }}
       >
-        <div className="profile__col">
+        <div className="profile__col profile__main">
           <h1 className="t-title">{t('phone.profile.title')}</h1>
           <label className="profile__label" htmlFor="phone-name">
             {t('phone.profile.name')}
@@ -73,16 +73,8 @@ export function ProfileScreen({ asSheet = false, onDone }: { asSheet?: boolean; 
               <IconDice size={26} />
             </button>
           </div>
-          <p className="profile__hint">
-            {t('phone.profile.hint', { color: colorName(chosen, lang) })
-              .split(colorName(chosen, lang))
-              .flatMap((part, i) => (i === 0 ? [part] : [<b key={i} className="swatch-name">{colorName(chosen, lang)}</b>, part]))}
-          </p>
-          <button type="submit" className={`btn btn--primary profile__go ${valid ? '' : 'is-disabled'}`} disabled={!valid}>
-            {asSheet ? t('phone.profile.save') : t('phone.profile.go')}
-          </button>
         </div>
-        <div className="profile__col">
+        <div className="profile__col profile__side">
           <div className="profile__label">{t('phone.profile.color')}</div>
           <div className="swatches" role="radiogroup" aria-label={t('phone.profile.color')}>
             {PLAYER_COLORS.map(c => {
@@ -112,6 +104,17 @@ export function ProfileScreen({ asSheet = false, onDone }: { asSheet?: boolean; 
             <span className="toggle__sw" />
           </button>
           <p className="setting__desc">{t('phone.settings.assist.desc')}</p>
+        </div>
+        {/* Pied : après le choix de la couleur (en portrait, il passe sous les couleurs). */}
+        <div className="profile__col profile__foot">
+          <p className="profile__hint">
+            {t('phone.profile.hint', { color: colorName(chosen, lang) })
+              .split(colorName(chosen, lang))
+              .flatMap((part, i) => (i === 0 ? [part] : [<b key={i} className="swatch-name">{colorName(chosen, lang)}</b>, part]))}
+          </p>
+          <button type="submit" className={`btn btn--primary profile__go ${valid ? '' : 'is-disabled'}`} disabled={!valid}>
+            {asSheet ? t('phone.profile.save') : t('phone.profile.go')}
+          </button>
         </div>
       </form>
     </div>

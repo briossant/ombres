@@ -7,6 +7,7 @@ import { t } from '../../../shared/i18n.ts'
 import { useUi } from '../viewModel.ts'
 import { mixHex } from '../color.ts'
 import { fmtPct } from '../format.ts'
+import { Logo } from '../Logo.tsx'
 import './loading.css'
 
 // Géométrie de la vignette (unités SVG) : sol vu d'un peu au-dessus.
@@ -84,8 +85,10 @@ export function Loading() {
 
   return (
     <div className="screen loading">
-      <div className="loading__word t-title enter">Ombres</div>
-      <svg className="loading__scene enter" style={{ ['--i' as string]: 1 }} viewBox={`0 0 ${VW} ${VH}`} width={VW} height={VH} aria-hidden>
+      {/* Dessins sans animation d'entrée ni police : visibles dès la première image
+          (les textes, eux, attendent leurs polices en font-display: block). */}
+      <Logo animate={false} className="loading__logo" />
+      <svg className="loading__scene" viewBox={`0 0 ${VW} ${VH}`} width={VW} height={VH} aria-hidden>
         <defs>
           <clipPath id="ld-ground">
             <rect x="40" y={HORIZON} width={VW - 80} height={GROUND_H} />

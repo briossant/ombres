@@ -7,6 +7,7 @@ import { MAX_PLAYERS, PLAYER_COLORS, colorName } from '../../shared/players.ts'
 import type { Lang } from '../../shared/protocol.ts'
 import type { Vote } from '../../shared/messages.ts'
 import type { MatchState, TitleAward } from '../../sim/index.ts'
+import type { TitleId as UiTitleId } from '../ui/viewModel.ts'
 import { t } from '../../shared/i18n.ts'
 import type { PlayerKind, PlayerVisual } from '../view.ts'
 
@@ -157,6 +158,14 @@ export function visualOf(p: Player, lang: Lang): PlayerVisual {
  * cumul de « désert pris aux autres » dépasse vite 100 % (repeint compris) : on l'affiche par manche,
  * comme la statistique « Volé » des cartes.
  */
+/**
+ * Identifiant d'un titre pour l'UI : le miroir de l'UI (viewModel.ts `TitleId`) suit la liste de la
+ * sim, « souverain » (repli du vainqueur, polish G10) compris depuis la non-régression.
+ */
+export function uiTitleId(award: TitleAward): UiTitleId {
+  return award.title as UiTitleId
+}
+
 export function titleDisplayValue(award: TitleAward, match: MatchState): number {
   if (award.title !== 'pilleur') return award.value
   const rounds = match.results.filter(r => r.slots.includes(award.slot)).length

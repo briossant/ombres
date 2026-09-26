@@ -72,6 +72,11 @@ uniform vec2 uSplashDir[MAX_SPLASHES];
 uniform int uSplashCount;
 uniform vec4 uIllum;
 uniform vec4 uCrack;
+uniform vec4 uFpEllipse[13];
+uniform vec2 uFpDir;
+uniform float uNightSpeed, uPaintCMax;
+uniform vec3 uLipLab;
+#define PALE_DE2 0.0036
 varying vec3 vWorld;
 varying vec3 vNormalW;
 varying vec3 vViewN;
@@ -197,15 +202,82 @@ float cbPattern(int k, vec2 xz, float du, float px){
 }
 
 // ── lavis d'un propriétaire sur le sol local (ART_BIBLE §4.1) ──
-// Lg : L OKLab du sol ; q : 0 pâle -> 1 fort ; rim : liseré 0..1 ; gran : granulation.
-vec3 washLab(int o, float Lg, float q, float rim, float gran, float paintC){
+// Lg, abG : sol local (OKLab) ; q : 0 pâle -> 1 fort ; rim : liseré 0..1 ; gran : granulation.
+// Chroma du fort plafonnée par uPaintCMax (0,12 à l'heure dorée, polish W12).
+// Garde pâle / sol (polish W8) : le pâle reste à ΔE ≥ 0,06 du sol local, par la luminosité
+// d'abord (du côté du fort, jusqu'à 0,05 d'écart), puis par la chroma (≤ 0,85 × celle du fort).
+vec3 washLab(int o, float Lg, vec2 abG, float q, float rim, float gran, float paintC){
   vec4 T = uOwnerTerr[o];
   float Ls = 0.5 * Lg + 0.35 + T.z;
   Ls = mix(Ls, min(Ls, Lg - 0.05), smoothstep(0.66, 0.80, Lg));   // de jour, un lavis n'éclaircit jamais le papier
   float Lp = Lg < 0.66 ? mix(Lg, Ls, 0.45) : Lg - 0.03;
+  float C0 = min(paintC * T.w, uPaintCMax);
+  float Cp = 0.55 * C0;
+  float dl = Lp - Lg;
+  vec2 dab = T.xy * Cp - abG;
+  float dd = dot(dab, dab);
+  if (dl * dl + dd < PALE_DE2) {
+    float sgn = abs(Ls - Lg) > 0.01 ? sign(Ls - Lg) : -1.0;
+    float adl = abs(dl);
+    dl = sgn * min(max(sqrt(max(PALE_DE2 - dd, 0.0)), adl), max(adl, 0.05));
+    float rem2 = PALE_DE2 - dl * dl;
+    if (rem2 > dd) {
+      float pd = dot(T.xy, abG);
+      Cp = min(max(Cp, pd + sqrt(max(pd * pd - dot(abG, abG) + rem2, 0.0))), 0.85 * C0);
+    }
+    Lp = Lg + dl;
+  }
   float L = mix(Lp - 0.04 * rim, Ls - 0.10 * rim, q) + gran;
-  vec2 ab = T.xy * paintC * T.w * mix(0.55, 1.0, q);
-  return vec3(L, ab);
+  return vec3(L, T.xy * mix(Cp, C0, q));
+}
+
+// Ombre portée sur la peinture (polish W4, amende la bible §4.5 / §5.1) : en OKLCH, chroma × 0,85
+// et teinte tournée vers le violet des ombres (290°) par le chemin court, d'une fraction de l'écart
+// (0,22 côté rouge, 0,15 côté vert, au plus 40°) : l'ombre refroidit sans griser (fin de la boue
+// olive sur Safran) et deux joueurs gelés restent à ΔE ≥ 0,059. La luminosité (ratio) est à part.
+// Même rotation pour le côté nuit de la Grande Ombre (W6) : tout y est dans l'ombre de la Falaise,
+// et un Safran assombri sans rotation virait au kaki. Chroma × 0,52 (et non 0,6) : la chroma
+// AFFICHÉE des forts clairs (Safran) est bornée par le gamut côté jour ; à 0,52 le côté nuit reste
+// ≤ 0,6 × le côté jour mesuré, et deux joueurs y restent à ΔE ≥ 0,05 (final.mjs, gameNightPair).
+#define NIGHT_CHROMA 0.52
+// L − 0,10 (ordre : − 0,12) : à − 0,12 la médiane de L de la Grande Ombre tombait à 0,495, sous le
+// seuil high-key du couchant (0,50, bible §7.7) ; l'écart jour / nuit d'un même joueur reste ≥ 0,10.
+#define NIGHT_DIM_L 0.10
+const vec2 SH_HUE = vec2(0.34202, -0.93969);   // (cos 290°, sin 290°)
+vec2 coolAB(vec2 ab, float cf){
+  float C = length(ab);
+  if (C < 1e-4) return ab;
+  vec2 u = ab / C;
+  float dh = atan(u.x * SH_HUE.y - u.y * SH_HUE.x, dot(u, SH_HUE));   // angle signé u -> 290°
+  float rot = sign(dh) * min(abs(dh) * (dh < 0.0 ? 0.22 : 0.15), 0.698);
+  float c = cos(rot), sn = sin(rot);
+  return cf * C * vec2(u.x * c - u.y * sn, u.x * sn + u.y * c);
+}
+vec2 shadowPaintAB(vec2 ab){ return coolAB(ab, 0.85); }
+
+// Liseré pointillé des empreintes pâles (polish W11, bible §5.3) : tirets de ~1,8 m le long du
+// bord (rapport 50 %), paramétrés par la longueur d'arc de l'ellipse de gameplay, en nombre entier
+// (aucun raccord). Quadrature à 6 points, évaluée seulement sur les pixels du liseré.
+float ellArc(float t, float A, float B){   // ∫₀ᵗ √(A² sin² + B² cos²), 0 ≤ t ≤ π/2
+  float acc = 0.0;
+  for (int i = 0; i < 6; i++) {
+    float u = (float(i) + 0.5) / 6.0 * t;
+    float su = sin(u), cu = cos(u);
+    acc += sqrt(A * A * su * su + B * B * cu * cu);
+  }
+  return acc * t / 6.0;
+}
+float footprintDash(vec2 xz, int code){
+  vec4 E = uFpEllipse[code];
+  vec2 d = xz - E.xy;
+  float A = max(E.z, 0.5), B = max(E.w, 0.5);
+  float t = atan(dot(d, vec2(-uFpDir.y, uFpDir.x)) / B, dot(d, uFpDir) / A);
+  float at = abs(t);
+  float Q = ellArc(1.5707963, A, B);
+  float arc = at <= 1.5707963 ? ellArc(at, A, B) : 2.0 * Q - ellArc(3.1415927 - at, A, B);
+  float P = 4.0 * Q;
+  float nDash = max(4.0, floor(P / 3.6 + 0.5));
+  return step(0.5, fract((sign(t) * arc + 2.0 * Q) / P * nDash));
 }
 
 // Réseau de fissures polygonal (Voronoï, distance au bord de cellule F2 − F1), en mètres.
@@ -253,12 +325,19 @@ void main(){
   float nd = nightDist(xz);
   float nw = max(fwidth(nd), 1e-3);
   float n = nightMask(nd, nw);
-  float owner, strength, m, prevOwner, stamp;
-  territory(xz + (nz.rg - 0.5) * 2.0 * uTerrWarp + (nzf.rg - 0.5) * 0.5 * uTerrWarp, du, owner, strength, m, prevOwner, stamp);
+  float owner = 0.0, strength = 0.0, m = 1.0, prevOwner = 0.0, stamp = TERR_OLD;
+  // hors de l'arène (dunes, anneau lointain : 30 à 50 % du cadre de jeu), aucune lecture de la grille
+  // (polish W3) ; la marge couvre le warp des bords (≤ 3 m)
+  if (rho < 1.06) territory(xz + (nz.rg - 0.5) * 2.0 * uTerrWarp + (nzf.rg - 0.5) * 0.5 * uTerrWarp, du, owner, strength, m, prevOwner, stamp);
   float mw = max(fwidth(m), 1e-4);
   float borderPx = m / mw;
-  // près de la caméra (plans bas), contour d'ombre lissé ; au loin, 4 taps suffisent
-  vec4 sh = vDist < 170.0 ? sampleShadowSmooth(vWorld, 0.2) : sampleShadow(vWorld, 0.2);
+  // contour d'ombre lissé dès qu'un texel couvre plus d'un pixel (polish W5), 4 taps sinon
+  vec2 p0 = shadowProject(vWorld);
+  float dp0 = max(length(dFdx(p0)), length(dFdy(p0)));
+  // derrière le front de nuit, plus d'ombres portées : aucune lecture (polish W3 : la Grande Ombre
+  // était la phase la plus chère) ; la lecture reste faite sur la bande antialiasée du front
+  vec4 sh = vec4(0.0);
+  if (n < 0.999) sh = sampleShadowAuto(vWorld, 0.2, dp0);
   float fs = max(fwidth(sh.x), 1e-4);
   float fog = fogAt(vDist);
   float cp = vCrest.x;
@@ -272,12 +351,20 @@ void main(){
   // près de l'arène (bord du cadre de jeu), les pentes restent discrètes : une pente
   // corail au couchant se lirait comme du territoire (ART_BIBLE §6.5) ; au large, trois aplats francs
   float farDune = smoothstep(2.6, 4.2, rho);
-  vec3 litC = oklab2lin(mix(mix(uLabGround, uLabSandLit, mix(0.3, 1.0, farDune)), uNLabSandLit, n));
   vec3 shadeC = mix(uSandShade, uNSandShade, n);
-  vec3 shadeDune = mix(mix(flatC, shadeC, 0.45), shadeC, farDune);
-  vec3 col = mix(flatC, litC, smoothstep(0.06 - fsl, 0.06 + fsl, slope));
-  col = mix(col, shadeDune, smoothstep(0.06 - fsl, 0.06 + fsl, -slope));
-  vec3 lab = lin2oklab(col);
+  vec3 col = flatC;
+  // sol plat (l'arène entière, la plupart des pixels) : l'aplat et son OKLab sont connus, aucune
+  // conversion (polish W3) ; pentes : trois aplats comme avant
+  vec3 lab = mix(uLabGround, uNLabGround, n);
+  float tLit = smoothstep(0.06 - fsl, 0.06 + fsl, slope);
+  float tShade = smoothstep(0.06 - fsl, 0.06 + fsl, -slope);
+  if (tLit + tShade > 0.0) {
+    vec3 litC = oklab2lin(mix(mix(uLabGround, uLabSandLit, mix(0.3, 1.0, farDune)), uNLabSandLit, n));
+    vec3 shadeDune = mix(mix(flatC, shadeC, 0.45), shadeC, farDune);
+    col = mix(flatC, litC, tLit);
+    col = mix(col, shadeDune, tShade);
+    lab = lin2oklab(col);
+  } else if (n > 0.0 && n < 1.0) lab = lin2oklab(col);   // bande antialiasée du front de nuit
   float Lg = lab.x;
 
   // ── 2. territoire : lavis OKLab, liseré de pigment, granulation, transitions ──
@@ -302,22 +389,34 @@ void main(){
     float lit = uIllum.y * step(xz.x, uIllum.x);
     float winFresh = (uIllum.y > 0.5 && abs(owner - uIllum.z) < 0.5) ? 1.0 - easeOut(uIllum.w / 0.5) : 0.0;
     fresh = max(fresh, winFresh);
+    // côté nuit (polish W6) : le territoire gelé s'éteint (L − 0,10, C × 0,52, granulation « sec »)
+    // en 0,3 s après le passage de la lèvre, avec un liseré papier qui s'éteint ; l'illumination
+    // des résultats (§4.7) le rallume
+    float ageN = uNightOn > 0.5 ? nd / max(uNightSpeed, 1.0) : 99.0;
+    float dim = n * (1.0 - lit) * smoothstep(0.0, 0.3, ageN);
+    float paperWave = n * (1.0 - lit) * (1.0 - smoothstep(0.0, 0.3, ageN));
 
-    float rimW = (3.0 + 3.0 * fresh) * uPx;
+    // liseré : 3 px (6 px d'encre fraîche), et au moins 0,8 m au sol (plans rapprochés, W12)
+    float rimW = max((3.0 + 3.0 * fresh) * uPx, min(0.8 / max(du, 1e-4), 12.0 * uPx));
     float rim = 1.0 - smoothstep(rimW - 0.5, rimW + 0.5, borderPx);
     rim = max(rim * mix(0.4, 1.0, q * rise + (1.0 - q)), frontRim);
     // aquarelle : granulation (grain de pigment), pigment qui s'accumule vers le bord
-    // (dégradé doux sous le liseré net) et lavis légèrement inégal (bruit monde basse fréquence)
+    // (dégradé doux sous le liseré net) et lavis inégal : bruit monde de ~10 m (± 1,5 % de L)
+    // et de ~30 m (± 3,5 %, W12 : les grandes zones restent vivantes à mi-distance)
     float qq = q * rise;
-    float gran = (granN - 0.5) * 0.04 * max(mix(0.45, 1.0, qq), n) * uQuality.y;
-    float pool = exp(-borderPx / (9.0 * uPx)) * (1.0 - rim);
+    float gran = (granN - 0.5) * 0.04 * max(mix(0.45, 1.0, qq), n) * (1.0 + dim) * uQuality.y;
+    float pool = exp(-borderPx / (9.0 * rimW)) * (1.0 - rim);
     float mottle = (washN - 0.5);
     int wo = showPrev > 0.5 ? po : o;
-    vec3 w = washLab(wo, Lg, qq, rim * (1.0 - showPrev), gran, paintC);
-    w.x += -0.035 * pool * mix(0.5, 1.0, qq) + 0.03 * mottle;
+    vec3 w = washLab(wo, Lg, lab.yz, qq, rim * (1.0 - showPrev), gran, paintC);
+    w.x += -0.035 * pool * mix(0.5, 1.0, qq) + 0.03 * mottle + 0.12 * (nz.b - 0.5);
     w.yz *= 1.0 + 0.10 * mottle + 0.08 * pool;
     w.x += 0.08 * fresh + flash + 0.04 * lit;
     w.yz *= 1.0 + 0.4 * fresh + 0.25 * lit;
+    w.x -= NIGHT_DIM_L * dim;
+    w.yz = mix(w.yz, coolAB(w.yz, NIGHT_CHROMA), dim);
+    w.x += 0.22 * rim * paperWave;
+    w.yz *= 1.0 - 0.7 * rim * paperWave;
     // mode daltonien : trame par joueur, lavis assombri (L − 0,16), opacité 1 fort / 0,55 pâle
     if (uColorblind > 0.5) {
       float cov = cbPattern(int(uOwnerCol[wo].w + 0.5), xz, du, uPx) * mix(0.55, 1.0, q);
@@ -354,7 +453,7 @@ void main(){
       float dissolve = step(smoothstep(0.5, 0.75, t), wetNoise * 0.9 + 0.05);
       float srimW = mix(6.0, 3.0, smoothstep(0.0, 0.5, t)) * uPx;
       float srim = (1.0 - smoothstep(srimW - 0.5, srimW + 0.5, -px)) * inside;
-      vec3 w = washLab(int(S.w + 0.5), Lg, 1.0, srim, 0.0, palPaintC(n));
+      vec3 w = washLab(int(S.w + 0.5), Lg, lab.yz, 1.0, srim, 0.0, palPaintC(n));
       w.x += 0.06 * (1.0 - smoothstep(0.0, 0.3, t));
       col = mix(col, oklab2lin(w), inside * dissolve);
       paint = max(paint, inside * dissolve);
@@ -401,20 +500,30 @@ void main(){
   vec2 tintAB = uOwnerTerr[code].xy * 0.06;
   vec3 shLab = vec3(castLab.x, mix(castLab.yz, tintAB, isBird * (1.0 - idle)));
   float groundL = mix(uLabGround.x, uNLabGround.x, n);
-  vec3 shaded = vec3(lab.x * shLab.x / max(groundL, 0.05), mix(lab.yz, shLab.yz, mix(1.0, 0.35, paint)));
-  col = mix(col, oklab2lin(shaded), amount);
-  float towerSh = cov * (1.0 - isBird);
-  // liseré d'empreinte : couleur d'identité, 2,5 px, continu (fort) ou pointillé (pâle)
+  // luminosité : ratio de l'ombre au sol partout ; teinte : 100 % vers l'ombre sur le sable nu,
+  // OKLCH refroidi sur la peinture (shadowPaintAB, W4)
+  if (amount > 0.0) {   // branche : la rotation OKLCH n'est calculée que sous une ombre
+    vec3 shaded = vec3(lab.x * shLab.x / max(groundL, 0.05), mix(shLab.yz, shadowPaintAB(lab.yz), paint));
+    col = mix(col, oklab2lin(shaded), amount);
+  }
+  // liseré d'empreinte : couleur d'identité, 2,5 px, continu (fort) ou en tirets (pâle, W11)
   float edgePx = (sh.x - 0.5) / fs;
-  vec2 sd = uShadowDir;
-  float along = dot(xz, sd), across = dot(xz, vec2(-sd.y, sd.x));
-  float dash = sh.z > 0.5 ? 1.0 : abs(step(0.5, fract(along / 2.4)) - step(0.5, fract(across / 2.4)));
-  float rimFp = (1.0 - smoothstep(2.5 * uPx - 0.5, 2.5 * uPx + 0.5, edgePx)) * step(0.0, edgePx) * isFp * isBird * (1.0 - idle) * dash;
+  float rimFp = (1.0 - smoothstep(2.5 * uPx - 0.5, 2.5 * uPx + 0.5, edgePx)) * step(0.0, edgePx) * isFp * isBird * (1.0 - idle);
+  if (rimFp > 0.0 && sh.z <= 0.5) rimFp *= footprintDash(xz, code);
   col = mix(col, uOwnerCol[code].rgb, rimFp);
 
-  // ── 6. front de nuit : lèvre de dernière lumière (3 px, côté jour, hors ombre) ──
+  // ── 6. front de nuit (W6) : bande de lumière rasante de 6 à 12 m devant le front (sol et
+  // peinture tirés vers le sandLit de KF1, L + 0,06), puis lèvre de dernière lumière (4 px) ──
   float lipPx = -nd / nw;
-  float lip = uNightOn * (1.0 - uNightAll) * step(0.0, lipPx) * (1.0 - smoothstep(3.0 * uPx - 0.5, 3.0 * uPx + 0.5, lipPx)) * (1.0 - cov);
+  float dayFront = uNightOn * (1.0 - uNightAll) * step(0.0, lipPx) * (1.0 - cov);
+  float band = dayFront * (1.0 - smoothstep(0.0, 6.0 + 6.0 * nz.g, -nd));
+  if (band > 0.0) {
+    vec3 bl = lin2oklab(col);
+    bl.x += 0.06 * band;
+    bl.yz = mix(bl.yz, uLipLab.yz, 0.35 * band);
+    col = oklab2lin(bl);
+  }
+  float lip = dayFront * (1.0 - smoothstep(4.0 * uPx - 0.5, 4.0 * uPx + 0.5, lipPx));
   col = mix(col, uLipColor, lip);
 
   // ── 6 bis. cuvette de sol craquelé : fissures d'encre à 30 % (15 % sous la peinture) ──
@@ -430,7 +539,9 @@ void main(){
   }
 
   // ── 7. rides de vent (près de la caméra) et crêtes de dunes (R16) ──
-  float ripple = lineCov(rip, 4.5, drip, 0.9 * uPx) * (1.0 - smoothstep(80.0, 160.0, vDist)) * step(0.6, nz.a) * 0.35 * uQuality.z * (1.0 - paint);
+  // rides : coupées au-delà de 160 m (branche : rien n'est calculé au loin, polish W3)
+  float ripple = 0.0;
+  if (vDist < 160.0 && uQuality.z > 0.5 && paint < 0.5 && nz.a > 0.6) ripple = lineCov(rip, 4.5, drip, 0.9 * uPx) * (1.0 - smoothstep(80.0, 160.0, vDist)) * 0.35;
   float crestLine = lineCov(cp, 1.0, dcp, 1.0 * uPx) * smoothstep(1.5, 3.0, vCrest.y) * 0.55 * (1.0 - smoothstep(0.35, 0.6, fog));
   col = mix(col, palInk(n), max(ripple, crestLine));
 

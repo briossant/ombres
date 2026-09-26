@@ -30,8 +30,8 @@ import { Fx } from './render/fx/Fx.tsx'
 | Prop | Défaut | Rôle |
 |---|---|---|
 | `quality` | `'high'` | maillage des gros plans ; au loin, toujours le maillage `far` (1 755 triangles) |
-| `renderScale` | `'auto'` | échelle cosmétique : envergure ≥ 60 px (1080p), plafonnée à `RULES.birdRenderScaleMax` (×1,3) ; ou un facteur fixe (gros plans : `1`) |
-| `modes` | — | par slot : `'fly'` ou `'perch'` (podium : ailes repliées, pattes sorties, cou dressé) |
+| `renderScale` | `'auto'` | échelle cosmétique : envergure ≥ 60 px (1080p), plafonnée à `RULES.birdRenderScaleMax` (×1,3), `RULES.birdRenderScaleMaxCrowded` (×1,6) au-delà de 8 oiseaux ; ou un facteur fixe (gros plans : `1`) |
+| `modes` | — | par slot : `'fly'` ou `'perch'` (podium : cormoran qui sèche ses ailes, tête de profil, liseré de contre-jour ; voir « Polish vague 1 ») |
 | `castShadows` | `true` | inscrit l'**âme** de chaque oiseau dans la height shadow map (`shadowCasters.add`, owner = slot + 1, force 1,0 BAS → 0,6 HAUT) |
 | `view` | `gameView` | autre vue (écran titre, podium avec un état factice) |
 | `onController` | — | reçoit le `BirdsController` (accès aux rigs, `modes`) |
@@ -83,9 +83,9 @@ lents en BAS, rapides en montée : le son suit l'image sans autre logique.
 | `flap` (front montant) / `flapCooldown` | coup d'aile puissant ; **bouts d'ailes ombrés pendant la recharge, blancs + éclair quand prêt** | traits de souffle sous les ailes |
 | `stun` (+ `stunKind`) | roulé-boulé complet (se termine à 2π exactement), cou ballant | étoile d'impact + plumes (`diveHit`), étoiles d'encre autour de la tête, gerbe de sable (`diveMiss`) |
 | `immune` | — | plumes hérissées : 8 traits radiaux clignotant à 4 Hz |
-| `hidden` | 55 % vers l'ombre portée | œil barré |
+| `hidden` | 55 % vers l'ombre portée (35 % si `paletteElev` < 10), pièces colorées ≥ 80 % de leur chroma, liseré `sandLit` KF1 côté soleil au soleil bas | œil barré |
 | `lockedBy` | — | chevron à la couleur du chasseur (un seul par cible) |
-| `crownSlot` | couronne 3D or pâle cernée (≥ 16 px à l'écran), présentée de face à la caméra | anneau d'encre qui se contracte + 6 rayons (`crown`) |
+| `crownSlot` | couronne plate à 3 pointes, aplat `#FFF2C3` non éclairé cerné (≥ 16 px), ≈ 3 m au-dessus du cavalier ; sur la capuche en gros plan ; sur la tête au podium | anneau d'encre (60 → 14 px) centré sur la couronne affichée + 6 rayons (`crown`) |
 | `assist` (sim ou `players[slot].assist`) | — | icône plume à droite de l'oiseau |
 | `gameView.colorblind` | glyphe du joueur sur le fanion (gros plans) | jeton-glyphe permanent au-dessus de l'oiseau |
 | `paleOnStrong` / `bigSteal` / `bump` / `towerBump` | — | étincelles « tsk » / coup de pinceau le long de la trajectoire de l'ombre / plumes + bouffée |
@@ -193,3 +193,18 @@ src/host/render/fx/
   12 oiseaux × 2 draw calls (corps + coque) + 4 draw calls FX + 12 casters ; 12 × 1 755 × 2 tris au loin.
 - Phase 3 : appeler `requestPlancheFlash()` sur `diveHit` ; brancher `glorySlot` aux résultats ;
   `modes[slot] = 'perch'` au podium (+ poser les oiseaux sur les tours) ; `renderScale={1}` en gros plan.
+
+
+## 6. Polish vague 1 (correcteur birds, ordres B1-B7)
+
+Détail, preuves et limites : `docs/polish/fix-birds.md`. Changements d'API et de comportement :
+
+- **Échelle à 9-12 oiseaux** (B1) : plafond `RULES.birdRenderScaleMaxCrowded` (1,6, Edit ciblé de `src/sim/rules.ts`) dès que la sim compte plus de 8 oiseaux.
+- **LOD lointain** (B1) : sous 68 px d'envergure affichée (fondu jusqu'à 98 px), bande d'aile élargie à 38 % de la demi-aile (`BAND_FAR`, 0,38 → 0,76 de la demi-envergure), cape et selle ×1,6 autour de la selle (déformation en espace de liaison, `uAccentScale`), coque 1,2 → 0,5 px, et pièces colorées **sans ID propre** sous 78 px (hystérésis 78/86 px) : le cerne interne mangeait la bande. Nouveaux uniforms par oiseau : `uBand` (Vector2, n'est plus partagé), `uAccentOn`, `uAccentScale`, `uHullWidth`, `uPerch`.
+- **Couleur d'identité** (B1/B5) : les pièces colorées gardent ≥ 80 % du chroma de la couleur du joueur (60 % dans la nuit), luminance ramenée à mi-chemin de celle de l'albédo (au couchant, la lumière chaude délavait les bandes en pastel) — `keepChroma()` dans `material.ts`.
+- **Caché** (B5) : mélange 55 % → 35 % quand `paletteElev` < 10 ; liseré de lumière `uLipColor` (sandLit KF1) côté soleil, porté par la coque (élargie à 3 px côté soleil : il reste ≈ 1,5 px sous le trait du post-traitement), jamais dans la nuit.
+- **Podium** (B3) : pose `perch` = cormoran (corps à 42°, ailes ouvertes à l'horizontale, surface vers la caméra, mains tombantes qui respirent, cou avancé, tête de profil — côté stable par oiseau) ; `uPerch` : 25 % de remplissage de la face à l'ombre + liseré de contre-jour de ≈ 2,5 px (coque de 4 px côté soleil, crème-corail). Couronne posée au-dessus de la tête : **`PERCH_CROWN_TOP_M` (1,1 m au-dessus de l'ancre `head`) doit rester libre sous le bandeau** (à l'usage de la caméra du podium).
+- **Couronne** (B4) : `crownLift(down) = 2,5 + 1,0 × down` (m), jamais multipliée par l'échelle cosmétique au-delà de 1 ; géométrie plate extrudée (`crown.ts`, `CROWN_WIDTH` 2,4 m, `CROWN_HEIGHT` 1,3 m), aplat non éclairé, coque 1,5 px ; gros plan (> 200 px d'envergure, fondu 170-230) : 0,55 m × échelle, posée sur la capuche ; la position affichée est publiée dans **`birdAnchors.crown`** (`slot`, `frame`, centre `cx/cy/cz`, haut `tx/ty/tz`) : l'anneau « couronne gagnée » et la pile d'icônes s'y calent. `framingRig.ts` (staging) utilise encore `crownLift × scale` : surestimation sans danger.
+- **FX** : `FxSystem` oublie traînées, particules et effets quand `view.sim` change et quand un oiseau saute de plus de 20 m (B2) ; bouffées ≤ 60 px à l'écran et rétrécies sous 25 m, ruban ≤ 6 px, effilé sur ses 30 % finaux et aminci sous 30 m, lignes de vitesse et traînée du clac ≤ 25 % de la largeur, icônes d'état masquées en démo et au-delà de 200 px d'envergure (B6) ; gloire limitée à un disque de 250 px, rayons à 35 % (B3) ; esquive (`diveMiss` + `dodged`, B7) : double arc de souffle (`SHAPE.arc`, 0,4 s, 26-90 px de rayon), 4-6 plumes arrachées au chasseur, 3 étoiles épaisses à halo papier au-dessus du chasseur planté pendant son décrochage.
+- **Correctif de shader** (`batches.ts`) : `inkBoost` amincissait les traits au lieu de les épaissir (signe inversé) : les étoiles du décroché n'étaient que des points et l'anneau « couronne gagnée » était invisible. Corrigé ; les « ! », mottes et arcs sont un peu plus épais.
+- Outils : `tools/polish/fix-birds/game.mjs` (partie réelle figée à des instants choisis, recadrages ×3, `--reads` au format de `read-stats.mjs`, `--png`), `dodge.mjs` (captures autour des esquives), `zoomgrid.mjs` (zoom ×8 avec grille pour `sample-oklch`). Le HMR de Vite est coupé dans ces pages (autres correcteurs en parallèle).

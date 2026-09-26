@@ -93,6 +93,17 @@ export interface LevelParams {
    * oiseau loin derrière, et le viser en priorité (la bande de sable du HUD le montre).
    */
   rivalry: number
+  /**
+   * Oisillon (0 = jamais) : un humain que personne n'a piqué depuis … s peut être visé par un
+   * piqué lent et mal engagé (sinon le joueur seul ne voit jamais le verbe principal du jeu).
+   */
+  giftDiveEvery: number
+  /**
+   * Préférence pour une proie humaine (diviseur du score de choix d'une proie) : c'est pour
+   * les joueurs que la partie se joue ; un bot qui ne chasse que les autres bots ne met
+   * aucune pression. Public (le salon dit qui est un bot), indépendant du score.
+   */
+  humanPreyBias: number
 }
 
 /** Réglages d'IA propres aux niveaux (hors RULES : ce ne sont pas des règles du jeu). */
@@ -116,6 +127,8 @@ const AI = {
   turnCost: [150, 900, 1500],
   planSpread: [6, 2, 1],
   rivalry: [0, 0.5, 1],
+  giftDiveEvery: [25, 0, 0],
+  humanPreyBias: [1, 1.5, 1.2],
 }
 
 export function levelParams(level: BotLevel): LevelParams {
@@ -154,5 +167,7 @@ export function levelParams(level: BotLevel): LevelParams {
     turnCost: AI.turnCost[level]!,
     planSpread: AI.planSpread[level]!,
     rivalry: AI.rivalry[level]!,
+    giftDiveEvery: AI.giftDiveEvery[level]!,
+    humanPreyBias: AI.humanPreyBias[level]!,
   }
 }

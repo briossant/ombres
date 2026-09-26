@@ -9,8 +9,12 @@
 // au vol), jeton-glyphe (mode daltonien), gloire de victoire.
 // Ponctuels (événements) : étoile d'impact, plumes, gerbe de sable, étincelles
 // « tsk », anneau de couronne, coup de pinceau de gros vol, battement d'air,
-// claquement ; poussière violette le long du front de nuit.
-import { Color, Group, Vector3, type Camera } from 'three'
+// claquement, esquive (arc de souffle, plumes arrachées, étoiles du chasseur) ;
+// poussière violette le long du front de nuit.
+// Gros plans (titre, piqué) : tailles plafonnées à l'écran (bouffées ≤ 60 px, ruban
+// ≤ 6 px, lignes de vitesse ≤ 25 % de la largeur), rétrécissement près de la caméra,
+// icônes d'état masquées en démo et au-delà de 200 px d'envergure.
+import { Color, Group, Vector3, type Camera, type PerspectiveCamera } from 'three'
 import { RULES } from '../../../sim/rules.ts'
 import type { BirdState, SimEvent, SimState } from '../../../sim/types.ts'
 import { MAX_PLAYERS, PLAYER_COLORS } from '../../../shared/players.ts'
@@ -41,6 +45,23 @@ const ICON_GAP = 5 // px entre icônes empilées
 const TIPS = ['tipL', 'tipR'] as const
 /** Hauteur des FX « au sol » : au-dessus des ondulations du sable (≤ 0,6 m, ART_BIBLE §6.5). */
 const GROUND_Y = 0.9
+/** Bouffées : diamètre maximal à l'écran (px 1080p) ; rétrécies sous PUFF_NEAR_M de la caméra (§6.8). */
+const PUFF_MAX_PX = 60
+const PUFF_NEAR_M = 25
+/** Ruban de traînée : largeur maximale à l'écran (px 1080p) ; dissous (aminci) sous TRAIL_NEAR_M. */
+const TRAIL_MAX_PX = 6
+const TRAIL_NEAR_M = 30
+/** Lignes de vitesse et traînée du clac : longueur bornée à cette fraction de la largeur d'écran. */
+const STREAK_MAX_FRAC = 0.25
+/** Un oiseau qui se déplace de plus de TELEPORT_M en une frame repart sans traînée (changement de manche). */
+const TELEPORT_M = 20
+/** Icônes d'état masquées au-delà de cette envergure à l'écran (gros plans, px 1080p). */
+const ICONS_HIDE_PX = 200
+/** Gloire de victoire : rayon à l'écran (px 1080p), rayons d'encre à 35 % (ART_BIBLE §6.8). */
+const GLORY_RADIUS_PX = 250
+const GLORY_ALPHA = 0.35
+/** Esquive : arc de souffle autour de l'esquiveur (s). */
+const DODGE_ARC_S = 0.4
 
 const enum PK {
   puff,
@@ -66,6 +87,8 @@ class Particle {
   seed = 0
   drag = 0
   grav = 0
+  /** Demi-taille minimale à l'écran (px 1080p) ; 0 = défaut du type. */
+  minPx = 0
 }
 
 const enum BK {
@@ -75,6 +98,7 @@ const enum BK {
   flapAir,
   clap,
   tsk,
+  dodge,
 }
 
 class Burst {
@@ -88,6 +112,8 @@ class Burst {
   slot = -1
   seed = 0
   r = 5
+  /** Autre oiseau concerné (esquive : le chasseur). */
+  other = -1
   readonly path = new Float32Array(40 * 4)
   pathN = 0
 }
@@ -112,7 +138,27 @@ class BirdFx {
   readonly speed: Spring = spring(0)
   readonly filament: Spring = spring(0)
   readonly stars: Spring = spring(0)
+  /** Icônes d'état (0 = masquées : démo, gros plan). */
+  readonly icons: Spring = spring(1)
+  /** Chasseur planté après une esquive : étoiles du décroché pendant ce temps (s). */
+  dazed = 0
+  /** Position (sim) à la frame précédente : détection des téléportations. */
+  lastX = 0
+  lastY = 0
+  lastZ = 0
   seen = -1
+
+  /** Oublie toutes les traînées (téléportation, nouvelle simulation). */
+  resetPaths(): void {
+    this.trail.clear()
+    this.tipL.clear()
+    this.tipR.clear()
+    this.streak.clear()
+    this.shadowHist.clear()
+    this.trailAttached = false
+    this.streakFade = 0
+    this.dazed = 0
+  }
 }
 
 const _v = new Vector3()
@@ -174,6 +220,10 @@ export class FxSystem {
   }
   private pxPerM1 = 1000
   private px1080 = 1
+  /** Largeur de l'écran en px 1080p (bornes des traits longs). */
+  private screenW1080 = 1920
+  /** Simulation de la frame précédente : au changement (manche, titre, podium), tout repart de zéro. */
+  private lastSim: SimState | null = null
 
   constructor(public quality: FxQuality = 'high') {
     const cap = FX_CAPS[quality]
@@ -253,6 +303,7 @@ export class FxSystem {
       p.seed = this.rand()
       p.drag = 0
       p.grav = 0
+      p.minPx = 0
       return p
     }
     return null
@@ -271,6 +322,7 @@ export class FxSystem {
       b.slot = slot
       b.seed = this.rand()
       b.pathN = 0
+      b.other = -1
       return b
     }
     return null
@@ -290,16 +342,18 @@ export class FxSystem {
     }
   }
 
-  private feathers(x: number, y: number, z: number, n: number, speed: number): void {
+  /** Plumes blanches cernées qui tournoient en tombant ; `up` : vitesse verticale ajoutée (m/s). */
+  private feathers(x: number, y: number, z: number, n: number, speed: number, minPx = 0, up = 2): void {
     for (let i = 0; i < n; i++) {
       const a = this.rand() * TAU
       const e = (this.rand() - 0.3) * 1.2
       const s = speed * (0.5 + 0.5 * this.rand())
       const p = this.spawn(PK.feather, x, y, z, 1.0 + 0.4 * this.rand(), 0.42 + 0.2 * this.rand())
       if (!p) return
+      p.minPx = minPx
       p.vx = Math.cos(a) * Math.cos(e) * s
       p.vz = Math.sin(a) * Math.cos(e) * s
-      p.vy = Math.sin(e) * s + 2
+      p.vy = Math.sin(e) * s + up
       p.drag = 2.2
       p.grav = 3
       p.rotV = (this.rand() - 0.5) * 8
@@ -338,6 +392,16 @@ export class FxSystem {
         // Gerbe de sable : l'attaquant plante dans le sable.
         this.puffs(e.x, GROUND_Y, -e.y, this.quality === 'low' ? 6 : 10, 6, 1.2)
         this.clods(e.x, GROUND_Y, -e.y, this.quality === 'low' ? 5 : 9)
+        if (e.dodged) {
+          // Esquive (polish B7) : arc de souffle autour de l'esquiveur, plumes arrachées au
+          // chasseur, étoiles du décroché au-dessus du chasseur planté. Lisible à 50 px d'envergure.
+          const d = this.burst(BK.dodge, e.x, GROUND_Y, -e.y, DODGE_ARC_S, e.target)
+          if (d) d.other = e.hunter
+          const c = S?.bySlot[e.hunter] ? this.anchor(view, e.hunter, 'chest', _a) : _a.set(e.x, 2, -e.y)
+          this.feathers(c.x, c.y + 1, c.z, 4 + Math.floor(this.rand() * 3), 9, 6, 6)
+          const f = this.birds[e.hunter]
+          if (f) f.dazed = RULES.missStun
+        }
         break
       }
       case 'diveCommit':
@@ -404,14 +468,28 @@ export class FxSystem {
     this.cNight[3] = 1
     setRgb(this.cGold, U.uCrownGold.value)
 
-    const cam = camera as Camera & { fov?: number }
+    const cam = camera as PerspectiveCamera
     const fovY = ((cam.fov ?? 40) * Math.PI) / 180
     this.pxPerM1 = viewportH / (2 * Math.tan(fovY / 2))
     this.px1080 = viewportH / 1080
+    this.screenW1080 = 1080 * (cam.isPerspectiveCamera ? cam.aspect : 16 / 9)
     camera.getWorldPosition(_camPos)
     _right.setFromMatrixColumn(camera.matrixWorld, 0).normalize()
     _up.setFromMatrixColumn(camera.matrixWorld, 1).normalize()
     _fwd.setFromMatrixColumn(camera.matrixWorld, 2).negate().normalize()
+
+    // Nouvelle simulation (salon → manche, manche → manche, titre, podium) : les oiseaux
+    // sont téléportés, on oublie traînées, particules et effets en cours (polish B2 :
+    // lignes droites qui traversaient l'arène au compte à rebours).
+    if (view.sim !== this.lastSim) {
+      this.lastSim = view.sim
+      for (const f of this.birds) {
+        f.resetPaths()
+        f.seen = -1
+      }
+      for (const p of this.particles) p.alive = false
+      for (const b of this.bursts) b.alive = false
+    }
 
     for (const e of this.queue) this.handle(view, e)
     this.queue.length = 0
@@ -429,12 +507,7 @@ export class FxSystem {
     for (let i = 0; i < MAX_PLAYERS; i++) {
       const f = this.birds[i]!
       if (f.seen !== this.frame && f.seen >= 0) {
-        f.trail.clear()
-        f.tipL.clear()
-        f.tipR.clear()
-        f.streak.clear()
-        f.shadowHist.clear()
-        f.trailAttached = false
+        f.resetPaths()
         f.seen = -1
       }
     }
@@ -453,8 +526,24 @@ export class FxSystem {
     return this.pxPerM1 / Math.max(1, p.distanceTo(_camPos)) / this.px1080
   }
 
+  /** Distance à la caméra d'un point (x, y, z). */
+  private camDist(x: number, y: number, z: number): number {
+    return Math.hypot(x - _camPos.x, y - _camPos.y, z - _camPos.z)
+  }
+
+  /** Pixels (1080p) par mètre en (x, y, z), comme les shaders (profondeur de vue, pas distance). */
+  private pxPerMAt(x: number, y: number, z: number): number {
+    const depth = (x - _camPos.x) * _fwd.x + (y - _camPos.y) * _fwd.y + (z - _camPos.z) * _fwd.z
+    return this.pxPerM1 / Math.max(1, depth) / this.px1080
+  }
+
   private updateBird(view: GameView, S: SimState, b: BirdState, dt: number): void {
     const f = this.birds[b.slot]!
+    // Saut de plus de TELEPORT_M depuis la frame précédente : pas de segment fantôme.
+    if (f.seen >= 0 && Math.hypot(b.x - f.lastX, b.y - f.lastY, b.z - f.lastZ) > TELEPORT_M) f.resetPaths()
+    f.lastX = b.x
+    f.lastY = b.y
+    f.lastZ = b.z
     f.seen = this.frame
     const slot = b.slot
     const scale = this.scaleOf(slot)
@@ -540,7 +629,7 @@ export class FxSystem {
     // ─── Piqué : lignes de vitesse, traînée blanche du clac ─────────────
     springTo(f.speed, diving ? 1 : 0, diving ? 14 : 8, 1, dt)
     const chest = this.anchor(view, slot, 'chest', _b)
-    if (f.speed.x > 0.03) this.drawSpeedLines(b, chest, f.speed.x, scale)
+    if (f.speed.x > 0.03) this.drawSpeedLines(b, chest, f.speed.x, scale, this.pxPerM(chest))
     if (b.dive === 'committed') {
       f.streakFade = 1
       f.streak.push(chest.x, chest.y, chest.z, t)
@@ -548,53 +637,82 @@ export class FxSystem {
       f.streakFade = Math.max(0, f.streakFade - dt / 0.3)
       if (f.streakFade === 0) f.streak.clear()
     }
-    if (f.streak.count > 1 && f.streakFade > 0) this.drawStreak(f, f.streakFade)
+    if (f.streak.count > 1 && f.streakFade > 0) this.drawStreak(f, f.streakFade, this.pxPerM(chest))
 
     // ─── Immunité : plumes hérissées (traits radiaux, clignotement 4 Hz) ─
     springTo(f.immune, b.immune > 0 && !stunned ? 1 : 0, 12, 1, dt)
     if (f.immune.x > 0.03 && (this.realTime * 4 + slot * 0.37) % 1 < 0.62) this.drawBristles(chest, f.immune.x, scale, b.heading)
 
     // ─── Décrochage : étoiles d'encre autour de la tête ─────────────────
-    springTo(f.stars, stunned && b.stunKind === 'hit' ? 1 : 0, 10, 1, dt)
+    // (touché, ou chasseur planté après une esquive de sa cible)
+    f.dazed = Math.max(0, f.dazed - dt)
+    const dazed = f.dazed > 0 && stunned
+    springTo(f.stars, stunned && (b.stunKind === 'hit' || dazed) ? 1 : 0, dazed ? 18 : 10, 1, dt)
     if (f.stars.x > 0.03) {
-      const head = this.anchor(view, slot, 'head', _a)
+      // Ronde de 3 croix d'encre AU-DESSUS de l'oiseau à l'écran (ellipse aplatie, comme en
+      // BD), écartées d'au moins 13 px : lisibles à 50 px d'envergure, jamais en paquet sur le dos.
+      // Chasseur planté après une esquive : ancrées sur la poitrine (la tête roule sous le corps),
+      // plus hautes, plus grosses, avec un halo papier et sans test de profondeur.
+      const c = this.anchor(view, slot, dazed ? 'chest' : 'head', _a)
+      const ppm = this.pxPerM(c)
+      const R = Math.max(1.3 * scale * ppm, dazed ? 17 : 13)
+      const lift = Math.max((dazed ? 1.8 : 1.0) * scale * ppm, dazed ? 24 : 12)
       for (let k = 0; k < 3; k++) {
         const a = this.realTime * 5.5 + (k * TAU) / 3
         const s = this.spec
-        s.x = head.x + Math.cos(a) * 1.3 * scale
-        s.y = head.y + (0.9 + 0.2 * Math.sin(a * 2)) * scale
-        s.z = head.z + Math.sin(a) * 1.3 * scale
+        s.x = c.x
+        s.y = c.y
+        s.z = c.z
         s.size = 0.34 * f.stars.x * scale
-        s.minPx = 3.5 * f.stars.x
-        s.offX = s.offY = 0
+        s.offX = Math.cos(a) * R
+        s.offY = lift + Math.sin(a) * R * 0.38
         s.rot = a
         s.shape = SHAPE.cross4
-        this.setFill(this.cInk, 0)
-        this.setLine(this.cInk, 1)
         s.lineW = 0
-        s.inkBoost = 0.6
         s.p0 = s.p1 = s.p2 = 0
         s.dissolve = 0
-        this.sprites.push(s)
+        this.setFill(this.cInk, 0)
+        if (dazed) {
+          // halo papier, puis l'étoile d'encre par-dessus
+          s.minPx = 7 * f.stars.x
+          this.setLine(this.cPaper, 0.95)
+          s.inkBoost = 2.4
+          this.icons.push(s)
+          s.minPx = 7 * f.stars.x
+          this.setLine(this.cInk, 1)
+          s.inkBoost = 0.9
+          this.icons.push(s)
+        } else {
+          s.minPx = 3.8 * f.stars.x
+          this.setLine(this.cInk, 1)
+          s.inkBoost = 0.6
+          this.sprites.push(s)
+        }
       }
     }
 
     // ─── Icônes au-dessus de l'oiseau (empilées à l'écran) ──────────────
+    // Masquées en démo (écran titre) et en gros plan : l'oiseau se lit de lui-même.
+    const span = birdAnchors.frame[slot] === birdAnchors.counter ? birdAnchors.spanPx[slot]! : 0
+    springTo(f.icons, S.config.mode !== 'demo' && span < ICONS_HIDE_PX ? 1 : 0, 14, 1, dt)
+    const iconK = clamp01(f.icons.x)
+    const showIcons = iconK > 0.02
     const top = this.anchor(view, slot, 'riderTop', _a)
-    const crowned = S.crownSlot === slot
-    // Pile d'icônes vers le haut de l'écran (au-dessus de la couronne s'il y en a une).
-    const lift = iconLift(_fwd.y, crowned) * scale
-    const ix = top.x + _up.x * lift
-    const iy = top.y + _up.y * lift
-    const iz = top.z + _up.z * lift
+    const C = birdAnchors.crown
+    const crowned = S.crownSlot === slot && C.slot === slot && C.frame === birdAnchors.counter
+    // Pile d'icônes vers le haut de l'écran, au-dessus de la couronne s'il y en a une.
+    const lift = iconLift(_fwd.y, false) * scale
+    const ix = crowned ? C.tx : top.x + _up.x * lift
+    const iy = crowned ? C.ty : top.y + _up.y * lift
+    const iz = crowned ? C.tz : top.z + _up.z * lift
     _b.set(ix, iy, iz)
     const ppm = this.pxPerM(_b)
-    let stack = 0
+    let stack = crowned ? ICON_GAP : 0
     const player = view.players[slot]
     // Jeton-glyphe du mode daltonien (permanent, 18 px).
-    if (view.colorblind) {
+    if (view.colorblind && showIcons) {
       const ci = player?.colorIndex ?? slot
-      const r = Math.max(9, 0.9 * ppm)
+      const r = Math.max(9, 0.9 * ppm) * iconK
       this.icon(ix, iy, iz, 0, stack + r, r / ppm, 9, SHAPE.dot, col, 1, this.cInk, 1, 1.2, 0)
       this.icon(ix, iy, iz, 0, stack + r, (r * 0.74) / ppm, 9 * 0.74, SHAPE.glyphToken, this.cPaper, 1, this.cInk, 1, 0, glyphIndex(ci))
       stack += 2 * r + ICON_GAP
@@ -608,8 +726,8 @@ export class FxSystem {
       f.chevColor[2] = hc[2]!
     }
     springTo(f.chev, locked ? 1 : 0, 16, locked ? 0.45 : 1, dt)
-    if (f.chev.x > 0.02) {
-      const k = Math.max(0, f.chev.x)
+    if (f.chev.x > 0.02 && showIcons) {
+      const k = Math.max(0, f.chev.x) * iconK
       const r = Math.max(11, 1.2 * ppm) * k
       const bob = 2.5 * Math.sin(this.realTime * TAU * 1.6)
       this.cTmp[0] = f.chevColor[0]!
@@ -623,8 +741,8 @@ export class FxSystem {
     let threat = false
     for (const o of S.birds) if (o.diveTarget === slot && (o.dive === 'windup' || o.dive === 'guided' || o.dive === 'committed')) threat = true
     springTo(f.bang, threat ? 1 : 0, 20, threat ? 0.4 : 1, dt)
-    if (f.bang.x > 0.02) {
-      const k = Math.max(0, f.bang.x)
+    if (f.bang.x > 0.02 && showIcons) {
+      const k = Math.max(0, f.bang.x) * iconK
       const r = Math.max(13, 1.4 * ppm) * k
       const shake = threat ? Math.sin(this.realTime * 47) * 0.12 : 0
       this.icon(ix, iy, iz, 0, stack + r, r / ppm, 13 * k, SHAPE.bang, this.cPaper, 1, this.cInk, 1, 1.6, 0, shake, 0.4)
@@ -632,16 +750,16 @@ export class FxSystem {
     }
     // Œil barré : oiseau caché.
     springTo(f.eye, b.hidden ? 1 : 0, 12, 0.7, dt)
-    if (f.eye.x > 0.02) {
-      const k = Math.max(0, f.eye.x)
+    if (f.eye.x > 0.02 && showIcons) {
+      const k = Math.max(0, f.eye.x) * iconK
       const r = Math.max(10, 1.0 * ppm) * k
       this.icon(ix, iy, iz, 0, stack + r, r / ppm, 10 * k, SHAPE.eyeSlash, this.cPaper, 0.9, this.cInk, 0.85, 1.3, 0)
       stack += 2 * r + ICON_GAP
     }
     // Plume : aide au vol (à droite de l'oiseau).
-    if (player?.assist || b.assist) {
-      const r = Math.max(8, 0.8 * ppm)
-      this.icon(ix, top.y + 0.5 * scale, iz, 3.2 * ppm * scale + r, r * 0.3, r / ppm, 8, SHAPE.featherIcon, this.cPaper, 1, this.cInk, 1, 1.2, 0)
+    if ((player?.assist || b.assist) && showIcons) {
+      const r = Math.max(8, 0.8 * ppm) * iconK
+      this.icon(top.x + _up.x * lift, top.y + 0.5 * scale, top.z + _up.z * lift, 3.2 * ppm * scale + r, r * 0.3, r / ppm, 8 * iconK, SHAPE.featherIcon, this.cPaper, 1, this.cInk, 1, 1.2, 0)
     }
   }
 
@@ -751,9 +869,17 @@ export class FxSystem {
     if (f.trailAttached && used + 2 < P.count) P.truncate(used + 2)
   }
 
+  /**
+   * Point du ruban : 0,35 m de large mais jamais plus de 6 px à l'écran, effilement
+   * fort sur les 30 % finaux, aminci jusqu'à disparaître près de la caméra (gros plans).
+   */
   private trailPoint(x: number, y: number, z: number, tx: number, ty: number, tz: number, u: number, col: Rgb): void {
-    const taper = Math.pow(1 - clamp01(u), 0.75)
-    this.ribbons.point(x, y, z, tx, ty, tz, TRAIL_WIDTH * taper, 2.4 * taper + 0.4, 1, col, TRAIL_ALPHA)
+    const uu = clamp01(u)
+    const taper = (1 - 0.15 * uu) * (1 - smoothstep(0.7, 1, uu)) ** 0.8
+    const near = smoothstep(TRAIL_NEAR_M * 0.4, TRAIL_NEAR_M, this.camDist(x, y, z))
+    const ppm = this.pxPerMAt(x, y, z)
+    const w = Math.min(TRAIL_WIDTH, TRAIL_MAX_PX / ppm) * taper * near
+    this.ribbons.point(x, y, z, tx, ty, tz, w, (2.4 * taper + 0.4) * near, 1, col, TRAIL_ALPHA)
   }
 
   private drawFilament(P: PathBuffer, t: number, k: number): void {
@@ -778,12 +904,23 @@ export class FxSystem {
     R.endStrip()
   }
 
-  private drawStreak(f: BirdFx, fade: number): void {
+  /** Traînée blanche du clac : bornée à 25 % de la largeur d'écran (ppm : px/m à la tête). */
+  private drawStreak(f: BirdFx, fade: number, ppm: number): void {
     const P = f.streak
     const d = P.data
     const R = this.ribbons
+    const maxL = (STREAK_MAX_FRAC * this.screenW1080) / Math.max(ppm, 1e-3)
+    // Nombre de points qui tiennent dans la longueur maximale.
+    let n = 1
+    let len = 0
+    for (; n < Math.min(P.count, 24); n++) {
+      const a = P.at(n - 1)
+      const b = P.at(n)
+      len += Math.hypot(d[b]! - d[a]!, d[b + 1]! - d[a + 1]!, d[b + 2]! - d[a + 2]!)
+      if (len > maxL) break
+    }
+    if (n < 2) return
     R.beginStrip()
-    const n = Math.min(P.count, 24)
     for (let i = 0; i < n; i++) {
       const o = P.at(i)
       const o2 = P.at(Math.min(n - 1, i + 1))
@@ -794,7 +931,9 @@ export class FxSystem {
     R.endStrip()
   }
 
-  private drawSpeedLines(b: BirdState, c: Vector3, k: number, scale: number): void {
+  private drawSpeedLines(b: BirdState, c: Vector3, k: number, scale: number, ppm: number): void {
+    // Longueur bornée à 25 % de la largeur d'écran (gros plans du titre et des piqués).
+    const maxL = (STREAK_MAX_FRAC * this.screenW1080) / Math.max(ppm, 1e-3)
     // Direction de vol (three) et base perpendiculaire.
     let vx = b.vx
     let vy = b.vz
@@ -824,8 +963,8 @@ export class FxSystem {
       const dy = ay * Math.cos(th) + by * Math.sin(th)
       const dz = az * Math.cos(th) + bz * Math.sin(th)
       const r = (1.8 + 1.4 * h2) * scale
-      const L = (8 + 7 * h1) * k
-      const s0 = 3.2 * scale
+      const L = Math.min((8 + 7 * h1) * k, maxL)
+      const s0 = Math.min(3.2 * scale, maxL * 0.3)
       this.strokes.push(
         c.x - vx * (s0 + L) + dx * r * 1.5,
         c.y - vy * (s0 + L) + dy * r * 1.5,
@@ -870,22 +1009,26 @@ export class FxSystem {
     }
   }
 
+  /**
+   * Gloire de victoire (ART_BIBLE §6.8) : 24 rayons d'encre à 35 % dans un disque
+   * d'environ 250 px derrière le vainqueur (les rayons traversaient tout l'écran).
+   */
   private drawGlory(view: GameView, dt: number): void {
     springTo(this.glory, this.glorySlot >= 0 ? 1 : 0, 4, 1, dt)
-    if (this.glory.x < 0.02 || this.glorySlot < 0) return
+    if (this.glory.x < 0.02 || this.glorySlot < 0 || !view.sim?.bySlot[this.glorySlot]) return
     const c = this.anchor(view, this.glorySlot, 'chest', _a)
     // Derrière l'oiseau (le long de la visée) : l'oiseau les masque.
     c.addScaledVector(_fwd, 4)
     const k = this.glory.x
     const rot = (this.realTime * 6 * Math.PI) / 180
-    const scale = this.scaleOf(this.glorySlot)
+    const R = GLORY_RADIUS_PX / Math.max(this.pxPerM(c), 1e-3)
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * TAU + rot
       const ca = Math.cos(a)
       const sa = Math.sin(a)
       // Rayons alternés longs/courts, comme une gloire de case de BD.
-      const r0 = 7 * scale
-      const r1 = r0 + (i % 2 ? 11 : 17 + 5 * hash01(i * 7)) * scale * k
+      const r0 = R * 0.34
+      const r1 = r0 + (i % 2 ? 0.42 : 0.56 + 0.1 * hash01(i * 7)) * R * k
       this.strokes.push(
         c.x + (_right.x * ca + _up.x * sa) * r0,
         c.y + (_right.y * ca + _up.y * sa) * r0,
@@ -893,10 +1036,10 @@ export class FxSystem {
         c.x + (_right.x * ca + _up.x * sa) * r1,
         c.y + (_right.y * ca + _up.y * sa) * r1,
         c.z + (_right.z * ca + _up.z * sa) * r1,
-        1.1,
-        1.6,
+        1.3,
+        1.0,
         this.cInk,
-        0.4 * k,
+        GLORY_ALPHA * k,
       )
     }
   }
@@ -958,11 +1101,14 @@ export class FxSystem {
       switch (p.kind) {
         case PK.puff:
         case PK.nightPuff: {
-          // Enfle vite, puis rétrécit et se dissout en trame.
+          // Enfle vite, puis rétrécit et se dissout en trame. Au plus 60 px à l'écran,
+          // rétrécie (jusqu'à disparaître) près de la caméra : pas de « biscuits » en gros plan.
           const grow = 1 - (1 - Math.min(1, u / 0.35)) ** 2
           const shrink = 1 - smoothstep(0.7, 1, u) * 0.6
-          s.size = p.size * (0.45 + 0.75 * grow) * shrink
-          s.minPx = 2
+          const ppm = this.pxPerMAt(p.x, p.y, p.z)
+          const near = smoothstep(PUFF_NEAR_M * 0.35, PUFF_NEAR_M, this.camDist(p.x, p.y, p.z))
+          s.size = Math.min(p.size * (0.45 + 0.75 * grow) * shrink, (0.5 * PUFF_MAX_PX) / ppm / 0.92) * near
+          s.minPx = 2 * near
           s.shape = SHAPE.puff
           s.p1 = 4 + Math.floor(p.seed * 3)
           this.setFill(p.kind === PK.puff ? this.cPuff : this.cNight, 1)
@@ -980,7 +1126,7 @@ export class FxSystem {
             p.vy = 0
           }
           s.size = p.size * (1 - smoothstep(0.75, 1, u))
-          s.minPx = 4 * (1 - smoothstep(0.75, 1, u))
+          s.minPx = (p.minPx || 4) * (1 - smoothstep(0.75, 1, u))
           s.shape = SHAPE.feather
           this.setFill(this.cBone, 1)
           this.setLine(this.cInk, 1)
@@ -1041,6 +1187,9 @@ export class FxSystem {
         case BK.tsk:
           this.drawTsk(b, u)
           break
+        case BK.dodge:
+          this.drawDodge(view, b, u)
+          break
       }
     }
   }
@@ -1075,14 +1224,27 @@ export class FxSystem {
   /** Anneau d'encre qui se contracte sur la couronne + 6 rayons, puis vire à l'or (0,5 s). */
   private drawCrownRing(view: GameView, b: Burst, u: number): void {
     if (!view.sim?.bySlot[b.slot]) return
-    const top = this.anchor(view, b.slot, 'riderTop', _a)
-    const scale = this.scaleOf(b.slot)
-    const lift = crownLift(_fwd.y) * scale + 0.5
-    const cx = top.x + _up.x * lift
-    const cy = top.y + _up.y * lift
-    const cz = top.z + _up.z * lift
+    // Centré sur la couronne affichée (sinon à sa place théorique).
+    const C = birdAnchors.crown
+    let cx: number
+    let cy: number
+    let cz: number
+    if (C.slot === b.slot && C.frame === birdAnchors.counter) {
+      cx = C.cx
+      cy = C.cy
+      cz = C.cz
+    } else {
+      const top = this.anchor(view, b.slot, 'riderTop', _a)
+      const lift = crownLift(_fwd.y) + 0.6
+      cx = top.x + _up.x * lift
+      cy = top.y + _up.y * lift
+      cz = top.z + _up.z * lift
+    }
+    _b.set(cx, cy, cz)
+    // Tailles en px (1080p) : l'anneau se contracte de 60 à 14 px de rayon, quelle que soit la distance.
+    const scale = 1 / Math.max(this.pxPerM(_b), 1e-3)
     const e = 1 - (1 - u) ** 3
-    const r = (5.5 - 4.0 * e) * scale
+    const r = (60 - 46 * e) * scale
     const gold = smoothstep(0.45, 0.75, u)
     this.cTmp2[0] = this.cInk[0]! + (this.cGold[0]! - this.cInk[0]!) * gold
     this.cTmp2[1] = this.cInk[1]! + (this.cGold[1]! - this.cInk[1]!) * gold
@@ -1094,7 +1256,7 @@ export class FxSystem {
     s.z = cz
     s.offX = s.offY = 0
     s.size = r / 0.85
-    s.minPx = 12
+    s.minPx = 0
     s.rot = 0
     s.shape = SHAPE.ring
     this.setFill(this.cTmp2, 0)
@@ -1108,8 +1270,8 @@ export class FxSystem {
       const a = (i / 6) * TAU + Math.PI / 6
       const ca = Math.cos(a)
       const sa = Math.sin(a)
-      const r0 = (1.8 + 3.5 * e) * scale
-      const r1 = r0 + 1.4 * scale * (1 - u)
+      const r0 = (20 + 40 * e) * scale
+      const r1 = r0 + 16 * scale * (1 - u)
       this.strokes.push(
         cx + (_right.x * ca + _up.x * sa) * r0,
         cy + (_right.y * ca + _up.y * sa) * r0,
@@ -1220,6 +1382,46 @@ export class FxSystem {
       const r1 = r0 + 1.3 * (1 - u * 0.5)
       this.strokes.push(b.x + ca * r0, b.y, b.z + sa * r0, b.x + ca * r1, b.y, b.z + sa * r1, 2, 2, this.cInk, 1 - smoothstep(0.7, 1, u))
     }
+  }
+
+  /**
+   * Esquive (polish B7) : double arc de souffle autour de l'esquiveur, ouvert vers le
+   * point où le chasseur a planté, qui s'élargit et s'amincit en 0,4 s. Rayon calé sur
+   * l'envergure affichée, entre 26 px (lisible à 50 px d'envergure) et 90 px (gros plans),
+   * trait de 5,5 → 3 px ; testé en profondeur (l'oiseau passe devant en gros plan).
+   */
+  private drawDodge(view: GameView, b: Burst, u: number): void {
+    if (!view.sim?.bySlot[b.slot]) return
+    const c = this.anchor(view, b.slot, 'chest', _a)
+    const ppm = this.pxPerM(c)
+    // Direction écran vers le point du raté (repère caméra).
+    const dx = b.x - c.x
+    const dy = b.y - c.y
+    const dz = b.z - c.z
+    const sx = dx * _right.x + dy * _right.y + dz * _right.z
+    const sy = dx * _up.x + dy * _up.y + dz * _up.z
+    const ang = Math.hypot(sx, sy) > 1e-3 ? Math.atan2(sy, sx) : Math.PI / 2
+    const e = 1 - (1 - u) ** 2
+    const half = (RULES.wingspan * this.scaleOf(b.slot) * ppm) / 2
+    const r = clamp(half * 1.1, 26, 90) * (0.8 + 0.45 * e)
+    const s = this.spec
+    s.x = c.x
+    s.y = c.y
+    s.z = c.z
+    s.offX = s.offY = 0
+    s.size = 0
+    s.minPx = r
+    s.rot = ang
+    s.shape = SHAPE.arc
+    this.setFill(this.cInk, 0)
+    this.setLine(this.cInk, 1)
+    s.lineW = 0
+    s.inkBoost = 0.4
+    s.p0 = 1.25 - 0.35 * e
+    s.p1 = (5.5 - 2.5 * e) / 2 / r
+    s.p2 = b.seed
+    s.dissolve = smoothstep(0.6, 1, u)
+    this.sprites.push(s)
   }
 
   /**

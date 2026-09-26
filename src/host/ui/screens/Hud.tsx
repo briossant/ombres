@@ -29,6 +29,7 @@ export function Hud() {
       <div className="hud__bar enter" style={{ ['--i' as string]: 1 }}>
         <SandBar width={barWidth} />
       </div>
+      <Banner layout="strip" />
       <div className="hud__center">
         <LastSeconds />
         <Banner />

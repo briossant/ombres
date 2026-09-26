@@ -86,7 +86,7 @@ import {
 import { gameView } from '../view.ts'
 import { DEBUG, DEBUG_FAST, INTERLUDE_FACTOR, SIM_SPEED } from './debug.ts'
 import { clearSnapshot, readSnapshot, writeSnapshot, type RunnerSnapshot } from './persist.ts'
-import { Roster, displayName, titleDisplayValue, visualOf, type Player } from './players.ts'
+import { Roster, displayName, titleDisplayValue, uiTitleId, visualOf, type Player } from './players.ts'
 import { phoneView, type ViewContext } from './views.ts'
 import { useStage } from './stageStore.ts'
 
@@ -106,10 +106,20 @@ const BEAT_TIMEOUT_S = 7
 const RESUME_HOLD_S = 3
 /** Dévoilement du vainqueur dans le panneau des résultats (RoundResults.tsx : REVEAL_MS). */
 const RESULTS_REVEAL_S = 3.25
+/** Réplique des résultats de manche : 1,5 s après le stinger du dévoilement, pas dessous (audio A1). */
+const RESULTS_LINE_DELAY_S = 1.5
+/** Réplique du champion au podium : 2,2 s après le stinger (gong, harpe, cri), pas dessous (audio A1). */
+const PODIUM_LINE_DELAY_S = 2.2
 /** Un téléphone parti moins longtemps que ça (page rechargée) ne déclenche pas de toast. */
 const LEAVE_TOAST_DELAY_S = 1.5
+/** Au plus un toast « a perdu la connexion » par téléphone toutes les … s (Wi-Fi instable). */
+const LEAVE_TOAST_MIN_GAP_S = 20
 /** Sauvegarde de session périodique (s réelles). */
 const SAVE_EVERY_S = 2.5
+/** Sous-titre du narrateur : filet au-delà de la durée conseillée si le 'hide' du lecteur ne vient pas. */
+const SUBTITLE_SAFETY_S = 4
+/** Salon avec des téléphones : fenêtre du second Échap qui ramène au titre (s réelles). */
+const LOBBY_ESC_CONFIRM_S = 2
 
 const now = (): number => performance.now()
 const nowSec = (): number => performance.now() / 1000
@@ -176,7 +186,38 @@ export class Runner {
   /** Tableau prevBirds du runner (le podium de la mise en scène substitue le sien à gameView). */
   private readonly prevBirds: (BirdState | undefined)[] = new Array(12).fill(undefined)
   private slowmoAt = -1
+  /** Ralenti en cours : échelle et durée tenue (touche : hitSlowmo*, esquive : dodgeSlowmo*). */
+  private slowmoScale: number = RULES.hitSlowmoScale
+  private slowmoHold: number = RULES.hitSlowmoSeconds
   private lastSlowmoSimTime = -Infinity
+  /** Pause posée parce que l'onglet du PC est passé en arrière-plan (reprise automatique au retour). */
+  private hiddenPause = false
+  /** Page en train de se fermer ou de se recharger (beforeunload / pagehide reçus). */
+  private unloading = false
+  /** Dernier toast « a perdu la connexion » par téléphone (temps réel). */
+  private readonly leaveToastAt = new Map<string, number>()
+  /** Dernière touche de retour (Échap / Retour arrière) et son instant (temps réel). */
+  private lastBackKey = ''
+  private lastBackKeyAt = -Infinity
+  /** Échap au salon avec des téléphones : second appui attendu jusqu'à cet instant (temps réel). */
+  private escArmedUntil = -1
+  /** Écran sauvegardé montré aux téléphones pendant le rechargement du PC (null sinon). */
+  private bootView: {
+    phase: ViewContext['phase']
+    match: MatchState
+    roundIndex: number
+    interlude: boolean
+    roundResult: RoundResult | null
+    titles: TitleAward[] | null
+    winners: number[] | null
+  } | null = null
+  /** Dernier flash « planche » (temps réel) : au plus un toutes les RULES.plancheFlashMinGap s. */
+  private lastFlashAt = -Infinity
+  /** Flashs de la simulation en cours, dont « mineurs » (humain impliqué, petit vol). */
+  private roundFlashes = 0
+  private minorFlashes = 0
+  /** ?debug : journal des flashs et des ralentis (vérification de la hiérarchie des impacts). */
+  readonly impactLog: { t: number; kind: 'flash' | 'slowmo' | 'dodgeSlowmo'; why: string }[] = []
   private framesRendered = 0
   private tickCount = 0
   private lastSave = 0
@@ -226,10 +267,18 @@ export class Runner {
     this.bindHub()
     this.bindUi()
     this.bindSettings()
+    // sous-titre du narrateur : affiché à 'show', retiré à la fin RÉELLE de la voix ('hide', demande audio A8)
+    let shownSub = { bus: -1, vm: -1 }
     subtitleEvents.on(e => {
-      if (e.type !== 'show') return
+      if (e.type === 'hide') {
+        if (e.id === shownSub.bus && useHud.getState().subtitle?.id === shownSub.vm) useHud.setState({ subtitle: null })
+        return
+      }
       const text = e.parts.map(p => (p.colorIndex !== undefined ? '{color}' : p.text)).join('')
-      showSubtitle({ text, colorIndex: e.colorIndex ?? null, seconds: e.durationMs / 1000 })
+      // le lecteur émet 'hide' à max(durée conseillée, fin réelle de la voix) : c'est lui qui retire le
+      // sous-titre ; la durée locale n'est qu'un filet (voix en retard sur une machine chargée)
+      showSubtitle({ text, colorIndex: e.colorIndex ?? null, seconds: e.durationMs / 1000 + SUBTITLE_SAFETY_S })
+      shownSub = { bus: e.id, vm: useHud.getState().subtitle?.id ?? -1 }
     })
     cameraBeats.on(b => {
       // montée de nuit : le HUD s'efface, la carte se dessine seule jusqu'au panneau des résultats
@@ -242,6 +291,8 @@ export class Runner {
       }
     })
     const persistNow = () => {
+      // la page se ferme ou se recharge : le passage en arrière-plan qui suit n'est pas une pause
+      this.unloading = true
       this.hub.persistNow()
       this.save(true)
     }
@@ -260,6 +311,20 @@ export class Runner {
       true,
     )
     window.addEventListener('pagehide', persistNow)
+    // onglet du PC en arrière-plan : pause (les téléphones l'affichent), reprise en « 3, 2, 1 » au retour
+    document.addEventListener('visibilitychange', () => this.onVisibilityChange())
+    // page rendue par le cache de navigation (retour arrière du navigateur) : elle vit de nouveau
+    window.addEventListener('pageshow', () => (this.unloading = false))
+    // touche de retour utilisée (l'UI appelle uiActions.back() pour Échap comme pour Retour arrière)
+    window.addEventListener(
+      'keydown',
+      e => {
+        if (e.code !== 'Escape' && e.code !== 'Backspace') return
+        this.lastBackKey = e.code
+        this.lastBackKeyAt = this.realTime
+      },
+      true,
+    )
     window.addEventListener('beforeunload', persistNow)
     // Rafraîchissement du PC : les joueurs d'abord (les téléphones se réannoncent dès que la
     // salle est reprise), la partie après le chargement.
@@ -286,6 +351,7 @@ export class Runner {
   finishLoading(): void {
     const snap = this.snapshot
     this.snapshot = null
+    this.bootView = null
     if (snap && this.restoreGame(snap)) {
       this.promptAudioUnlock()
       return
@@ -369,10 +435,11 @@ export class Runner {
     let s = 1
     if (this.slowmoAt >= 0) {
       const e = this.realTime - this.slowmoAt
-      const hold = RULES.hitSlowmoSeconds
+      const hold = this.slowmoHold
       const ramp = RULES.hitSlowmoRampSeconds
-      if (e < hold) s = RULES.hitSlowmoScale
-      else if (e < hold + ramp) s = RULES.hitSlowmoScale + ((1 - RULES.hitSlowmoScale) * (e - hold)) / ramp
+      const k = this.slowmoScale
+      if (e < hold) s = k
+      else if (e < hold + ramp) s = k + ((1 - k) * (e - hold)) / ramp
       else this.slowmoAt = -1
     }
     const hint = this.sim?.state.timeScaleHint ?? 1
@@ -439,14 +506,20 @@ export class Runner {
     const kind = this.simKind
     switch (e.type) {
       case 'diveHit':
-        if ((kind === 'round' || kind === 'lobby') && !getSettings().reduceFlashes) requestPlancheFlash()
-        if (kind === 'round') this.maybeSlowmo()
+        if (kind === 'round' || kind === 'lobby') this.maybeFlash(e)
+        if (kind === 'round') this.maybeSlowmo(RULES.hitSlowmoScale, RULES.hitSlowmoSeconds, 'slowmo', `h${e.hunter}→t${e.target}`)
         if (kind === 'lobby') {
           const slot = this.goals.onSimEvent(e)
           if (slot !== null) {
             const p = this.roster.bySlot(slot)
             if (p) this.onGoal(p)
           }
+        }
+        break
+      case 'diveMiss':
+        // esquive d'un humain (ou par un humain) : court ralenti, le geste se voit
+        if (kind === 'round' && e.dodged && (this.isHumanSlot(e.target) || this.isHumanSlot(e.hunter))) {
+          this.maybeSlowmo(RULES.dodgeSlowmoScale, RULES.dodgeSlowmoSeconds, 'dodgeSlowmo', `h${e.hunter}→t${e.target}`)
         }
         break
       case 'night':
@@ -463,12 +536,47 @@ export class Runner {
     }
   }
 
-  private maybeSlowmo(): void {
+  private maybeSlowmo(scale: number, hold: number, kind: 'slowmo' | 'dodgeSlowmo', why: string): void {
     const st = this.sim!.state
     if (st.sun.t > st.sun.T - RULES.noSlowmoLastSeconds) return
     if (st.time - this.lastSlowmoSimTime < RULES.hitSlowmoMinGap) return
     this.lastSlowmoSimTime = st.time
     this.slowmoAt = this.realTime
+    this.slowmoScale = scale
+    this.slowmoHold = hold
+    if (DEBUG) this.impactLog.push({ t: st.sun.t, kind, why })
+  }
+
+  /** Un oiseau piloté par un joueur (téléphone, clavier, manette), remplaçant compris. */
+  private isHumanSlot(slot: number): boolean {
+    const p = this.roster.bySlot(slot)
+    return !!p && p.kind !== 'bot'
+  }
+
+  /**
+   * Flash « planche » (bible §6.8), réservé aux touches qui comptent (polish G4) : couronne,
+   * humain impliqué, ou vol d'au moins RULES.plancheFlashMinStealFrac de l'arène ; au plus un
+   * toutes les RULES.plancheFlashMinGap s et RULES.plancheFlashMaxPerRound par manche. Les petites
+   * touches d'un humain (hors couronne, vol < 1 %) : au plus RULES.plancheFlashMinorMaxPerRound
+   * par manche, espacées de RULES.plancheFlashMinorGap s. Réglage « Réduire les flashs » respecté.
+   */
+  private maybeFlash(e: Extract<SimEvent, { type: 'diveHit' }>): void {
+    if (getSettings().reduceFlashes || !this.sim) return
+    if (this.realTime - this.lastFlashAt < RULES.plancheFlashMinGap || this.roundFlashes >= RULES.plancheFlashMaxPerRound) return
+    const frac = e.stolenCells / Math.max(1, this.sim.state.grid.arenaCells)
+    const human = this.isHumanSlot(e.hunter) || this.isHumanSlot(e.target)
+    const major = e.crown || frac >= RULES.plancheFlashMinStealFrac
+    if (!major && !human) return
+    if (!major) {
+      // petite touche d'un humain : elle compte pour lui, mais un joueur très actif ne doit pas
+      // blanchir l'écran toutes les 6 s (réservé aux moments forts)
+      if (this.minorFlashes >= RULES.plancheFlashMinorMaxPerRound || this.realTime - this.lastFlashAt < RULES.plancheFlashMinorGap) return
+      this.minorFlashes++
+    }
+    this.roundFlashes++
+    this.lastFlashAt = this.realTime
+    requestPlancheFlash()
+    if (DEBUG) this.impactLog.push({ t: this.sim.state.sun.t, kind: 'flash', why: `${e.crown ? 'couronne ' : ''}${human ? 'humain ' : ''}vol ${(frac * 100).toFixed(2)} % (h${e.hunter}→t${e.target})` })
   }
 
   // ─── Minuteries (temps réel) ───────────────────────────────────────────
@@ -533,6 +641,8 @@ export class Runner {
     this.acc = 0
     this.slowmoAt = -1
     this.lastSlowmoSimTime = -Infinity
+    this.minorFlashes = 0
+    this.roundFlashes = 0
     gameView.sim = sim.state
     gameView.alpha = 0
     gameView.timeScale = 1
@@ -800,7 +910,7 @@ export class Runner {
     })
     this.titles = null
     this.winners = null
-    this.narrator.startMatch({ rounds: this.match.config.rounds, lastRoundDouble: this.match.config.lastDouble !== false })
+    this.narrator.startMatch({ rounds: this.match.config.rounds, lastRoundDouble: this.match.config.lastDouble !== false, seed: this.matchSeed })
     this.hints.startMatch()
     void preloadNarrator(
       getLang(),
@@ -932,10 +1042,13 @@ export class Runner {
     const sim = this.sim
     this.later(RESULTS_REVEAL_S, () => {
       if (this.phase !== 'roundResults' || !sim) return
-      const cue = this.narrator.roundResults(sim.state, nowSec())
-      if (cue) this.playCue(cue)
       const w = r.winners.length === 1 ? r.winners[0]! : -1
       playStinger('roundWin', w >= 0 ? { colorIndex: this.colorOf(w) } : undefined)
+      this.later(RESULTS_LINE_DELAY_S, () => {
+        if (this.phase !== 'roundResults') return
+        const cue = this.narrator.roundResults(sim.state, nowSec())
+        if (cue) this.playCue(cue)
+      })
     })
     // bascule de qualité automatique : seulement entre deux manches
     if (getSettings().quality === 'auto') {
@@ -945,11 +1058,31 @@ export class Runner {
     this.save(true)
   }
 
-  continueResults(): void {
-    if (this.phase !== 'roundResults' || !this.match) return
-    playUi('confirm')
-    if (isMatchOver(this.match)) this.showMatchResults()
-    else this.startRound(this.roundIndex + 1)
+  /** Manche suivante déjà programmée (annonce de la dernière manche en cours), en temps réel. */
+  private nextRoundAt = 0
+
+  /** Suite des résultats ; `byPlayer` : demandée par un joueur (le clic de confirmation ne sonne qu'alors). */
+  continueResults(byPlayer = false): void {
+    if (this.phase !== 'roundResults' || !this.match || this.realTime < this.nextRoundAt) return
+    if (byPlayer) playUi('confirm')
+    if (isMatchOver(this.match)) {
+      this.showMatchResults()
+      return
+    }
+    const next = this.roundIndex + 1
+    // dernière manche comptée double : « le dernier soleil… » est dit ici, puis la manche démarre ;
+    // son compte à rebours reste silencieux (GDD §16.3) et le riser culmine sur « Envol » (audio A3)
+    const cue = this.narrator.announceLastRound(next + 1, nowSec())
+    if (!cue) {
+      this.startRound(next)
+      return
+    }
+    this.playCue(cue)
+    this.deadline = null
+    this.nextRoundAt = this.realTime + cue.duration + 0.3
+    this.later(cue.duration + 0.3, () => {
+      if (this.phase === 'roundResults') this.startRound(next)
+    })
   }
 
   /** Fin de partie : podium (contrat caméra), titres, votes. */
@@ -974,7 +1107,7 @@ export class Runner {
           rank: s.rank,
           suns: s.suns,
           totalShare: s.cumulativeShare,
-          title: award ? { id: award.title, value: titleDisplayValue(award, match) } : null,
+          title: award ? { id: uiTitleId(award), value: titleDisplayValue(award, match) } : null,
           stats: {
             hits: sum?.hits ?? 0,
             gotHit: sum?.gotHit ?? 0,
@@ -1009,9 +1142,12 @@ export class Runner {
     setScreenState('matchResults')
     this.syncCapture()
     const winners = this.winners ?? []
-    const cue = this.narrator.matchResults(winners, nowSec())
-    if (cue) this.playCue(cue)
     playStinger('gameWin', winners.length === 1 ? { colorIndex: this.colorOf(winners[0]!) } : undefined)
+    this.later(PODIUM_LINE_DELAY_S, () => {
+      if (this.phase !== 'matchResults') return
+      const cue = this.narrator.matchResults(winners, nowSec())
+      if (cue) this.playCue(cue)
+    })
   }
 
   rematch(): void {
@@ -1059,7 +1195,36 @@ export class Runner {
 
   resume(): void {
     if (!this.paused) return
+    // PC en arrière-plan : on ne reprend pas une manche que personne ne voit
+    if (this.hiddenPause && document.hidden) return
+    this.hiddenPause = false
     this.setPaused(false, -1)
+    this.save(true)
+  }
+
+  /**
+   * Onglet du PC masqué pendant une manche non terminée (polish G11) : le navigateur ralentit
+   * l'animation à ~1 image/s, la simulation se figeait sans pause visible. Pause « depuis l'écran »
+   * (sans « Reprendre » sur les téléphones) ; au retour, reprise avec le compte « 3, 2, 1 ».
+   */
+  private onVisibilityChange(): void {
+    if (document.hidden) {
+      if (this.unloading || this.phase !== 'round' || this.paused || this.roundResult) return
+      this.pause(-1)
+      this.hiddenPause = this.paused
+      this.markViews()
+      return
+    }
+    if (!this.hiddenPause) return
+    this.hiddenPause = false
+    if (!this.paused || this.phase !== 'round') return
+    this.setPaused(false, -1)
+    const st = this.sim?.state
+    if (st && st.sun.phase !== 'countdown') {
+      this.holdUntil = this.realTime + RESUME_HOLD_S
+      this.holdShown = -1
+      this.substituteGraceUntil = Math.max(this.substituteGraceUntil, this.holdUntil + 2)
+    }
     this.save(true)
   }
 
@@ -1116,10 +1281,51 @@ export class Runner {
     this.afterRosterChange()
     this.addPlayerToSim(p)
     playUi('join', { colorIndex: p.colorIndex })
-    pushToast('host.toast.joined', { params: { name: displayName(p, getLang()) }, slot })
+    // le toast « X rejoint le désert » attend la validation du profil (nom et couleur définitifs)
     // un téléphone qui arrive sur l'écran titre ouvre le salon
     if (this.phase === 'title' || this.phase === 'credits') this.enterLobby()
     return p
+  }
+
+  /**
+   * Échap au salon (polish G7) : retire d'abord le dernier joueur au clavier (il peut quitter
+   * seul) ; s'il reste des téléphones, un second Échap dans les 2 s ramène au titre (les
+   * téléphones passent en attente de l'écran). Retour arrière ne quitte jamais le salon.
+   */
+  private lobbyBack(): void {
+    if (this.lastBackKey === 'Backspace' && this.realTime - this.lastBackKeyAt < 0.5) return
+    const kb = this.roster.byGroup(2) ?? this.roster.byGroup(1)
+    if (kb) {
+      this.escArmedUntil = -1
+      this.leaveLocal(kb)
+      return
+    }
+    if (this.roster.phones().length > 0 && this.realTime > this.escArmedUntil) {
+      this.escArmedUntil = this.realTime + LOBBY_ESC_CONFIRM_S
+      playUi('back')
+      pushToast('runner.toast.escAgain', { seconds: LOBBY_ESC_CONFIRM_S })
+      return
+    }
+    this.escArmedUntil = -1
+    playUi('back')
+    this.enterTitle()
+    useUi.setState({ titleMenuOpen: true })
+    this.markViews()
+  }
+
+  /** Un joueur au clavier (ou à la manette de son groupe) quitte le salon. */
+  private leaveLocal(p: Player): void {
+    if (this.phase !== 'lobby' || p.kind !== 'keyboard') return
+    const group = p.group ?? 1
+    const colorIndex = p.colorIndex
+    this.roster.remove(p.slot)
+    this.removePlayerFromSim(p.slot)
+    useLobby.setState({ keyboardJoined: this.roster.players.some(x => x.kind === 'keyboard') })
+    this.local.keyboard.setShared(!!this.roster.byGroup(2))
+    this.syncCapture()
+    this.afterRosterChange()
+    playUi('back', { colorIndex })
+    pushToast('runner.toast.keyboardLeft', { params: { n: group } })
   }
 
   /** Premier appui de PLONGER d'un groupe local : rejoindre le salon (GDD §12.2). */
@@ -1369,6 +1575,10 @@ export class Runner {
       const q = this.roster.byPhone(phone.id)
       if (!q || this.hub.phone(phone.id)?.online) return
       if (this.hostStatus === 'online' && (this.inMatch() || this.phase === 'lobby')) {
+        // Wi-Fi qui clignote : un seul toast (et un seul son) par téléphone toutes les 20 s
+        const last = this.leaveToastAt.get(phone.id) ?? -Infinity
+        if (this.realTime - last < LEAVE_TOAST_MIN_GAP_S) return
+        this.leaveToastAt.set(phone.id, this.realTime)
         pushToast('host.toast.left', { params: { name: displayName(q, getLang()) }, slot: q.slot, tone: 'alert' })
         playUi('leave', { colorIndex: q.colorIndex })
       }
@@ -1382,8 +1592,11 @@ export class Runner {
     if (!p) return
     if (name) p.name = name
     if (color !== null) this.roster.claimColor(p, color)
+    const first = !p.profileSet
     p.profileSet = true
     playUi('ready', { colorIndex: p.colorIndex })
+    // première validation du profil : la TV annonce le joueur sous son nom et sa couleur définitifs
+    if (first) pushToast('host.toast.joined', { params: { name: displayName(p, getLang()) }, slot: p.slot })
     this.afterRosterChange()
   }
 
@@ -1400,7 +1613,7 @@ export class Runner {
       if (allReady) this.finishRules()
     } else if (this.phase === 'roundResults') {
       useRoundResults.setState({ readyCount: phones.filter(x => x.ready).length })
-      if (allReady) this.continueResults()
+      if (allReady) this.continueResults(true)
     }
     this.markRoster()
     this.markViews()
@@ -1593,6 +1806,30 @@ export class Runner {
   private viewContext(): ViewContext {
     const settings = useLobby.getState().match
     const match = this.match
+    // PC en train de se recharger : les téléphones gardent l'écran sauvegardé (manche, résultats,
+    // podium), en pause « depuis l'écran », au lieu de repasser par le salon (polish G5)
+    const b = this.phase === 'boot' ? this.bootView : null
+    if (b) {
+      return {
+        phase: b.phase,
+        lang: getLang(),
+        colorblind: getSettings().colorblind,
+        roster: this.roster,
+        match: b.match,
+        roundIndex: b.roundIndex,
+        rounds: b.match.config.rounds,
+        lastDouble: b.match.config.lastDouble !== false,
+        roundResult: b.roundResult,
+        interlude: b.interlude,
+        deadline: null,
+        paused: true,
+        pausedBy: -1,
+        resuming: true,
+        goals: slot => this.goals.goals(slot),
+        titles: b.titles,
+        winners: b.winners,
+      }
+    }
     return {
       phase: this.phase,
       lang: getLang(),
@@ -1607,6 +1844,7 @@ export class Runner {
       deadline: this.deadline,
       paused: this.paused,
       pausedBy: this.pausedBy,
+      resuming: this.paused && this.hiddenPause,
       goals: slot => this.goals.goals(slot),
       titles: this.titles,
       winners: this.winners,
@@ -1658,7 +1896,11 @@ export class Runner {
           playUi('close')
           return
         }
-        if (this.phase === 'credits' || this.phase === 'lobby') {
+        if (this.phase === 'lobby') {
+          this.lobbyBack()
+          return
+        }
+        if (this.phase === 'credits') {
           playUi('back')
           this.enterTitle()
           useUi.setState({ titleMenuOpen: true })
@@ -1686,7 +1928,7 @@ export class Runner {
       pause: () => this.pause(-1),
       resume: () => this.resume(),
       quitToLobby: () => this.quitToLobby(),
-      continueResults: () => this.continueResults(),
+      continueResults: () => this.continueResults(true),
       rematch: () => this.rematch(),
     })
   }
@@ -1708,6 +1950,8 @@ export class Runner {
         gameView.colorblind = s.colorblind
         this.markViews()
       }
+      // « Réduire les flashs » vaut aussi pour les téléphones (lu par phoneView, demande phone P4)
+      if (s.reduceFlashes !== prev.reduceFlashes) this.markViews()
       prev = s
     })
   }
@@ -1768,6 +2012,21 @@ export class Runner {
   private restoreEarly(s: RunnerSnapshot): boolean {
     try {
       this.roster.load(s.roster)
+      // écran sauvegardé, montré aux téléphones pendant le chargement (voir viewContext)
+      this.bootView = null
+      if (s.match && (s.phase === 'rules' || s.phase === 'round' || s.phase === 'roundResults' || s.phase === 'matchResults')) {
+        const match = restoreMatch(s.match)
+        const ri = s.roundResult?.index
+        this.bootView = {
+          phase: s.phase,
+          match,
+          roundIndex: s.roundIndex,
+          interlude: s.interlude,
+          roundResult: ri !== undefined ? (match.results.find(r => r.index === ri) ?? null) : null,
+          titles: s.titles,
+          winners: s.winners,
+        }
+      }
       useLobby.setState({ match: { ...DEFAULT_MATCH, ...s.matchSettings }, keyboardJoined: this.roster.players.some(p => p.kind === 'keyboard') })
       this.local.keyboard.setShared(!!this.roster.byGroup(2))
       this.botsCustomized = s.botsCustomized

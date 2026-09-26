@@ -36,7 +36,8 @@ const narrator = new NarratorDirector({
 // Joueurs (à rappeler à chaque changement : remplaçant bot, reconnexion) :
 narrator.setPlayers(players.map(p => ({ slot: p.slot, colorIndex: p.colorIndex, human: p.kind !== 'bot' })))
 
-narrator.startMatch({ rounds, lastRoundDouble })   // nouvelle partie ET revanche
+narrator.startMatch({ rounds, lastRoundDouble, seed })   // nouvelle partie ET revanche ; seed = graine de partie (tirage des variantes)
+narrator.announceLastRound(nextRound1Based, now)          // sur les résultats, AVANT de lancer la dernière manche double : lancer la manche après cue.duration
 narrator.startRound(roundIndex1Based, now)          // à la présentation de la manche, AVANT le compte à rebours
 // À chaque tick de simulation (mode 'round' ; ignoré en lobby/démo) :
 const events = sim.step(inputs)
@@ -91,8 +92,10 @@ for (const cue of hints.update(sim.state, events, inputs)) {
 - **Péremption** 2,5 s (4 s en priorité 1) ; conditions durables (couronne, cachette, tempête, écart, immobile) : valables tant que la condition tient, au plus 8 s.
 - **File de priorité** : priorité, puis spécificité (un doublé l'emporte sur une touche simple issue du même piqué), puis fraîcheur. **Un événement 100 % bots perd un niveau** ; la variante qui nomme un humain est préférée (piqué : chasseur ou victime).
 - **Plafonds** par type et par manche/partie (tableau de `lines.ts`), écarts par groupe : piqués 25 s, meneur 20 s, gros vols 20 s.
-- **Silence** pendant le compte à rebours et à partir de 107 s (× T/110).
-- **Aucune variante rejouée dans une partie** ; exceptions structurelles (ouverture de manche, Grande Ombre, dix secondes, victoire de manche, vainqueur, revanche) : quand tout a servi (partie en 5 manches), la moins récente revient plutôt que le silence.
+- **Silence** pendant le compte à rebours, jusqu'à 1,5 s après « Envol » (la conque ; l'ouverture part à 1,5 s × T/110), et à partir de 107 s (× T/110). **Fin de manche qui respire** (polish A3) : « Dix secondes » n'est pas dit si la Grande Ombre a fini de parler il y a moins de 4 s (ou attend encore) ; le photo-finish est décidé à 101,5 s ; aucune réplique de manche ne démarre si elle ne finit pas 0,2 s avant les coups de bois des 5 dernières secondes (T − 5).
+- **Dernière manche double** : `announceLastRound()` dit « le dernier soleil… » sur l'écran des résultats (le runner lance la manche après la réplique) ; `startRound()` ne la répète pas et l'ouverture de cette manche est sautée.
+- **Graine** : `MatchInfo.seed` (graine de partie) retire le tirage des variantes à chaque partie ; `importMemory` le reprend depuis la graine et le numéro d'ordre.
+- **Aucune variante rejouée dans une partie** ; exceptions structurelles (ouverture de manche, heure dorée, couchant, Grande Ombre, dix secondes, victoire de manche, vainqueur, revanche) : quand tout a servi (partie en 5 manches), la moins récente revient plutôt que le silence.
 - Résultats : **une réplique** parmi égalité, écrasante, serrée, dernier rayon, remontée, mirage, puis victoire (GDD §16.4), la première applicable et inédite.
 
 ## 3. Décisions (et pourquoi)
@@ -153,3 +156,9 @@ Densité mesurée sur ces 180 manches (flux d'événements denses) : **7,8 répl
 - Le poids dépasse de 4 % la cible de 8 Mo ; `--bitrate 30k` la tiendrait (ré-encodage depuis le cache en ~6 min, puis `--verify`), au prix d'un peu de brillance.
 - Le narrateur suppose la durée annoncée du clip ; si l'audio est retardé (autoplay), l'écart suivant reste mesuré depuis le début supposé.
 - Les indications et le narrateur ne voient pas l'écran : la bulle « Au clac : COUP D'AILE ! » peut arriver après un piqué très rapide (elle reste valable pendant le piqué, 3 s au plus).
+
+## Polish vague 1 (correcteur game, ordre G3) — indications
+
+- `HintsDirector` : **aucune bulle à partir de la Grande Ombre** ni dans les 1,5 s qui la précèdent (T = 110) ; les indications en attente tombent ; le bandeau `greatShadow` reste. Une première couronne pendant la Grande Ombre n'est pas annoncée (la suivante le sera).
+- **« dodge »** : mise en file à la prise d'élan (`diveWindup`), affichée seulement au clac (`diveCommit` du même chasseur), jamais marquée vue si le piqué est annulé (feinte) ; tant qu'un piqué arrive sur le joueur, aucune autre bulle ne passe avant. Le dédoublonnage et le retrait visuel à la résolution restent à l'UI (hostui H1).
+- Tests ajoutés (`hints.test.ts`) : clac → bulle au clac ; feinte annulée puis vrai clac ; aucune bulle individuelle pendant la Grande Ombre.

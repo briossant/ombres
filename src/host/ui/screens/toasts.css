@@ -9,13 +9,19 @@
   z-index: 5;
 }
 .ui-root[data-screen='lobby'] .toasts,
-.ui-root[data-screen='title'] .toasts,
 .ui-root[data-screen='credits'] .toasts {
   top: calc(var(--safe-y) + 8px);
   right: auto;
   left: 50%;
   transform: translateX(-50%);
   align-items: center;
+}
+/* Titre : sous la case du pitch (en haut, le cartouche chevauchait le logo). */
+.ui-root[data-screen='title'] .toasts {
+  top: 548px;
+  right: auto;
+  left: calc(var(--safe-x) + 40px);
+  align-items: flex-start;
 }
 .toast {
   display: flex;

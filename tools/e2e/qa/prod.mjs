@@ -1,13 +1,13 @@
 // QA : build de PRODUCTION servi par dist-server/server.mjs (PORT=8814). Poids servi et temps de
 // chargement (page nue, sans ?debug), puis scénario court PC + téléphone émulé, avec redémarrage
 // du serveur en pleine manche (processus relancé par ce script).
-//   pnpm build && node tools/e2e/qa/prod.mjs
+//   pnpm build && node tools/e2e/qa/prod.mjs   (port : PROD_PORT, 8814 par défaut)
 import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { launch, newContext, collectLogs, makeShots, sleep, waitFor, state, problems, newPhone, joinPhone, tap, rawKeys } from './lib.mjs'
 import { PhonePilot } from './pilot.mjs'
 
-const PORT = 8814
+const PORT = Number(process.env.PROD_PORT ?? 8814)
 const ORIGIN = `http://localhost:${PORT}`
 const ROOT = join(import.meta.dirname, '../../..')
 const { shot, log } = makeShots('prod')

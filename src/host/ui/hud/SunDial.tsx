@@ -2,7 +2,8 @@
 // Quart d'arc du zénith à la crête de la Falaise ; le disque le parcourt
 // linéairement en temps (u). Graduations aux phases, segment de la Grande
 // Ombre hachuré, vignette de ciel à la couleur de la keyframe courante.
-// Aucun chiffre : le nom de la phase s'affiche 3 s à chaque changement.
+// Aucun chiffre : le nom de la phase s'affiche 3 s à chaque changement, sous le
+// cadran, seulement si aucune bannière ne l'écrit déjà.
 import { useEffect, useState } from 'react'
 import { t } from '../../../shared/i18n.ts'
 import { RULES } from '../../../sim/rules.ts'
@@ -32,6 +33,8 @@ export function SunDial() {
   const round = useHud(s => s.round)
   const rounds = useHud(s => s.rounds)
   const double = useHud(s => s.doubleRound)
+  // Le nom de phase n'est écrit qu'une fois : pas d'onglet tant qu'une bannière est affichée.
+  const bannerShown = useHud(s => s.banner !== null)
   const [label, setLabel] = useState<{ phase: string; id: number } | null>(null)
 
   // Nom de phase pendant RULES.phaseBannerSeconds à chaque changement.
@@ -104,7 +107,7 @@ export function SunDial() {
         </span>
         {double ? <span className="dial__double t-num">×2</span> : null}
       </div>
-      {label ? (
+      {label && !bannerShown ? (
         <div className="dial__phase wipe" key={label.id}>
           {t(`host.phase.${label.phase}`)}
         </div>

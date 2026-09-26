@@ -3,11 +3,13 @@
 // panoramique selon la position à l'écran, chargement des fichiers avec progression.
 //
 // Graphe :
-//   musique ─ vol ─ duck ─ filtre pause ─┐
-//   ambiance ─ vol ─ duck ───────────────┼─ monde ─ filtre ralenti ─┐
-//   bruitages ─ vol (+ retour réverbe) ──┘                          ├─ master ─ glue ─ limiteur ─ saturation ─ sortie
-//   interface ─ vol ────────────────────────────────────────────────┤
-//   voix ─ vol ─────────────────────────────────────────────────────┘
+//   musique ─ vol ─ duck ─ creux ─ filtre pause ─┐
+//   ambiance ─ vol ─ duck ───────────────────────┼─ monde ─ égaliseur voix ─ filtre ralenti ─┐
+//   bruitages ─ vol ─ duck (+ retour réverbe) ───┘                                          ├─ master ─ glue ─ limiteur ─ saturation ─ sortie
+//   interface ─ vol ─ duck ─────────────────────────────────────────────────────────────────┤
+//   voix ─ vol ─────────────────────────────────────────────────────────────────────────────┘
+// Pendant une réplique du narrateur (duck) : musique et ambiance −6 dB (GDD), bruitages −5 dB,
+// interface −6 dB, et un creux de −4 dB à 2,5 kHz sur le monde (là où se jouent les consonnes).
 // Le moteur accepte un OfflineAudioContext : les pages de dev rendent une manche hors ligne
 // avec exactement le même graphe pour la mesurer.
 import { RULES } from '../../sim/rules.ts'
@@ -45,14 +47,35 @@ const AMB_TRIM_DB = -5
  * la vraie simulation et 6 bots (≈ −23 LUFS intégrés, la musique finit au-dessus).
  */
 const SFX_TRIM_DB = -4
+/**
+ * Voix : −2 dB par rapport au curseur. Le ducking des bruitages et l'égaliseur rendent la voix
+ * intelligible sans qu'elle saute de 6 à 9 LU au-dessus du fond à chaque réplique.
+ */
+const VOICE_TRIM_DB = -2
+/**
+ * Ducking du narrateur au-delà de la règle du GDD (musique et ambiance à RULES.narratorDuckDb) :
+ * à 12 oiseaux, ce sont les bruitages qui masquent la parole entre 1 et 4 kHz (68 à 84 % du
+ * masque mesuré), et les ponctuations d'interface qui couvrent le nom du vainqueur.
+ */
+const SFX_DUCK_DB = -5
+/** Creux en cloche sur le monde pendant la voix (fréquence, Q, profondeur). */
+const VOICE_EQ_HZ = 2500
+const VOICE_EQ_Q = 0.8
+const VOICE_EQ_DB = -4
 
 export class AudioEngine {
   readonly ctx: BaseAudioContext
   readonly offline: boolean
   readonly buses: Record<BusName, GainNode>
-  /** Ducking (narrateur) de la musique et de l'ambiance. */
+  /** Ducking (narrateur) de la musique, de l'ambiance, des bruitages et de l'interface. */
   readonly duckMusic: GainNode
   readonly duckAmb: GainNode
+  readonly sfxDuck: GainNode
+  readonly uiDuck: GainNode
+  /** Creux en cloche sur le monde pendant la voix (intelligibilité des consonnes). */
+  readonly voiceEq: BiquadFilterNode
+  /** Creux bref de la musique sous un accent (couronne, gros vol, esquive). */
+  readonly musicDip: GainNode
   /** Filtre de pause (passe-bas) de la musique et gain de pause. */
   readonly musicPause: BiquadFilterNode
   readonly musicPauseGain: GainNode
@@ -69,6 +92,7 @@ export class AudioEngine {
   /** Retour de la réverbe partagée. */
   readonly verbOut: GainNode
   private readonly sfxSendVol: GainNode
+  private readonly sfxSendDuck: GainNode
   private readonly musicSendVol: GainNode
   private readonly musicSendDuck: GainNode
   private readonly musicSendPause: GainNode
@@ -109,26 +133,34 @@ export class AudioEngine {
     clip.oversample = 'none' // n'agit que sur de rares crêtes, derrière le limiteur
     this.masterIn.connect(this.master).connect(glue).connect(limiter).connect(clip).connect(ctx.destination)
     this.output = clip
-    // ─ monde (+ ralenti)
+    // ─ monde (+ égaliseur de voix, ralenti)
     this.world = g()
+    this.voiceEq = ctx.createBiquadFilter()
+    this.voiceEq.type = 'peaking'
+    this.voiceEq.frequency.value = VOICE_EQ_HZ
+    this.voiceEq.Q.value = VOICE_EQ_Q
+    this.voiceEq.gain.value = 0
     this.slowmoFilter = ctx.createBiquadFilter()
     this.slowmoFilter.type = 'lowpass'
     this.slowmoFilter.frequency.value = 20000
     this.slowmoFilter.Q.value = 0.5
-    this.world.connect(this.slowmoFilter).connect(this.masterIn)
+    this.world.connect(this.voiceEq).connect(this.slowmoFilter).connect(this.masterIn)
     // ─ bus
     this.buses = { music: g(), sfx: g(), amb: g(), ui: g(), voice: g() }
     this.duckMusic = g()
     this.duckAmb = g()
+    this.sfxDuck = g()
+    this.uiDuck = g()
+    this.musicDip = g()
     this.musicPause = ctx.createBiquadFilter()
     this.musicPause.type = 'lowpass'
     this.musicPause.frequency.value = 20000
     this.musicPause.Q.value = 0.6
     this.musicPauseGain = g()
-    this.buses.music.connect(this.duckMusic).connect(this.musicPause).connect(this.musicPauseGain).connect(this.world)
+    this.buses.music.connect(this.duckMusic).connect(this.musicDip).connect(this.musicPause).connect(this.musicPauseGain).connect(this.world)
     this.buses.amb.connect(this.duckAmb).connect(this.world)
-    this.buses.sfx.connect(this.world)
-    this.buses.ui.connect(this.masterIn)
+    this.buses.sfx.connect(this.sfxDuck).connect(this.world)
+    this.buses.ui.connect(this.uiDuck).connect(this.masterIn)
     this.buses.voice.connect(this.masterIn)
     // ─ réverbe partagée : une seule convolution (la plus chère des briques), entrée mono
     //   (2 convolutions au lieu de 4), 2,8 s ; les bruitages y envoient peu, la musique plus.
@@ -141,7 +173,8 @@ export class AudioEngine {
     // les envois sont pris avant les bus : leurs gains copient volume, ducking et pause
     this.sfxReverbSend = g()
     this.sfxSendVol = g()
-    this.sfxReverbSend.connect(this.sfxSendVol).connect(verbIn)
+    this.sfxSendDuck = g()
+    this.sfxReverbSend.connect(this.sfxSendVol).connect(this.sfxSendDuck).connect(verbIn)
     this.musicReverbSend = g()
     this.musicSendVol = g()
     this.musicSendDuck = g()
@@ -177,21 +210,65 @@ export class AudioEngine {
     rampTo(this.sfxSendVol.gain, sliderToGain(v.sfx) * dbToGain(SFX_TRIM_DB), t, seconds)
     rampTo(this.buses.ui.gain, sliderToGain(v.sfx), t, seconds)
     rampTo(this.buses.amb.gain, sliderToGain(v.sfx) * dbToGain(AMB_TRIM_DB), t, seconds)
-    rampTo(this.buses.voice.gain, sliderToGain(v.voice), t, seconds)
+    rampTo(this.buses.voice.gain, sliderToGain(v.voice) * dbToGain(VOICE_TRIM_DB), t, seconds)
   }
 
   /**
-   * Ducking du narrateur : musique et ambiance à RULES.narratorDuckDb (−6 dB), rampe de
+   * Ducking du narrateur : musique, ambiance et interface à RULES.narratorDuckDb (−6 dB),
+   * bruitages à SFX_DUCK_DB, creux de VOICE_EQ_DB à 2,5 kHz sur le monde ; rampe de
    * RULES.narratorDuckAttackMs, relâche de RULES.narratorDuckReleaseMs. Compté (imbrication sûre).
    */
   duck(on: boolean, when = this.now): void {
     this.duckCount = Math.max(0, this.duckCount + (on ? 1 : -1))
     const active = this.duckCount > 0
     const target = active ? dbToGain(RULES.narratorDuckDb) : 1
+    const sfx = active ? dbToGain(SFX_DUCK_DB) : 1
     const secs = (active ? RULES.narratorDuckAttackMs : RULES.narratorDuckReleaseMs) / 1000
     rampTo(this.duckMusic.gain, target, when, secs)
     rampTo(this.musicSendDuck.gain, target, when, secs)
     rampTo(this.duckAmb.gain, target, when, secs)
+    rampTo(this.uiDuck.gain, target, when, secs)
+    rampTo(this.sfxDuck.gain, sfx, when, secs)
+    rampTo(this.sfxSendDuck.gain, sfx, when, secs)
+    rampTo(this.voiceEq.gain, active ? VOICE_EQ_DB : 0, when, secs)
+  }
+
+  /** Voix du narrateur en cours (ducking actif). */
+  get ducking(): boolean {
+    return this.duckCount > 0
+  }
+
+  private dipUntil = -1
+
+  /**
+   * Creux bref de la musique sous un accent (couronne, gros vol, esquive) : `db` en 30 ms, tenu
+   * `seconds`, retour en 150 ms. Ignoré si un creux est déjà en cours (pas de pompage).
+   */
+  dipMusic(db: number, seconds: number, when = this.now): void {
+    if (when < this.dipUntil) return
+    const p = this.musicDip.gain
+    const low = dbToGain(db)
+    p.cancelScheduledValues(when)
+    p.setValueAtTime(1, when)
+    p.linearRampToValueAtTime(low, when + 0.03)
+    p.setValueAtTime(low, when + 0.03 + seconds)
+    p.linearRampToValueAtTime(1, when + 0.18 + seconds)
+    this.dipUntil = when + 0.18 + seconds
+  }
+
+  /**
+   * Silence du gel de la nuit : tout le monde (musique, ambiance, bruitages, réverbe) se tait
+   * en 120 ms pendant `seconds`, puis revient en 80 ms. Les compresseurs du master relèvent de
+   * ~9 dB ce qui reste du vent et des queues de réverbe : sans cette coupure, le « silence »
+   * mesuré était un creux à −37 dBFS.
+   */
+  silenceWorld(seconds: number, when = this.now): void {
+    const p = this.world.gain
+    p.cancelScheduledValues(when)
+    p.setValueAtTime(1, when)
+    p.linearRampToValueAtTime(0, when + 0.12)
+    p.setValueAtTime(0, when + seconds)
+    p.linearRampToValueAtTime(1, when + seconds + 0.08)
   }
 
   /** Pause : musique étouffée (passe-bas 400 Hz, −8 dB). */

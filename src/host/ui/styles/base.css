@@ -83,6 +83,8 @@
   line-height: 1.2;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Patrick Hand SC dessine « fi », « ffl » en bas de casse au milieu des petites capitales (« ﬁge », « souﬄe ») */
+  font-variant-ligatures: no-common-ligatures;
   user-select: none;
   z-index: 10;
 }
@@ -388,11 +390,12 @@
   inset: var(--safe-y) var(--safe-x);
 }
 
-/* Voile de lisibilité (jamais de flou) : encre à plat. */
+/* Voile de lisibilité (jamais de flou) : papier calque à plat (#F7F0E3 à 55 %). Un voile
+   d'encre sur le sable chaud donnait un brun boueux ; le papier garde la planche lisible. */
 .veil {
   position: absolute;
   inset: 0;
-  background: rgb(24 19 34 / 0.42);
+  background: rgb(247 240 227 / 0.55);
   animation: ui-fade-in 200ms linear both;
 }
 

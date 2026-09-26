@@ -27,25 +27,39 @@ function loadImage(src: string): Promise<void> {
   })
 }
 
-/** Attend que la scène ait rendu assez d'images stables (shaders compilés, textures envoyées). */
-function warmUp(progress: (p: number) => void, frames = 30, timeoutMs = 20000): Promise<void> {
+/** Part de l'étape de chauffe atteinte une fois les N premières images rendues (le reste : stabilité). */
+const WARMUP_FRAMES_SHARE = 0.8
+/** Images consécutives sous 50 ms qui font une scène « stable ». */
+const WARMUP_STABLE_FRAMES = 8
+
+/**
+ * Attend que la scène ait rendu assez d'images stables (shaders compilés, textures envoyées).
+ * Barre honnête (polish G12) : les N premières images mènent l'étape à 80 % (la barre à 95 %),
+ * la stabilité fait le reste ; 100 % seulement quand c'est stable, ou au délai limite de 6 s
+ * (avant : 100 % dès 30 images, puis jusqu'à 20 s figé sur « 100 % » sur une machine lente).
+ */
+function warmUp(progress: (p: number) => void, frames = 30, timeoutMs = 6000): Promise<void> {
   return new Promise(resolve => {
     const start = performance.now()
     const from = runner.renderedFrames
     let last = performance.now()
     let stable = 0
+    let shown = 0
     const loop = () => {
       const t = performance.now()
       const dt = t - last
       last = t
       const n = runner.renderedFrames - from
       stable = dt < 50 ? stable + 1 : 0
-      progress(Math.min(1, n / frames))
-      if ((n >= frames && stable >= 8) || t - start > timeoutMs) {
+      if ((n >= frames && stable >= WARMUP_STABLE_FRAMES) || t - start > timeoutMs) {
         progress(1)
         resolve()
         return
       }
+      // jamais 100 % avant la fin, et jamais en arrière (un accroc remet la stabilité à zéro)
+      const p = WARMUP_FRAMES_SHARE * Math.min(1, n / frames) + (n >= frames ? (1 - WARMUP_FRAMES_SHARE) * Math.min(1, stable / WARMUP_STABLE_FRAMES) : 0)
+      shown = Math.max(shown, Math.min(0.96, p))
+      progress(shown)
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
@@ -99,6 +113,7 @@ export async function bootGame(): Promise<void> {
     base += step.weight
   }
   setLoading(1, 'host.loading.done')
-  await new Promise(r => setTimeout(r, 450))
+  // la barre pleine se voit un instant, pas plus (G12 : jamais « 100 % » figé)
+  await new Promise(r => setTimeout(r, 250))
   runner.finishLoading()
 }

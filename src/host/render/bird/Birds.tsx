@@ -15,7 +15,7 @@ export interface BirdsProps {
   quality?: BirdsQuality
   /** Vue de jeu à lire (défaut : gameView global). */
   view?: GameView
-  /** Échelle cosmétique : 'auto' (défaut) = ≥ 60 px d'envergure, ≤ ×1,3 ; ou un facteur fixe. */
+  /** Échelle cosmétique : 'auto' (défaut) = ≥ 60 px d'envergure, ≤ ×1,3 (×1,6 au-delà de 8 oiseaux) ; ou un facteur fixe. */
   renderScale?: number | 'auto'
   /** Mode de mise en scène par slot (ex. podium : 'perch'). */
   modes?: ReadonlyArray<BirdMode | undefined>

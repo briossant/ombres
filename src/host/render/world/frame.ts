@@ -3,7 +3,9 @@
 // height map. Pas d'allocation.
 import * as THREE from 'three'
 import { RULES } from '../../../sim/rules.ts'
+import { frontSpeed } from '../../../sim/night.ts'
 import type { SimState } from '../../../sim/types.ts'
+import { cameraState } from '../../camera/cue.ts'
 import type { GameView } from '../../view.ts'
 import { updateOwnerTables, updatePalette } from '../npr/palette.ts'
 import { shadowAreas } from '../npr/shadowMap.ts'
@@ -11,6 +13,8 @@ import { NPR, setNightJag } from '../npr/uniforms.ts'
 import type { WorldView } from '../worldView.ts'
 
 const DEG = Math.PI / 180
+/** Marge (m) de la cascade focus autour du cadre de la caméra de jeu. */
+const FOCUS_MARGIN = 20
 
 /** Élévation minimale pour la projection des ombres (division par sin e). */
 const MIN_PROJ_ELEV = 2 * DEG
@@ -87,6 +91,7 @@ export function applyWorldFrame(view: GameView, wv: WorldView, camera: THREE.Cam
 
   if (playersChanged(view)) updateOwnerTables(view.players)
   NPR.uColorblind.value = view.colorblind ? 1 : 0
+  NPR.uShadowSmooth.value = wv.shadowSmooth ? 1 : 0
 
   // ── front de nuit ──
   const night = sim?.night
@@ -96,6 +101,7 @@ export function applyWorldFrame(view: GameView, wv: WorldView, camera: THREE.Cam
     NPR.uNightPerp.value.set(-night.dirY, -night.dirX)
     NPR.uNightS.value = night.s
     NPR.uNightSpan.value = night.jagSpan
+    if (sim) NPR.uNightSpeed.value = frontSpeed(sim.arena.a, sim.arena.b, sim.sun.T, night.dirX, night.dirY)
     if (night.jag !== lastJag) {
       lastJag = night.jag
       setNightJag(night.jag)
@@ -113,10 +119,15 @@ export function applyWorldFrame(view: GameView, wv: WorldView, camera: THREE.Cam
   shadowAreas.halfFar = 1100
   // au-dessus de ~40°, la plus haute tour (120 m) ne projette pas au-delà de la zone proche
   shadowAreas.farOn = elev < 40 * DEG || camera.position.y < 90
-  // cascade focus : seulement pour une caméra basse (plans de mise en scène)
+  // cascade focus : devant une caméra basse (plans de mise en scène), ou, en manche, sur le cadre
+  // visible au sol publié par la caméra + 20 m (polish W5) quand il est assez serré pour gagner en
+  // résolution sur la cascade proche (sinon inutile : 12 oiseaux cadrent toute l'arène)
   camera.getWorldDirection(fwd)
   const low = camera.position.y < 90
-  shadowAreas.focusOn = low
+  const fr = cameraState.frame
+  const frameHalf = Math.max(fr.halfWidth, fr.halfHeight) + FOCUS_MARGIN
+  const roundFocus = wv.roundFocus && !low && sim !== null && sim.config.mode === 'round' && cameraState.mode === 'round' && frameHalf < shadowAreas.half * 0.7
+  shadowAreas.focusOn = low || roundFocus
   if (low) {
     const hx = fwd.x
     const hz = fwd.z
@@ -124,6 +135,11 @@ export function applyWorldFrame(view: GameView, wv: WorldView, camera: THREE.Cam
     shadowAreas.fx = camera.position.x + (hx / hl) * 75
     shadowAreas.fz = camera.position.z + (hz / hl) * 75
     shadowAreas.focusHalf = 90
+  } else if (roundFocus) {
+    // repère sim (x est, y nord) → three (x, −y) ; zone carrée qui couvre le rectangle
+    shadowAreas.fx = fr.x
+    shadowAreas.fz = -fr.y
+    shadowAreas.focusHalf = frameHalf
   }
   const cx = camera.position.x
   const cz = camera.position.z

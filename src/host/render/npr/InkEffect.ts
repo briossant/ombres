@@ -19,7 +19,7 @@ uniform mat4 uCamWorld;
 uniform vec3 uInk, uNInk, uHaze, uNHaze, uSkyHorizon, uNSkyHorizon;
 uniform float uFogK, uFogStart;
 uniform vec2 uThickRange;
-uniform float uThick, uWobble, uPaper, uDepthK, uNormalK, uFlash, uVignette;
+uniform float uThick, uWobble, uPaper, uDepthK, uNormalK, uFlash, uVignette, uSketch, uSketchFront, uSketchSpan;
 uniform int uDebug;
 ${nightChunk}
 float linZ(vec2 uv){ return -perspectiveDepthToViewZ(texture2D(tDepth, uv).r, cameraNear, cameraFar); }
@@ -51,20 +51,26 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec4 tl = texture2D(tNormal, c - vec2(o1.x, 0.0)), tr = texture2D(tNormal, c + vec2(o1.x, 0.0));
   vec4 td = texture2D(tNormal, c - vec2(0.0, o1.y)), tu = texture2D(tNormal, c + vec2(0.0, o1.y));
   vec3 n0 = nrm(t0);
-  float dn = max(max(1.0 - dot(n0, nrm(tl)), 1.0 - dot(n0, nrm(tr))), max(1.0 - dot(n0, nrm(td)), 1.0 - dot(n0, nrm(tu))));
+  // trame de dissolution (ID 254, polish W9) : ni trait sur ses pixels, ni frontière avec eux
+  float sdC = step(253.5 / 255.0, t0.a);
+  vec4 keep = 1.0 - step(vec4(253.5 / 255.0), vec4(tl.a, tr.a, td.a, tu.a));
+  float dn = max(max((1.0 - dot(n0, nrm(tl))) * keep.x, (1.0 - dot(n0, nrm(tr))) * keep.y), max((1.0 - dot(n0, nrm(td))) * keep.z, (1.0 - dot(n0, nrm(tu))) * keep.w));
   float eNormal = smoothstep(uNormalK, 1.8 * uNormalK, dn) * step(1.5 / 255.0, t0.a);
-  float eId = step(0.5 / 255.0, max(max(abs(tl.a - t0.a), abs(tr.a - t0.a)), max(abs(td.a - t0.a), abs(tu.a - t0.a))))
+  float eId = step(0.5 / 255.0, max(max(abs(tl.a - t0.a) * keep.x, abs(tr.a - t0.a) * keep.y), max(abs(td.a - t0.a) * keep.z, abs(tu.a - t0.a) * keep.w)))
             * step(1.5 / 255.0, t0.a);                   // pas sur le sol (1) ni le ciel (0)
   float interior = max(eNormal, eId) * 0.85 * (1.0 - smoothstep(0.4, 0.5, fog));   // R4 : plus de traits internes au-delà de 0,5
   float isSky = step(t0.a, 0.5 / 255.0) * step(cameraFar * 0.5, z0);
-  float edge = max(eDepth, interior) * (1.0 - isSky) * (1.0 - smoothstep(0.35, 0.85, fog));   // R4 : fondu « Sable »
+  float edge = max(eDepth, interior) * (1.0 - isSky) * (1.0 - smoothstep(0.35, 0.85, fog)) * (1.0 - sdC);   // R4 : fondu « Sable »
   // encre : jour/nuit selon le front, se brume au loin (R1)
   float nd = nightDist(wpos.xz);
   float n = max(uNightAll, step(0.0, nd));
   vec3 haze = mix(mix(uHaze, uNHaze, n), mix(uSkyHorizon, uNSkyHorizon, n), smoothstep(0.5, 0.9, fog));
   vec3 ink = mix(mix(uInk, uNInk, n), haze, fog * 0.8);
-  // flash « planche » : la couleur recule vers le papier, les traits restent (crayonné)
-  base = mix(base, vec3(0.930, 0.871, 0.776), 0.7 * uFlash);
+  // flash « planche » : la couleur recule vers le papier, les traits restent (crayonné) ; au compte
+  // à rebours, crayonné tenu à l'est du front de couleur qui coule d'ouest en est (W13)
+  float sketch = 0.0;
+  if (uSketch > 0.0) sketch = uSketch * smoothstep(uSketchFront - 8.0, uSketchFront + 8.0, clamp(wpos.x, -uSketchSpan, uSketchSpan));
+  base = mix(base, vec3(0.930, 0.871, 0.776), 0.7 * max(uFlash, sketch));
   vec3 col = mix(base, ink, edge);
   col *= 1.0 - uPaper * (texture2D(uNoise, uv * resolution / (256.0 * s)).a - 0.4);   // R21 : grain statique
   vec2 vv = uv - 0.5;
@@ -115,6 +121,9 @@ export class InkEffect extends Effect {
         ['uDepthK', U(0.025)],
         ['uNormalK', U(0.23)],
         ['uFlash', NPR.uFlash],
+        ['uSketch', NPR.uSketch],
+        ['uSketchFront', NPR.uSketchFront],
+        ['uSketchSpan', NPR.uSketchSpan],
         ['uVignette', U(0.1)],
         ['uDebug', U(0)],
         ['uNightOn', NPR.uNightOn],

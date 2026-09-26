@@ -56,7 +56,8 @@
 }
 .rules__text span {
   display: block;
-  white-space: nowrap;
+  /* une phrase par ligne ; une phrase longue (« Pique d'en haut : sa traînée… ») se replie, équilibrée */
+  text-wrap: balance;
 }
 .rules__text {
   margin: 20px 0 0;

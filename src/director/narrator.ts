@@ -11,7 +11,9 @@
 // - péremption : RULES.narratorStaleSeconds (RULES.narratorUrgentStaleSeconds en priorité 1) ;
 //   un événement plus prioritaire survenu entre-temps passe devant ;
 // - plafonds par type et par manche/partie, écarts par groupe (piqués 25 s, meneur 20 s…) ;
-// - silence pendant le compte à rebours et à partir de RULES.narratorQuietFrom ;
+// - silence pendant le compte à rebours et la conque d'« Envol » (ouverture à OPENING_AT s), et à
+//   partir de RULES.narratorQuietFrom ; « Dix secondes » se tait juste après la Grande Ombre, et le
+//   photo-finish n'est dit que s'il finit avant les coups de bois des 5 dernières secondes ;
 // - aucune variante rejouée dans une partie (sauf répliques structurelles, voir KindSpec.reuse) ;
 // - à priorité égale, un événement qui concerne un humain passe devant ; un événement qui ne
 //   concerne que des bots perd un niveau de priorité ; une variante qui nomme un humain est préférée.
@@ -57,6 +59,11 @@ export interface MatchInfo {
   rounds: number
   /** Dernière manche comptée double (réglage de partie, RULES.lastRoundMultiplier). */
   lastRoundDouble: boolean
+  /**
+   * Graine de la partie : le tirage des variantes en dépend (deux soirées ne se ressemblent pas).
+   * Absente : la graine du constructeur continue.
+   */
+  seed?: number
 }
 
 export interface NarratorOptions {
@@ -92,6 +99,26 @@ const INPUT_EPS = 0.05
  * dans RULES (demandée dans docs/agent-notes/REQUESTS.md) : même instant que stats.cellsAt60.
  */
 const RUNAWAY_FROM = 60
+/**
+ * Ouverture de manche : dite à 1,5 s de soleil (× T/110), une fois retombée l'attaque de la conque
+ * et de la cloche d'« Envol ».
+ */
+const OPENING_AT = 1.5
+/**
+ * « Dix secondes » ne suit pas de près la Grande Ombre (moins de 4 s après la fin de sa réplique) :
+ * le bol à 100 s et le cadran portent déjà l'information, et la fin de manche doit respirer.
+ */
+const TEN_AFTER_GREAT_SHADOW = 4
+/**
+ * Photo-finish : décidé à 101,5 s (× T/110), après la réplique de la Grande Ombre. Comme toute
+ * réplique de manche, il n'est dit que s'il finit LAST_TICKS_MARGIN s avant les coups de bois des
+ * LAST_SECONDS dernières secondes (événements lastSeconds 5..1 de la simulation, à T − 5 … T − 1).
+ */
+const PHOTO_FINISH_CHECK_AT = 101.5
+const LAST_SECONDS = 5
+const LAST_TICKS_MARGIN = 0.2
+/** Mélange de la graine de partie (le tirage des variantes ne recopie pas celui de la carte). */
+const SEED_SALT = 0x0b5e
 
 /** Instants (s, pour T = 110) des répliques d'horloge réservées. */
 const CLOCK_AT: Partial<Record<NarratorKind, number>> = {
@@ -157,7 +184,7 @@ export function rankBirds(state: SimState): RankEntry[] {
 
 export class NarratorDirector {
   private readonly durationOf?: NarratorOptions['durationOf']
-  private readonly rand: () => number
+  private rand: () => number
 
   private players: (DirectorPlayer | undefined)[] = []
   private match: MatchInfo = { rounds: RULES.roundsDefault, lastRoundDouble: true }
@@ -176,7 +203,11 @@ export class NarratorDirector {
   private roundLines = 0
   private groupAt = new Map<string, number>()
   private clockFired = new Set<NarratorKind>()
+  /** Fin prévue (temps réel) des répliques d'horloge dites dans la manche. */
+  private clockEnd = new Map<NarratorKind, number>()
   private openingDone = false
+  /** « Envol » passé : l'ouverture part à OPENING_AT s de soleil. */
+  private openingArmed = false
   private hits: HitRecord[] = []
   private hitsThisRound = 0
   private crownHolder = -1
@@ -217,6 +248,7 @@ export class NarratorDirector {
   /** Nouvelle partie (y compris une revanche) : efface la mémoire des variantes. */
   startMatch(info: MatchInfo): void {
     this.match = { ...info }
+    if (info.seed !== undefined) this.rand = prng((info.seed ^ SEED_SALT) >>> 0)
     this.round = 0
     this.used.clear()
     this.matchCount.clear()
@@ -237,7 +269,9 @@ export class NarratorDirector {
     this.roundLines = 0
     this.groupAt.clear()
     this.clockFired.clear()
+    this.clockEnd.clear()
     this.openingDone = false
+    this.openingArmed = false
     this.hits = []
     this.hitsThisRound = 0
     this.crownHolder = -1
@@ -253,7 +287,22 @@ export class NarratorDirector {
     this.photoChecked = false
     this.runawayNextCheck = 0
     this.queue = []
-    if (this.isLastDoubleRound()) this.push({ kind: 'lastRound', at: now })
+    if (this.isLastDoubleRound() && !this.lastRoundAnnounced) this.push({ kind: 'lastRound', at: now })
+    return this.poll(now)
+  }
+
+  /**
+   * Annonce de la dernière manche comptée double, AVANT de la lancer (sur l'écran des résultats) :
+   * `round` = numéro (1-based) de la manche qui va commencer. Le runner lance la manche une fois la
+   * réplique dite, et startRound() ne la répète pas. Null si ce n'est pas la dernière manche double.
+   */
+  announceLastRound(round: number, now: number): NarratorCue | null {
+    const m = this.match
+    if (this.lastRoundAnnounced || !(m.lastRoundDouble && m.rounds > 1 && round === m.rounds)) return null
+    this.queue = []
+    this.push({ kind: 'lastRound', at: now })
+    // l'annonce passe même si la réplique des résultats n'a pas fini : le groupe a demandé la suite
+    this.lastStart = this.lastEnd = -Infinity
     return this.poll(now)
   }
 
@@ -264,6 +313,10 @@ export class NarratorDirector {
   update(state: SimState, events: readonly SimEvent[], now: number, inputs?: ReadonlyArray<BirdInput | undefined>): NarratorCue | null {
     if (state.config.mode !== 'round') return null
     for (const e of events) this.onEvent(state, e, now)
+    if (this.openingArmed && state.sun.t >= OPENING_AT * this.scale(state)) {
+      this.openingArmed = false
+      this.opening(now)
+    }
     this.watch(state, now, inputs)
     return this.poll(now, state)
   }
@@ -293,6 +346,12 @@ export class NarratorDirector {
       }
       const duration = this.lineDuration(pick.line, pick.slot)
       if (state && !this.clearOfClock(p, duration, state)) continue
+      // fin de manche : une réplique de manche (photo-finish compris) finit avant les coups de bois
+      // des dernières secondes, sinon on se tait (le temps ne fait qu'avancer : on l'abandonne)
+      if (inRound && state && state.sun.t + duration > state.sun.T - LAST_SECONDS - LAST_TICKS_MARGIN) {
+        this.drop(p)
+        continue
+      }
       return this.dispatch(p, pick.line, pick.slot, duration, now)
     }
     return null
@@ -390,6 +449,7 @@ export class NarratorDirector {
   importMemory(m: NarratorMemory): void {
     if (m?.v !== 1) return
     this.match = { ...m.match }
+    if (m.match.seed !== undefined) this.rand = prng((m.match.seed ^ SEED_SALT ^ Math.imul(m.seq, 0x9e3779b1)) >>> 0)
     this.round = m.round
     this.used = new Map(Object.entries(m.used))
     this.matchCount = new Map(Object.entries(m.matchCount) as [NarratorKind, number][])
@@ -407,11 +467,12 @@ export class NarratorDirector {
   private onEvent(state: SimState, e: SimEvent, now: number): void {
     switch (e.type) {
       case 'countdown':
-        if (e.n === 0) this.opening(now)
+        if (e.n === 0 && !this.openingDone) this.openingArmed = true
         break
       case 'phase':
-        if (e.phase === 'noon') this.opening(now)
-        else if (e.phase === 'golden' || e.phase === 'sunset' || e.phase === 'greatShadow') this.clock(e.phase, state, now)
+        if (e.phase === 'noon') {
+          if (!this.openingDone) this.openingArmed = true
+        } else if (e.phase === 'golden' || e.phase === 'sunset' || e.phase === 'greatShadow') this.clock(e.phase, state, now)
         break
       case 'tenSeconds':
         this.clock('tenSeconds', state, now)
@@ -449,6 +510,11 @@ export class NarratorDirector {
     if (this.clockFired.has(kind)) return
     this.clockFired.add(kind)
     if (kind === 'greatShadow') this.snapshotGreatShadow(state)
+    if (kind === 'tenSeconds') {
+      // la Grande Ombre vient de parler (ou va parler) : pas de deuxième réplique collée
+      const gsEnd = this.clockEnd.get('greatShadow')
+      if (this.queue.some(p => p.kind === 'greatShadow') || (gsEnd !== undefined && now - gsEnd < TEN_AFTER_GREAT_SHADOW)) return
+    }
     this.push({ kind, at: now })
   }
 
@@ -583,8 +649,8 @@ export class NarratorDirector {
       }
     }
 
-    // Photo-finish
-    if (!this.photoChecked && sun.t >= RULES.photoFinishAt * k) {
+    // Photo-finish (décidé tôt : il doit finir avant les coups de bois des dernières secondes)
+    if (!this.photoChecked && sun.t >= PHOTO_FINISH_CHECK_AT * k) {
       this.photoChecked = true
       const r = rankBirds(state)
       if (r.length >= 2 && (r[0].cells - r[1].cells) / Math.max(1, state.grid.arenaCells) <= RULES.photoFinishGap) {
@@ -649,7 +715,9 @@ export class NarratorDirector {
 
   private isQuiet(state: SimState): boolean {
     const sun = state.sun
-    return sun.phase === 'countdown' || sun.phase === 'night' || sun.phase === 'over' || sun.t >= RULES.narratorQuietFrom * this.scale(state)
+    const k = this.scale(state)
+    // compte à rebours, conque d'« Envol » (jusqu'à l'ouverture), fin de manche, nuit
+    return sun.phase === 'countdown' || sun.phase === 'night' || sun.phase === 'over' || sun.t < OPENING_AT * k || sun.t >= RULES.narratorQuietFrom * k
   }
 
   private allowed(p: Pending, now: number): boolean {
@@ -727,6 +795,7 @@ export class NarratorDirector {
     if (spec.scope === 'round' || spec.scope === 'clock') this.roundLines++
     if (p.kind === 'idle') this.idleSaid.add(p.actor)
     if (p.kind === 'lastRound') this.lastRoundAnnounced = true
+    if (spec.scope === 'clock') this.clockEnd.set(p.kind, now + duration)
     this.lastStart = now
     this.lastEnd = now + duration
     this.queue = this.queue.filter(q => q.group !== p.group)

@@ -118,16 +118,72 @@ describe('déclencheurs', () => {
     expect(r.shown[1].cue.colorIndex).toBe(10)
   })
 
-  it('premier piqué subi → « Au clac : COUP D’AILE ! » pendant le piqué', () => {
+  it('premier piqué subi → « … COUP D’AILE ! » au clac (pas à la prise d’élan)', () => {
     const r = diver(new Round(director()))
       .do(5, s => {
         s.bird(1).dive = 'windup'
         s.bird(1).diveTarget = 0
       })
       .at(5, { type: 'diveWindup', hunter: 1, target: 0 })
+      .do(5.4, s => (s.bird(1).dive = 'committed'))
+      .at(5.4, { type: 'diveCommit', hunter: 1, target: 0 })
       .run(6)
     expect(r.ids()).toEqual(['dodge'])
-    expect(hintText(r.shown[0].cue, 'fr')).toBe('Au clac : COUP D’AILE !')
+    expect(r.shown[0].t).toBeCloseTo(5.4, 1)
+    expect(hintText(r.shown[0].cue, 'fr')).toContain('COUP D’AILE')
+  })
+
+  it('feinte annulée avant le clac : rien, pas marquée vue ; au vrai clac suivant, l’indication s’affiche', () => {
+    const memory = createMemoryHintStore()
+    const r = diver(new Round(director('auto', memory)))
+      .do(5, s => {
+        s.bird(1).dive = 'windup'
+        s.bird(1).diveTarget = 0
+      })
+      .at(5, { type: 'diveWindup', hunter: 1, target: 0 })
+      // feinte : le chasseur relâche 0,4 s après la prise d'élan, avant le clac
+      .do(5.4, s => {
+        s.bird(1).dive = 'none'
+        s.bird(1).diveTarget = -1
+      })
+      .at(5.4, { type: 'diveCancel', hunter: 1, target: 0, reason: 'feint' })
+      .run(9)
+    expect(r.ids()).toEqual([])
+    expect(memory.has('p0', 'dodge')).toBe(false)
+    r.do(12, s => {
+      s.bird(2).dive = 'windup'
+      s.bird(2).diveTarget = 0
+    })
+      .at(12, { type: 'diveWindup', hunter: 2, target: 0 })
+      .do(12.3, s => (s.bird(2).dive = 'committed'))
+      .at(12.3, { type: 'diveCommit', hunter: 2, target: 0 })
+      .run(13)
+    expect(r.ids()).toEqual(['dodge'])
+    expect(r.shown[0].t).toBeCloseTo(12.3, 1)
+    expect(memory.has('p0', 'dodge')).toBe(true)
+  })
+
+  it('pas de bulle individuelle pendant la Grande Ombre (ni juste avant) ; le bandeau reste', () => {
+    const T = RULES.roundSunSeconds
+    const G = RULES.greatShadowAt
+    const r = diver(new Round(director()))
+      .do(G - 7, s => (s.bird(0).hidden = true))
+      // l'ombre s'éloigne de l'oiseau 5 s avant la nuit : l'écart de 8 s la fait attendre jusqu'à la Grande Ombre
+      .do(G - 5, s => {
+        s.bird(0).hidden = false
+        s.bird(0).shadow.cx = s.bird(0).x + RULES.hintShadowOffsetMin + 5
+      })
+      .do(G + 2, s => {
+        s.bird(1).dive = 'committed'
+        s.bird(1).diveTarget = 0
+      })
+      .at(G + 2, { type: 'diveWindup', hunter: 1, target: 0 }, { type: 'crown', slot: 1, prev: -1 })
+      .at(G + 2.3, { type: 'diveCommit', hunter: 1, target: 0 })
+      .at(G, { type: 'phase', phase: 'greatShadow' })
+      .run(T - 0.5)
+    expect(r.ids()).toEqual(['towerShade', 'greatShadow'])
+    const late = r.shown.filter(x => x.cue.display === 'bubble' && x.t >= G - 1.5)
+    expect(late).toEqual([])
   })
 
   it('ombre pâle sur du sable fort adverse pendant 1,5 s (lu dans la grille)', () => {
@@ -209,6 +265,7 @@ describe('règles', () => {
         s.bird(1).diveTarget = 0
       })
       .at(5, { type: 'diveWindup', hunter: 1, target: 0 })
+      .at(5.3, { type: 'diveCommit', hunter: 1, target: 0 })
       .run(7)
     expect(r.ids()).toEqual(['dodge'])
   })

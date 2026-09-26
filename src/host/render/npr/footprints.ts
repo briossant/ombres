@@ -13,6 +13,7 @@
 import * as THREE from 'three'
 import type { BirdState, SimState } from '../../../sim/types.ts'
 import { CASTER_TYPE, shadowCasters, type CasterHandle } from './shadowMap.ts'
+import { NPR } from './uniforms.ts'
 
 const MAX_BIRDS = 12
 export const FOOTPRINT_OPACITY = { strong: 0.7, pale: 0.35 } as const
@@ -57,6 +58,9 @@ export class BirdFootprints {
     const theta = Math.atan2(shadowDirY, shadowDirX)
     const c = Math.cos(theta)
     const sn = Math.sin(theta)
+    // axe et ellipses exposés au sol (tirets du liseré pâle, polish W11)
+    NPR.uFpDir.value.set(c, -sn)
+    const ell = NPR.uFpEllipse.value
     for (let i = 0; i < count; i++) {
       const f = inputs[i]!
       const s = this.slots[f.slot]
@@ -83,6 +87,7 @@ export class BirdFootprints {
       e[15] = 1
       s.obj.matrixWorld.copy(s.obj.matrix)
       s.obj.visible = true
+      ell[f.slot + 1]?.set(f.cx, -f.cy, f.rAlong, f.r)
       s.handle.setOwner(f.slot + 1)
       s.handle.setStrength(f.strong ? FOOTPRINT_OPACITY.strong : FOOTPRINT_OPACITY.pale)
       s.handle.setFakeHeight(f.strong ? FAKE_H.strong : FAKE_H.pale)

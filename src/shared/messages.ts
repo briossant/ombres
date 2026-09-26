@@ -245,6 +245,11 @@ export interface PhoneView {
   paused: PauseInfo | null
   /** Mode daltonien du PC : glyphe en grand dans le bandeau, trame sur le lavis (ART_BIBLE §3.5). */
   colorblind?: boolean
+  /**
+   * Réglage « Réduire les flashs » du PC : pas d'éclair (clac, bandeau), bordure d'alerte tenue au lieu
+   * de pulsée, aucun clignotement. Absent = faux (ancien PC).
+   */
+  reduceFlashes?: boolean
   lobby?: LobbyInfo
   intro?: IntroInfo
   play?: PlayInfo

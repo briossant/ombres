@@ -5,18 +5,22 @@ import { Euler, Group, Matrix4, Quaternion, Vector3, type Camera, type Perspecti
 import { RULES } from '../../../sim/rules.ts'
 import { MAX_PLAYERS, PLAYER_COLORS } from '../../../shared/players.ts'
 import type { GameView } from '../../view.ts'
-import { ANCHOR_STRIDE, anchorOffset, birdAnchors, birdAnimEvents, crownLift, type WingbeatEvent } from './anchors.ts'
+import { ANCHOR_STRIDE, PERCH_CROWN_LIFT_M, anchorOffset, birdAnchors, birdAnimEvents, crownLift, type WingbeatEvent } from './anchors.ts'
 import { BirdAnimator, emptyFrame, frameFromStates, type BirdFrame, type BirdMode } from './animator.ts'
-import { CrownMesh } from './crown.ts'
+import { CROWN_HEIGHT, CROWN_WIDTH, CrownMesh } from './crown.ts'
 import type { BirdDetail } from './geometry.ts'
 import { glyphIndex } from './glyphs.ts'
-import { clamp, clamp01, hash01, smoothstep, spring, springTo, type Spring } from './math.ts'
+import { ACCENT_SCALE_FAR, BAND_FAR, HULL_WIDTH_FAR_PX, HULL_WIDTH_PX } from './material.ts'
+import { clamp, clamp01, hash01, lerp, smoothstep, spring, springTo, type Spring } from './math.ts'
 import { OUTLINE_ID, addBirdCaster, hexToLinear, type CasterHandle } from './npr.ts'
 import { BirdRig, getBirdAsset } from './rig.ts'
 
 export interface BirdsOptions {
   detail: BirdDetail
-  /** Échelle cosmétique : 'auto' = envergure ≥ 60 px à l'écran, plafonnée à RULES.birdRenderScaleMax. */
+  /**
+   * Échelle cosmétique : 'auto' = envergure ≥ 60 px à l'écran, plafonnée à RULES.birdRenderScaleMax
+   * (RULES.birdRenderScaleMaxCrowded au-delà de 8 oiseaux).
+   */
   renderScale: number | 'auto'
   /** Enregistre l'« âme » de chaque oiseau dans la height shadow map. */
   castShadows: boolean
@@ -24,8 +28,23 @@ export interface BirdsOptions {
 
 /** Envergure visée à l'écran par l'échelle automatique (px en 1080p). */
 const AUTO_SCALE_SPAN_PX = 60
-/** Taille minimale de la couronne à l'écran (px en 1080p, ART_BIBLE §6.7). */
+/** Au-delà de ce nombre d'oiseaux, le plafond de l'échelle cosmétique passe à RULES.birdRenderScaleMaxCrowded. */
+const CROWDED_BIRDS = 8
+/** Taille minimale de la couronne à l'écran (px en 1080p, ART_BIBLE §6.7 : ≥ 14 px). */
 const CROWN_MIN_PX = 16
+/** Couronne posée sur la capuche (gros plans) : largeur (m, × échelle), taille minimale (px). */
+const CROWN_HOOD_W = 0.55
+const CROWN_HOOD_MIN_PX = 14
+/** Couronne du podium : posée au-dessus de la tête, largeur (m), taille minimale (px). */
+const CROWN_PERCH_W = 1.3
+const CROWN_PERCH_MIN_PX = 20
+/** Envergure affichée (px 1080p) : sous FAR_FULL_PX, traitement « loin » complet (bande élargie, cape et selle agrandies, cerne fin)… */
+const FAR_FULL_PX = 68
+/** …qui disparaît progressivement jusqu'à FAR_NONE_PX. */
+const FAR_NONE_PX = 98
+/** Hystérésis du cerne des pièces colorées (px d'envergure affichée) : coupé sous OFF, rétabli au-dessus de ON. */
+const ACCENT_ID_OFF_PX = 78
+const ACCENT_ID_ON_PX = 86
 /** Bascule vers le maillage détaillé au-delà de cette envergure à l'écran (px 1080p)… */
 const NEAR_IN_PX = 240
 /** …et retour au maillage léger en dessous de celle-ci. */
@@ -45,6 +64,10 @@ class BirdSlot {
 
   /** Gros plan (détail « near ») ou distance de jeu (« far »). */
   near = false
+  /** Pièces colorées cernées (ID propre) : coupé au loin, avec hystérésis. */
+  accentOn = true
+  /** Dernière envergure affichée (px 1080p). */
+  spanShown = 60
 
   constructor(readonly slot: number) {
     // Créé au niveau « far » : le caster de l'ombre garde cette géométrie légère.
@@ -60,6 +83,7 @@ const _w = new Vector3()
 const _up = new Vector3()
 const _x = new Vector3()
 const _z = new Vector3()
+const _dir = new Vector3()
 const _m = new Matrix4()
 const _q = new Quaternion()
 const _eul = new Euler()
@@ -125,6 +149,7 @@ export class BirdsController {
     if (!sim) {
       for (let i = 0; i < MAX_PLAYERS; i++) if (this.slots[i]) this.slots[i]!.rig.object.visible = false
       this.crown.group.visible = false
+      birdAnchors.crown.slot = -1
       return
     }
     const cam = camera as PerspectiveCamera
@@ -132,6 +157,8 @@ export class BirdsController {
     const pxPerMeterAt1 = viewportH / (2 * Math.tan(fovY / 2))
     const px1080 = viewportH / 1080
     camera.getWorldPosition(_w)
+    // Beaucoup d'oiseaux : plafond cosmétique relevé (polish B1, on retrouve le sien à 9-12).
+    const scaleMax = sim.birds.length > CROWDED_BIRDS ? RULES.birdRenderScaleMaxCrowded : RULES.birdRenderScaleMax
 
     for (const b of sim.birds) {
       const s = this.ensure(b.slot)
@@ -147,7 +174,7 @@ export class BirdsController {
       const spanPx1 = (RULES.wingspan * pxPerMeterAt1) / dist / px1080
       const renderScale =
         this.options.renderScale === 'auto'
-          ? clamp(AUTO_SCALE_SPAN_PX / Math.max(spanPx1, 1), 1, RULES.birdRenderScaleMax)
+          ? clamp(AUTO_SCALE_SPAN_PX / Math.max(spanPx1, 1), 1, scaleMax)
           : this.options.renderScale
       const detail = smoothstep(160, 520, spanPx1)
       // Niveau de détail du maillage, avec hystérésis (pas de clignotement au zoom).
@@ -161,7 +188,8 @@ export class BirdsController {
         s.animator.snap(f)
         s.fresh = false
       }
-      const pose = s.animator.update(f, dt, { renderScale, detail, mode: this.modes[b.slot] ?? 'fly' })
+      const mode = this.modes[b.slot] ?? 'fly'
+      const pose = s.animator.update(f, dt, { renderScale, detail, mode })
       rig.applyPose(pose)
       if (s.animator.beat > 0) {
         const e = this.beatEvent
@@ -192,6 +220,20 @@ export class BirdsController {
       U.uTipCharge.value = charge
       U.uTipFlash.value = s.tipFlash * s.tipFlash
       U.uDetail.value = detail
+      U.uPerch.value = mode === 'perch' ? 1 : 0
+
+      // Loin (< 70 px d'envergure affichée) : bande d'aile élargie, cape et selle agrandies,
+      // cerne réduit (coque fine, pièces colorées sans cerne interne) — polish B1.
+      const spanShown = spanPx1 * pose.scale
+      s.spanShown = spanShown
+      const farK = 1 - smoothstep(FAR_FULL_PX, FAR_NONE_PX, spanShown)
+      const band = rig.asset.model.band
+      const tipX = rig.asset.model.wingTipX
+      U.uBand.value.set(lerp(band[0], BAND_FAR[0] * tipX, farK), lerp(band[1], BAND_FAR[1] * tipX, farK))
+      U.uAccentScale.value = 1 + (ACCENT_SCALE_FAR - 1) * farK
+      U.uHullWidth.value = lerp(HULL_WIDTH_PX, HULL_WIDTH_FAR_PX, farK)
+      if (s.accentOn ? spanShown < ACCENT_ID_OFF_PX : spanShown > ACCENT_ID_ON_PX) s.accentOn = !s.accentOn
+      U.uAccentOn.value = s.accentOn ? 1 : 0
 
       // Âme de l'ombre : 1,0 en BAS, 0,6 en HAUT (ART_BIBLE §5.3).
       s.caster?.setStrength(1 - 0.4 * smoothstep(RULES.strongMaxAlt - 1, RULES.strongMaxAlt + 1, f.z))
@@ -217,9 +259,20 @@ export class BirdsController {
     this.updateCrown(sim.crownSlot, dt, pxPerMeterAt1 / px1080, camera)
   }
 
-  /** @param pxPerMeter1080 pixels (1080p) par mètre à 1 m de la caméra */
+  /**
+   * Couronne du meneur (ART_BIBLE §6.7, polish B3/B4). Trois poses, fondues selon la
+   * taille de l'oiseau à l'écran :
+   *  - en jeu : ≈ 3 m au-dessus du cavalier le long du « haut » de l'écran (crownLift),
+   *    jamais multipliée par l'échelle cosmétique, ≥ 16 px ;
+   *  - gros plan (envergure > 200 px) : posée sur la capuche, à la taille du cavalier ;
+   *  - podium (mode perch) : ancrée sur la tête de l'oiseau (le cavalier est caché
+   *    derrière le cou dressé), juste au-dessus, droite : elle doit rester sous le
+   *    bandeau du podium.
+   * @param pxPerMeter1080 pixels (1080p) par mètre à 1 m de la caméra
+   */
   private updateCrown(slot: number, dt: number, pxPerMeter1080: number, camera: Camera): void {
     const C = this.crown.group
+    const rec = birdAnchors.crown
     this.crownTime += dt
     const has = slot >= 0 && this.slots[slot] !== undefined
     if (slot !== this.crownSlot) {
@@ -233,37 +286,57 @@ export class BirdsController {
     const target = has && slot === this.crownSlot ? 1 : 0
     springTo(this.crownScale, target, target > 0 ? 11 : 16, target > 0 ? 0.45 : 1, dt)
     const k = Math.max(0, this.crownScale.x)
-    if (this.crownSlot < 0 || !this.slots[this.crownSlot] || k < 0.01) {
+    const bird = this.crownSlot >= 0 ? this.slots[this.crownSlot] : undefined
+    if (!bird || k < 0.01) {
       C.visible = false
+      rec.slot = -1
       return
     }
     const s = this.crownSlot
-    const o = anchorOffset(s, 'riderTop')
+    const perch = this.modes[s] === 'perch' ? 1 : 0
+    const o = anchorOffset(s, perch ? 'head' : 'riderTop')
     const d = birdAnchors.data
     const scale = birdAnchors.scale[s]!
-    const bob = 0.25 * Math.sin(this.crownTime * Math.PI) // 0,5 Hz
-    // « Au-dessus » = vers le haut de l'écran (lisible en plongée comme en plan bas).
+    const hood = perch ? 0 : smoothstep(170, 230, bird.spanShown)
+    // Axes : « haut » de l'écran (jeu), haut du cavalier (capuche), vertical (podium).
     _up.setFromMatrixColumn(camera.matrixWorld, 1).normalize()
     _z.setFromMatrixColumn(camera.matrixWorld, 2)
-    const lift = crownLift(_z.y) * scale + bob
-    _v.set(d[o]! + _up.x * lift, d[o + 1]! + _up.y * lift, d[o + 2]! + _up.z * lift)
+    _x.setFromMatrixColumn(bird.rig.bones.rider.matrixWorld, 1).normalize()
+    if (perch) _x.set(0, 1, 0)
+    const dir = _dir.copy(_up).lerp(_x, perch ? 1 : hood).normalize()
+    const lift = perch
+      ? PERCH_CROWN_LIFT_M * scale + 0.05 * Math.sin(this.crownTime * 1.4)
+      : lerp(crownLift(_z.y) * Math.min(1, scale) + 0.15 * Math.sin(this.crownTime * Math.PI), -0.12 * scale, hood)
+    _v.set(d[o]! + dir.x * lift, d[o + 1]! + dir.y * lift, d[o + 2]! + dir.z * lift)
     C.position.copy(_v)
     const dist = Math.max(1, _v.distanceTo(_w))
-    // Taille écran minimale (largeur ≈ 2,4 m) : lisible à toutes les distances.
-    const minScale = CROWN_MIN_PX / Math.max(1e-3, (2.4 * pxPerMeter1080) / dist)
-    const sc = Math.max(scale, minScale) * k
+    const pxPerM = pxPerMeter1080 / dist
+    // Taille : icône lisible au loin (≥ 16 px), taille du cavalier en gros plan, 1,6 m au podium.
+    const farSc = Math.max(1, CROWN_MIN_PX / (CROWN_WIDTH * pxPerM))
+    const hoodSc = Math.max((CROWN_HOOD_W * scale) / CROWN_WIDTH, CROWN_HOOD_MIN_PX / (CROWN_WIDTH * pxPerM))
+    const perchSc = Math.max((CROWN_PERCH_W * scale) / CROWN_WIDTH, CROWN_PERCH_MIN_PX / (CROWN_WIDTH * pxPerM))
+    const sc = (perch ? perchSc : lerp(farSc, hoodSc, hood)) * k
     C.scale.setScalar(sc)
-    // Toujours présentée de face à la caméra (silhouette à 3 pointes lisible même
-    // en plongée), légèrement basculée vers elle, avec un balancement.
-    _up.setFromMatrixColumn(camera.matrixWorld, 1).normalize()
+    // Présentée de face à la caméra, droite le long de `dir`, légère bascule vers la caméra et balancement.
     _z.copy(_w).sub(_v)
-    _z.addScaledVector(_up, -_z.dot(_up)).normalize()
-    _x.crossVectors(_up, _z)
-    _m.makeBasis(_x, _up, _z)
+    _z.addScaledVector(dir, -_z.dot(dir)).normalize()
+    _x.crossVectors(dir, _z)
+    _m.makeBasis(_x, dir, _z)
     C.quaternion.setFromRotationMatrix(_m)
-    _q.setFromEuler(_eul.set(0.28, Math.sin(this.crownTime * 0.9 + hash01(s) * 6) * 0.25, Math.sin(this.crownTime * 1.3) * 0.1))
+    const sway = perch ? 0.08 : 0.16 * (1 - hood)
+    _q.setFromEuler(_eul.set(0.12, Math.sin(this.crownTime * 0.9 + hash01(s) * 6) * sway, Math.sin(this.crownTime * 1.3) * 0.06))
     C.quaternion.multiply(_q)
     C.visible = true
+    // Pour les FX (anneau « couronne gagnée », pile d'icônes au-dessus).
+    const h = CROWN_HEIGHT * sc
+    rec.slot = s
+    rec.frame = this.frameNo
+    rec.cx = _v.x + dir.x * h * 0.5
+    rec.cy = _v.y + dir.y * h * 0.5
+    rec.cz = _v.z + dir.z * h * 0.5
+    rec.tx = _v.x + dir.x * h
+    rec.ty = _v.y + dir.y * h
+    rec.tz = _v.z + dir.z * h
   }
 
   /**

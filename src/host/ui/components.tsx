@@ -1,8 +1,12 @@
 // Composants de base de l'UI : cases de BD, boutons, touches, sélecteurs,
 // curseurs, cadre tremblé, sablier. Tout est papier + encre (ART_BIBLE §8).
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { getLang } from '../../shared/i18n.ts'
+import { colorName } from '../../shared/players.ts'
+import { botPersonalityName, slotDisplayName } from './format.ts'
 import { Icon, type IconName } from './icons.tsx'
 import { uiSound } from './nav.ts'
+import type { SlotVM } from './viewModel.ts'
 
 // ─── Case ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +33,26 @@ export function Case({
       {children}
     </div>
   )
+}
+
+// ─── Nom de joueur ─────────────────────────────────────────────────────────
+
+/**
+ * Nom d'un joueur pour les tableaux : un bot se lit « Lagon · Faucon », la couleur
+ * en grand et le caractère en petit (même nom partout : salon, HUD, résultats, podium).
+ * `stacked` : caractère sur une seconde ligne (cartes étroites, titre du podium).
+ */
+export function SlotName({ s, stacked }: { s: SlotVM | undefined; stacked?: boolean }) {
+  if (s && s.kind === 'bot' && s.bot && !s.substitute) {
+    return (
+      <span className={stacked ? 'sname sname--stacked' : 'sname'}>
+        <span className="sname__color">{colorName(s.colorIndex, getLang())}</span>
+        {stacked ? null : <span className="sname__dot"> · </span>}
+        <span className="sname__char">{botPersonalityName(s.bot.personality)}</span>
+      </span>
+    )
+  }
+  return <span className="sname">{slotDisplayName(s)}</span>
 }
 
 // ─── Bouton ────────────────────────────────────────────────────────────────
@@ -239,7 +263,7 @@ export function Slider({ value, onChange, label, icon, isDefault }: { value: num
 
 // ─── Cadre tremblé (grands panneaux : ART_BIBLE §8.2) ──────────────────────
 
-function rng(seed: number): () => number {
+export function rng(seed: number): () => number {
   let s = seed >>> 0 || 1
   return () => {
     s = (s * 1664525 + 1013904223) >>> 0
@@ -248,7 +272,7 @@ function rng(seed: number): () => number {
 }
 
 /** Trait d'un côté avec léger tremblé et dépassement aux coins (trait de BD). */
-function wobblySide(x0: number, y0: number, x1: number, y1: number, rnd: () => number, amp: number): string {
+export function wobblySide(x0: number, y0: number, x1: number, y1: number, rnd: () => number, amp: number): string {
   const len = Math.hypot(x1 - x0, y1 - y0)
   const ux = (x1 - x0) / len
   const uy = (y1 - y0) / len

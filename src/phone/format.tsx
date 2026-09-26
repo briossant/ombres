@@ -47,6 +47,64 @@ export function useTn(): (key: string, params?: ToastParams) => ReactNode {
   }
 }
 
+/**
+ * Texte déjà formaté (valeur de titre venue du PC : « 4 piqués réussis », « +2 places… ») : seuls les
+ * nombres passent en Averia, le reste reste dans la police d'interface (ART_BIBLE §8.1).
+ */
+export function NumText({ text }: { text: string }): ReactNode {
+  return splitNumbers(text).map((part, i) =>
+    part.num ? (
+      <span key={i} className="t-num">
+        {part.text}
+      </span>
+    ) : (
+      part.text
+    ),
+  )
+}
+
+/** Découpe un texte en morceaux « nombre » (signe, décimales, % collé ou après espace fine) et texte. */
+export function splitNumbers(text: string): { text: string; num: boolean }[] {
+  const out: { text: string; num: boolean }[] = []
+  const re = /[+\u2212-]?\d+(?:[.,]\d+)?(?:[\u202F\u00A0 ]?%)?/g
+  let last = 0
+  for (const m of text.matchAll(re)) {
+    const at = m.index ?? 0
+    if (at > last) out.push({ text: text.slice(last, at), num: false })
+    out.push({ text: m[0], num: true })
+    last = at + m[0].length
+  }
+  if (last < text.length) out.push({ text: text.slice(last), num: false })
+  return out
+}
+
+/** Forme du pluriel : en français, 0 et 1 sont au singulier (« 0 soleil »). */
+export function pluralOne(n: number, lang: Lang): boolean {
+  return lang === 'fr' ? Math.abs(n) < 2 : n === 1
+}
+
+/**
+ * Coupe un texte court aux frontières de phrase, en deux lignes équilibrées (cartes des règles :
+ * « Pique d'en haut. » / « À la nuit, on compte. »). Même règle que la TV (src/host/ui/format.ts).
+ */
+export function sentenceLines(text: string): string[] {
+  const parts = text.match(/[^.!?]+[.!?]+\s*/g)?.map(p => p.trim()) ?? [text]
+  if (parts.length < 2) return [text]
+  let best = 1
+  let bestCost = Infinity
+  for (let k = 1; k < parts.length; k++) {
+    const a = parts.slice(0, k).join(' ').length
+    const b = parts.slice(k).join(' ').length
+    const cost = Math.max(a, b)
+    // À égalité, on coupe le plus tard possible (la chute reste courte).
+    if (cost <= bestCost) {
+      bestCost = cost
+      best = k
+    }
+  }
+  return [parts.slice(0, best).join(' '), parts.slice(best).join(' ')]
+}
+
 export function useLang(): Lang {
   return usePhone(s => s.lang)
 }

@@ -9,9 +9,9 @@ import { simEvents, type Emitter } from '../bus.ts'
 import { illuminateTerritory, worldView } from '../render/worldView.ts'
 import { getSettings } from '../settings.ts'
 import type { GameView } from '../view.ts'
-import { CineShot, CREDITS_LAYOUT, CREDITS_SEQUENCE, rigPose, TITLE_LAYOUT, TITLE_SEQUENCE, type ShotKind } from './cine.ts'
+import { CineShot, CREDITS_LAYOUT, CREDITS_SEQUENCE, rigPose, shotFault, stormNear, TITLE_LAYOUT, TITLE_SEQUENCE, type ShotKind } from './cine.ts'
 import { cameraBeats, cameraCue, cameraState, type CameraMode } from './cue.ts'
-import { copyRig, fitPoints, makeRig, type FitResult, type Rig, type ScreenRect } from './framing.ts'
+import { copyRig, fitPoints, makeRig, projectRig, type FitResult, type Rig, type ScreenRect } from './framing.ts'
 import { FramingRig } from './framingRig.ts'
 import { blendPose, clamp01, copyPose, DEG, guardPosition, lerp, makePose, poseDistance, smoother, smoothstep, yawPitchQuat, type Pose } from './math.ts'
 import { PODIUM_CAMERA, type PodiumLayout } from './podium.ts'
@@ -37,6 +37,12 @@ export const NIGHT_HOLD_SECONDS = 1.5
 const ILLUMINATE_AT = 0.42
 /** Poussée très lente sur la carte une fois cadrée (fraction de distance, sur 14 s). */
 const RESULTS_PUSH = 0.035
+/**
+ * FOV de la vue carte (polish S7) : quasi orthographique, prise de plus loin pour la même emprise.
+ * À 40°, les tours du bord se couchaient en « saucisses » ; à 18°, le rayon le plus oblique (bord
+ * gauche de la carte) fait au plus ≈ 15° avec la verticale en 16:9.
+ */
+export const MAP_FOV = 18
 /** Durées des plans du titre : fraction du soleil de la démo (voir TITLE_SEQUENCE). */
 const CREDITS_BLEND = 3.2
 
@@ -80,8 +86,14 @@ export class CameraDirector {
   private aspect = 16 / 9
   private clock = 0
   private simChangedAt = -99
+  private view: GameView | null = null
+  private faultClock = 0
+  /** Titre : le plan en cours masque le Simoun (trop proche) ; plan tout juste commencé. */
+  private titleHideStorm = false
+  private shotFresh = false
   private readonly unsub: () => void
   private readonly tmpV = new THREE.Vector3()
+  private readonly tmpP = { x: 0, y: 0, z: 0 }
 
   constructor(events: Emitter<SimEvent> = simEvents) {
     this.unsub = events.on((e) => this.onEvent(e))
@@ -94,10 +106,18 @@ export class CameraDirector {
   private onEvent(e: SimEvent): void {
     if (this.mode !== 'round') return
     if (e.type === 'diveCommit') {
-      if (this.inFrame(e.hunter) && this.inFrame(e.target)) this.framing.onDiveCommit(e.hunter, e.target)
+      if (this.inFrame(e.hunter) && this.inFrame(e.target)) this.framing.onDiveCommit(e.hunter, e.target, this.sim)
     } else if (e.type === 'diveHit' || e.type === 'diveMiss' || e.type === 'diveCancel') {
       this.framing.onDiveEnd(e.hunter, e.type === 'diveHit')
-      if (e.type === 'diveHit' && getSettings().screenShake && this.pointInFrame(e.x, e.y, e.z)) this.framing.onHit()
+      if (e.type === 'diveHit') {
+        const seen = this.pointInFrame(e.x, e.y, e.z)
+        if (seen && getSettings().screenShake) this.framing.onHit()
+        // punch-in sur les touches qui comptent (polish S6) : la paire doit être dans le champ
+        if (seen && this.sim && this.view && this.framing.onDiveHit(e, this.sim, this.view, this.aspect)) {
+          cameraState.punchCount = this.framing.punchCount
+          cameraBeats.emit({ type: 'punchIn', hunter: e.hunter, target: e.target })
+        }
+      }
     }
   }
 
@@ -119,6 +139,7 @@ export class CameraDirector {
     const sim = view.sim
     const cue = cameraCue
     const simChanged = sim !== this.sim
+    this.view = view
     this.clock += dt
     if (simChanged) this.simChangedAt = this.clock
     if (cue.version !== this.version || simChanged || this.first) {
@@ -152,7 +173,25 @@ export class CameraDirector {
     p.quaternion.copy(this.pose.quat)
     p.updateProjectionMatrix()
     p.updateMatrixWorld(true)
+    if (this.mode === 'round' && sim) this.arenaOnScreen(sim)
     return this.pose
+  }
+
+  /** Boîte écran de l'ellipse de l'arène (cameraState.arena) : sable vide en bas, débordements. */
+  private arenaOnScreen(sim: SimState): void {
+    const o = cameraState.arena
+    o.x0 = o.y0 = Infinity
+    o.x1 = o.y1 = -Infinity
+    for (let i = 0; i < 24; i++) {
+      const th = (i / 24) * Math.PI * 2
+      this.tmpV.set(Math.cos(th) * sim.arena.a, 0, -Math.sin(th) * sim.arena.b).project(this.proj)
+      const x = (this.tmpV.x + 1) / 2
+      const y = (1 - this.tmpV.y) / 2
+      if (x < o.x0) o.x0 = x
+      if (x > o.x1) o.x1 = x
+      if (y < o.y0) o.y0 = y
+      if (y > o.y1) o.y1 = y
+    }
   }
 
   private enter(mode: CameraMode, view: GameView, cut: boolean): void {
@@ -198,6 +237,7 @@ export class CameraDirector {
   private startShot(kind: ShotKind, dur: number, blend: number, credits: boolean): void {
     this.shotSeed++
     this.shot.start(kind, dur, this.shotSeed, credits ? CREDITS_LAYOUT : TITLE_LAYOUT)
+    this.shotFresh = true
     if (blend < 0) {
       // garde le fondu en cours (entrée dans le mode)
     } else if (blend > 0) {
@@ -221,6 +261,8 @@ export class CameraDirector {
       case 'rules': {
         if (!sim) return this.cine(dt, view, 'still')
         rigPose(this.framing.update(dt, sim, view, this.aspect), out)
+        cameraState.punch = this.framing.punchLevel
+        cameraState.towerCover = this.framing.towerCover
         const sh = this.framing.shake
         if (sh.x !== 0 || sh.y !== 0) {
           this.tmpV.set(sh.x, sh.y, 0).applyQuaternion(out.quat)
@@ -267,7 +309,18 @@ export class CameraDirector {
       this.shotIndex = idx
       this.startShot(TITLE_SEQUENCE[idx]!.kind, dur, firstShot ? -1 : 0, false)
     }
+    const recuts = this.shot.recuts
     this.shot.update(dt, sim, view, this.aspect, this.desired)
+    // rideau du Simoun trop proche (< 120 m dans le champ) : masqué pour tout le plan, décidé à la
+    // coupe (jamais au milieu d'un plan : pas de saut)
+    if (this.shotFresh || this.shot.recuts !== recuts) this.titleHideStorm = stormNear(sim, this.desired, this.aspect)
+    this.shotFresh = false
+    // défaut de composition de l'image montrée (4 Hz ; debug et scripts de vérification)
+    this.faultClock -= dt
+    if (this.faultClock <= 0) {
+      this.faultClock = 0.25
+      cameraState.shotFault = shotFault(sim, this.desired, this.aspect, TITLE_LAYOUT, this.titleHideStorm, this.shot.subjectDistance(sim, this.desired))
+    }
   }
 
   /** Crédits : longue suite de plans lents enchaînés par fondus de caméra. */
@@ -314,11 +367,18 @@ export class CameraDirector {
     r.tz = 0
     r.yaw = 0
     r.pitch = lerp(a.pitch, b.pitch, e)
-    r.dist = Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), smoothstep(0, 1, k)))
-    r.fov = 40
+    // la focale se resserre pendant la montée (même emprise : la distance croît d'autant)
+    r.fov = lerp(a.fov, b.fov, e)
+    const tanA = Math.tan((a.fov * DEG) / 2)
+    const tanF = Math.tan((r.fov * DEG) / 2)
+    const tanB = Math.tan((b.fov * DEG) / 2)
+    // distance interpolée en « largeur cadrée » (log), convertie à la focale courante
+    const wLog = lerp(Math.log(a.dist * tanA), Math.log(b.dist * tanB), smoothstep(0, 1, k))
+    r.dist = Math.exp(wLog) / tanF
     if (k >= 1) r.dist *= 1 - RESULTS_PUSH * smoother((t - NIGHT_HOLD_SECONDS - rise) / 14)
     rigPose(r, this.desired)
     cameraState.rise = k
+    if (k >= 1) this.mapOnScreen(sim, r)
     if (!this.illuminated && k >= ILLUMINATE_AT) {
       this.illuminated = true
       const w = cameraCue.winnerSlot
@@ -328,7 +388,8 @@ export class CameraDirector {
     if (!this.mapReady && k >= 1) {
       this.mapReady = true
       cameraState.mapReady = true
-      cameraBeats.emit({ type: 'mapReady' })
+      const m = cameraState.mapRect
+      cameraBeats.emit({ type: 'mapReady', rect: { x0: m.x0, x1: m.x1, y0: m.y0, y1: m.y1 } })
     }
   }
 
@@ -349,7 +410,7 @@ export class CameraDirector {
       E[i * 3 + 2] = 0
     }
     const pitch = 89.99 * DEG
-    fitPoints(E, n, 0, pitch, 40, this.aspect, resultsMapRect(this.aspect, this.mapRect), 50, 5000, this.fit)
+    fitPoints(E, n, 0, pitch, MAP_FOV, this.aspect, resultsMapRect(this.aspect, this.mapRect), 50, 20000, this.fit)
     const r = this.riseTo
     r.tx = this.fit.tx
     r.ty = this.fit.ty
@@ -357,7 +418,26 @@ export class CameraDirector {
     r.yaw = 0
     r.pitch = pitch
     r.dist = this.fit.dist
-    r.fov = 40
+    r.fov = MAP_FOV
+  }
+
+  /**
+   * Rectangle écran de la carte (cameraState.mapRect, fractions, origine en haut à gauche) : boîte
+   * de l'ellipse de l'arène vue par le rig courant (suit la poussée lente). Pour la planche imprimée
+   * de l'UI (H14).
+   */
+  private mapOnScreen(sim: SimState, r: Rig): void {
+    const o = cameraState.mapRect
+    o.x0 = o.y0 = Infinity
+    o.x1 = o.y1 = -Infinity
+    for (let i = 0; i < 32; i++) {
+      const th = (i / 32) * Math.PI * 2
+      projectRig(r, this.aspect, Math.cos(th) * sim.arena.a, Math.sin(th) * sim.arena.b, 0, this.tmpP)
+      if (this.tmpP.x < o.x0) o.x0 = this.tmpP.x
+      if (this.tmpP.x > o.x1) o.x1 = this.tmpP.x
+      if (this.tmpP.y < o.y0) o.y0 = this.tmpP.y
+      if (this.tmpP.y > o.y1) o.y1 = this.tmpP.y
+    }
   }
 
   /** Podium : la disposition vient de <PodiumStage/> (tours alignées sur les plaques de l'UI). */
@@ -370,13 +450,19 @@ export class CameraDirector {
       this.blendT = this.blendDur = 0
     }
     const t = this.modeTime
-    // arrivée : la caméra s'élève doucement jusqu'à sa place (2,2 s), puis respire à peine
-    const rise = 1 - smoother(t / 2.2)
-    const sway = Math.sin(t * 0.5) * 0.12
+    const C = PODIUM_CAMERA
+    // arrivée (plan pur, avant l'UI) : poussée lente sur le vainqueur — la focale se resserre et la
+    // caméra s'élève jusqu'à sa place, où les perchoirs tombent au-dessus des plaques
+    const rise = 1 - smoother(t / C.introSeconds)
+    // puis respiration lente (± 2 % de focale, centrée : le vainqueur reste au-dessus de sa plaque,
+    // les deux autres bougent de quelques px) et léger balancement vertical
+    const settled = smoothstep(C.introSeconds, C.introSeconds + 2, t)
+    const breathe = 1 + C.driftFov * settled * Math.sin(((t - C.introSeconds) * 2 * Math.PI) / C.driftPeriod)
+    const sway = Math.sin(t * 0.5) * 0.12 * settled
     const out = this.desired
-    out.pos.set(L.cam.x + rise * 6, L.cam.z - rise * 2.2 + sway, -L.cam.y)
-    yawPitchQuat(out.quat, L.cam.yaw, L.cam.pitch - rise * 3 * DEG)
-    out.fov = L.cam.fov
+    out.pos.set(L.cam.x + rise * 4, L.cam.z - rise * 1.6 + sway, -L.cam.y)
+    yawPitchQuat(out.quat, L.cam.yaw, L.cam.pitch - rise * 2 * DEG)
+    out.fov = L.cam.fov * (1 + (C.introFovScale - 1) * rise) * breathe
     if (!this.podiumReady && t >= 2.2) {
       this.podiumReady = true
       cameraState.podiumReady = true
@@ -411,5 +497,9 @@ export class CameraDirector {
       wv.nightAll = null
       wv.hideStorm = false
     }
+    // titre : un plan qui passerait près du rideau du Simoun le masque (polish S4)
+    if (m === 'title' && this.titleHideStorm) wv.hideStorm = true
+    else if (m !== 'podium' && wv.hideStorm) wv.hideStorm = false
+    if (m !== 'title') this.titleHideStorm = false
   }
 }

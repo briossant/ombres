@@ -94,6 +94,43 @@
   align-items: end;
   padding-bottom: 4px;
 }
+/* La règle des soleils, écrite à côté de leur colonne (GDD §11.1). */
+.round__sun-rule {
+  grid-column: 2;
+  justify-self: end;
+  padding: 0 4px 8px 0;
+  font-size: 21px;
+  color: var(--ink-80);
+  text-align: right;
+}
+.rrow__suns {
+  position: relative;
+}
+/* Détail du calcul, posé sur la barre de la ligne à la première manche (le % reste lisible). */
+.sun-calc {
+  position: absolute;
+  right: calc(100% + 120px);
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px 2px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 var(--drop);
+  font-size: 20px;
+  white-space: nowrap;
+  z-index: 1;
+  animation: ui-stamp 140ms ease-out both;
+}
+.sun-calc__term {
+  animation: ui-fade-in 180ms linear both;
+}
+.sun-calc__eq {
+  font-weight: 700;
+}
 .round__th-suns {
   display: flex;
   flex-direction: column;
@@ -128,7 +165,8 @@
 }
 .rrow__who {
   display: grid;
-  grid-template-columns: auto 190px 1fr 112px;
+  /* le nom à sa largeur (plus de « Indigo · Laboure… ») ; la barre prend le reste */
+  grid-template-columns: auto minmax(0, max-content) minmax(70px, 1fr) 112px;
   align-items: center;
   gap: 12px;
 }
@@ -264,6 +302,15 @@
 /* ─── Partie ─── */
 .match-res {
   --gap: 18px;
+  /* Dernier plan pur : l'UI n'entre qu'après 2,5 s (la caméra pose le podium, S5). */
+  --intro-ms: 2500ms;
+}
+.match-res .enter {
+  animation-delay: calc(var(--intro-ms) + var(--i, 0) * 45ms);
+}
+/* …récitatif compris (drapeau posé par MatchResults pendant ces 2,5 s). */
+.ui-root[data-podium-intro] .subtitle-wrap {
+  visibility: hidden;
 }
 .match-res__top {
   position: absolute;
@@ -276,33 +323,41 @@
 }
 .champion {
   flex: 1;
-  padding: 18px 34px 20px 26px;
+  min-width: 0;
+  padding: 12px 30px 14px 22px;
 }
 .champion__over {
-  font-size: 22px;
+  font-size: 20px;
   color: var(--ink-60);
   letter-spacing: 0.1em;
 }
 .champion__line {
   display: flex;
   align-items: center;
-  gap: 22px;
-  margin-top: 6px;
+  gap: 20px;
+  margin-top: 4px;
 }
 .champion__name {
-  font-size: 66px;
+  font-size: 58px;
+  white-space: nowrap;
 }
 .champion__wins {
-  font-size: 32px;
+  font-size: 30px;
+  white-space: nowrap;
   align-self: flex-end;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
 }
 .champion__suns {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 48px;
+  font-size: 44px;
+}
+.champion__tiebreak {
+  margin-top: 6px;
+  font-size: 24px;
+  color: var(--ink-80);
 }
 .champion__suns .icon circle {
   fill: var(--sun);
@@ -415,7 +470,7 @@
   font-size: 32px;
   max-width: 100%;
 }
-.podium__who span {
+.podium__who .sname {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -509,23 +564,127 @@
 }
 .tcard__stats {
   margin-top: auto;
-  padding-top: 10px;
+  padding-top: 8px;
   display: flex;
-  gap: 14px;
-  font-size: 18px;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  font-size: 19px;
+  line-height: 1.2;
   color: var(--ink-80);
   border-top: 1.5px solid var(--ink-15);
 }
 .tcard__stats span {
-  display: inline-flex;
-  flex-direction: column;
+  white-space: nowrap;
+}
+.tcard__stats .tcard__stat-wide {
+  flex-basis: 100%;
 }
 .tcard__stats b {
   font-family: var(--f-num);
   font-weight: 700;
-  font-size: 22px;
+  font-size: 20px;
   color: var(--ink);
 }
 .tcard--first {
   background: var(--sun);
+}
+
+/* Sortie vers la manche suivante : le panneau a disparu en 110 ms, avant le « 3 » du compte à rebours. */
+.screen--exit .round__panel {
+  animation: ui-exit 110ms ease-in both;
+}
+
+/* ─── Planche imprimée autour de la carte des résultats (MapPlate, H14) ─── */
+.map-plate {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: ui-fade-in 420ms linear both;
+}
+.map-plate__svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.map-plate__scale {
+  position: absolute;
+  translate: -100% 0;
+  font-size: 17px;
+  line-height: 1;
+}
+.map-plate__north {
+  position: absolute;
+  translate: -50% 0;
+  font-size: 17px;
+  line-height: 1;
+}
+.map-plate__cartouche {
+  position: absolute;
+  translate: 0 -50%;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 16px 4px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 3px 3px 0 var(--drop);
+  white-space: nowrap;
+}
+.map-plate__map {
+  font-size: 22px;
+}
+.map-plate__round {
+  font-size: 21px;
+  color: var(--ink-80);
+}
+.map-plate__round::before {
+  content: '— ';
+}
+.map-plate__stamp {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  rotate: -12deg;
+  filter: drop-shadow(3px 3px 0 var(--drop));
+  animation: plate-stamp 200ms ease-out both;
+}
+.map-plate__stamp.is-tie {
+  color: var(--ink);
+}
+.map-plate__stamp > svg {
+  position: absolute;
+  inset: 0;
+}
+.map-plate__stamp-text {
+  font-family: var(--f-title);
+  text-transform: uppercase;
+}
+.map-plate__stamp-glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 18px;
+}
+@keyframes plate-stamp {
+  from {
+    scale: 1.45;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+.reduce-motion .map-plate__stamp {
+  animation-name: ui-fade-in;
+}
+
+/* Cartes de titres étroites : « Lagon » puis « Faucon » dessous, lisible (0,7 em). */
+.tcard__name .sname--stacked .sname__char {
+  margin-top: 1px;
+  font-size: 0.7em;
+  letter-spacing: 0.02em;
 }

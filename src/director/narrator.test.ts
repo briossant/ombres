@@ -111,10 +111,11 @@ describe('catalogue', () => {
 })
 
 describe('structure de partie', () => {
-  it("ouvre la partie à midi, jamais pendant le compte à rebours", () => {
-    const r = new Round(4, [0]).at(-2, hit(1, 2)).run(2)
+  it("ouvre la partie à midi, une fois la conque d'« Envol » retombée, jamais pendant le compte à rebours", () => {
+    const r = new Round(4, [0]).at(-2, hit(1, 2)).at(0.5, hit(2, 3)).run(3)
     expect(r.kinds()).toEqual(['matchOpen'])
-    expect(r.played[0].t).toBeGreaterThanOrEqual(-1e-9)
+    expect(r.played[0].t).toBeGreaterThanOrEqual(1.5 - 1e-9)
+    expect(r.played[0].t).toBeLessThan(1.6)
     expect(r.played[0].cue.colorIndex).toBeUndefined()
     expect(r.played[0].cue.key).toBe('narrator.matchOpen')
   })
@@ -130,14 +131,36 @@ describe('structure de partie', () => {
   it('manche 2 : une ouverture de manche, variantes différentes d’une manche à l’autre', () => {
     const d = new NarratorDirector({ seed: 3, durationOf: () => CLIP })
     d.startMatch({ rounds: 5, lastRoundDouble: true })
-    const ids = [2, 3, 4].map(n => new Round(3, [0], { director: d, round: n, offset: n * 200 }).run(1).played[0].cue.lineId)
+    const ids = [2, 3, 4].map(n => new Round(3, [0], { director: d, round: n, offset: n * 200 }).run(2).played[0].cue.lineId)
     expect(ids.every(id => id.startsWith('roundOpen'))).toBe(true)
     expect(new Set(ids).size).toBe(3)
   })
 
   it('pas de « dernier soleil » dans une partie en une manche', () => {
-    const r = new Round(2, [0], { rounds: 1 }).run(1)
+    const r = new Round(2, [0], { rounds: 1 }).run(2)
     expect(r.kinds()).toEqual(['matchOpen'])
+  })
+
+  it('« dernier soleil » annoncé sur les résultats, avant de lancer la manche : pas répété, pas d’ouverture', () => {
+    const d = new NarratorDirector({ seed: 1, durationOf: () => CLIP })
+    d.startMatch({ rounds: 3, lastRoundDouble: true })
+    expect(d.announceLastRound(2, 50)).toBeNull() // pas la dernière manche
+    const cue = d.announceLastRound(3, 51)
+    expect(cue).toMatchObject({ kind: 'lastRound', lineId: 'lastRound' })
+    expect(d.announceLastRound(3, 52)).toBeNull()
+    const r = new Round(3, [0], { director: d, round: 3, offset: 60 }).run(5)
+    expect(r.kinds()).toEqual([])
+  })
+
+  it('la graine de partie change le tirage des variantes', () => {
+    const draw = (seed: number) => {
+      const d = new NarratorDirector({ durationOf: () => CLIP })
+      d.startMatch({ rounds: 3, lastRoundDouble: true, seed })
+      return new Round(3, [0], { director: d, round: 1 }).run(100).played.map(p => p.cue.lineId).join()
+    }
+    const draws = new Set([1, 2, 3, 4, 5, 6].map(draw))
+    expect(draws.size).toBeGreaterThan(1)
+    expect(draw(4)).toBe(draw(4))
   })
 })
 
@@ -148,13 +171,27 @@ describe('fréquence', () => {
     expect(inRound.map(p => p.cue.kind)).toEqual(['firstHit'])
   })
 
-  it('priorité 1 : 3 s après la précédente (Grande Ombre puis Dix secondes)', () => {
+  it('« Dix secondes » se tait juste après la Grande Ombre, et parle si la Grande Ombre s’est tue', () => {
     const r = new Round(3, [0]).run(104)
+    expect(r.find('greatShadow')!.t).toBeCloseTo(RULES.greatShadowAt, 1)
+    expect(r.find('tenSeconds')).toBeUndefined()
+    // sans réplique de Grande Ombre (phase non annoncée), « Dix secondes » est dit à 100 s
+    const q = new Round(3, [0], { auto: false })
+    for (const n of [3, 2, 1]) q.at(-n, { type: 'countdown', n })
+    q.at(0, { type: 'countdown', n: 0 }, { type: 'phase', phase: 'noon' }).at(RULES.tenSecondsAt, { type: 'tenSeconds' }).run(104)
+    expect(q.find('tenSeconds')!.t).toBeCloseTo(RULES.tenSecondsAt, 1)
+  })
+
+  it('priorité 1 : 3 s après la précédente', () => {
+    const r = new Round(3, [0], { auto: false })
+    r.at(0, { type: 'countdown', n: 0 }, { type: 'phase', phase: 'noon' })
+      .at(RULES.phaseGoldenAt, { type: 'phase', phase: 'golden' })
+      .at(RULES.phaseGoldenAt + 1, { type: 'phase', phase: 'greatShadow' })
+      .run(RULES.phaseGoldenAt + 8)
+    const golden = r.find('golden')!
     const gs = r.find('greatShadow')!
-    const ten = r.find('tenSeconds')!
-    expect(gs.t).toBeCloseTo(RULES.greatShadowAt, 1)
-    expect(ten.t - gs.t).toBeGreaterThanOrEqual(RULES.narratorUrgentGap - 1e-6)
-    expect(ten.t - gs.t).toBeLessThan(RULES.narratorUrgentStaleSeconds + RULES.narratorUrgentGap)
+    expect(gs.t - golden.t).toBeGreaterThanOrEqual(RULES.narratorUrgentGap - 1e-6)
+    expect(gs.t - golden.t).toBeLessThan(RULES.narratorUrgentGap + 0.1)
   })
 
   it('un événement plus prioritaire survenu entre-temps passe devant', () => {
@@ -322,17 +359,22 @@ describe('détection', () => {
     expect(run.t).toBeGreaterThanOrEqual(60)
   })
 
-  it('photo-finish à 104 s quand les deux premiers sont à moins de 1,5 point', () => {
-    const r = new Round(3, [0, 1, 2])
-      .do(90, s => {
-        s.setShare(0, 0.3)
-        s.setShare(1, 0.29)
-        s.setShare(2, 0.1)
-      })
-      .run(110)
+  it('photo-finish vers 101,5 s quand les deux premiers sont à moins de 1,5 point, fini avant les 5 dernières secondes', () => {
+    const close = (s: FakeSim) => {
+      s.setShare(0, 0.3)
+      s.setShare(1, 0.29)
+      s.setShare(2, 0.1)
+    }
+    const r = new Round(3, [0, 1, 2]).do(90, close).run(110)
     const p = r.find('photoFinish')!
-    expect(p.t).toBeGreaterThanOrEqual(RULES.photoFinishAt)
-    expect(p.t).toBeLessThan(RULES.narratorQuietFrom)
+    expect(p.t).toBeGreaterThanOrEqual(101.5 - 1e-6)
+    expect(p.t + CLIP).toBeLessThanOrEqual(RULES.roundSunSeconds - 5 - 0.2)
+    // une Grande Ombre bavarde (clip long) : le photo-finish ne tiendrait pas, il se tait
+    const d = new NarratorDirector({ seed: 7, durationOf: id => (id.startsWith('greatShadow') ? 4.5 : CLIP) })
+    d.startMatch({ rounds: 3, lastRoundDouble: true })
+    const q = new Round(3, [0, 1, 2], { director: d }).do(90, close).run(110)
+    expect(q.find('greatShadow')).toBeDefined()
+    expect(q.find('photoFinish')).toBeUndefined()
   })
 })
 
@@ -422,6 +464,25 @@ describe('résultats', () => {
   })
 })
 
+describe('partie en cinq manches', () => {
+  it('chaque manche a sa réplique d’heure dorée et de couchant (les variantes reviennent)', () => {
+    const d = new NarratorDirector({ seed: 9, durationOf: () => CLIP })
+    d.startMatch({ rounds: 5, lastRoundDouble: true })
+    const golden: string[] = []
+    const sunset: string[] = []
+    for (let n = 1; n <= 5; n++) {
+      const r = new Round(3, [0], { director: d, round: n, offset: n * 200 }).run(RULES.roundSunSeconds + 1)
+      golden.push(r.find('golden')?.cue.lineId ?? '—')
+      sunset.push(r.find('sunset')?.cue.lineId ?? '—')
+    }
+    expect(golden.every(id => id.startsWith('golden'))).toBe(true)
+    expect(sunset.every(id => id.startsWith('sunset'))).toBe(true)
+    // trois variantes avant la première redite, la moins récente revient ensuite
+    expect(new Set(golden.slice(0, 3)).size).toBe(3)
+    expect(golden[3]).toBe(golden[0])
+  })
+})
+
 describe('mémoire', () => {
   it('exporte et réimporte la mémoire de partie (rafraîchissement du PC)', () => {
     const d = new NarratorDirector({ seed: 2, durationOf: () => CLIP })
@@ -500,8 +561,14 @@ describe('manches entières synthétiques (invariants GDD §16.3)', () => {
       // Aucune variante rejouée.
       const ids = r.played.map(p => p.cue.lineId)
       expect(new Set(ids).size).toBe(ids.length)
-      // Les répliques d'horloge réservées sont toutes dites.
-      for (const k of ['golden', 'sunset', 'greatShadow', 'tenSeconds']) expect(r.find(k)).toBeDefined()
+      // Les répliques d'horloge sont dites ; « Dix secondes » seulement sans la Grande Ombre.
+      for (const k of ['golden', 'sunset', 'greatShadow']) expect(r.find(k)).toBeDefined()
+      expect(r.find('tenSeconds')).toBeUndefined()
+      // Fin de manche qui respire : rien sur les coups de bois des 5 dernières secondes, et au plus
+      // deux répliques (Grande Ombre, photo-finish) dans les 13 dernières secondes.
+      const T = RULES.roundSunSeconds
+      expect(inRound.every(p => p.t + CLIP <= T - 5 - 0.2 + 1e-6)).toBe(true)
+      expect(inRound.filter(p => p.t >= T - 13).length).toBeLessThanOrEqual(2)
       // Plafonds par type.
       for (const [kind, spec] of Object.entries(KIND_SPECS)) {
         if (spec.capPerRound !== undefined) expect(inRound.filter(p => p.cue.kind === kind).length).toBeLessThanOrEqual(spec.capPerRound)

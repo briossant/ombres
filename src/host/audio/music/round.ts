@@ -25,7 +25,16 @@ export class RoundMusic {
   private cutDone = false
   private trims = new Map<LayerName, number>()
 
-  constructor(readonly engine: AudioEngine) {}
+  constructor(
+    readonly engine: AudioEngine,
+    /** Coups de bois des 5 dernières secondes (n = 5..1), calés sur le battement de cœur. */
+    private readonly onLastSecond?: (n: number, when: number) => void,
+  ) {}
+
+  /** La partition joue les coups de bois des dernières secondes (l'événement de simulation, non). */
+  get drivesLastSeconds(): boolean {
+    return this.onLastSecond !== undefined && this.score !== null && !this.cutDone
+  }
 
   /** Charge les échantillons et construit les instruments (une fois). */
   async prepare(): Promise<void> {
@@ -122,7 +131,7 @@ export class RoundMusic {
   private startRound(sim: SimState): void {
     this.sim = sim
     this.map = new TempoMap(sim.sun.T)
-    this.score = new Score(this.ins!, this.map, sim.config.seed)
+    this.score = new Score(this.ins!, this.map, sim.config.seed, this.onLastSecond)
     this.nextStep = NaN
     this.cutDone = false
     this.clock.reset()

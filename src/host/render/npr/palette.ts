@@ -218,6 +218,12 @@ export interface PaletteFrame {
 }
 
 const labLight: Vec3 = [0, 0, 0]
+/**
+ * Plafond de chroma des lavis forts à l'heure dorée (polish W12). 0,125 et non 0,12 : à 0,12 deux
+ * joueurs gelés sous une ombre (Corail / Carmin) tombaient à ΔE 0,058 (< 0,059, bible §3.4) ;
+ * docs/art/tools/final.mjs (porte gameFrozenPair) le vérifie.
+ */
+export const PAINT_C_GOLDEN_MAX = 0.125
 const labLipTmp: Vec3 = [0, 0, 0]
 
 /** Pousse la palette de la frame dans les uniforms partagés. Aucune allocation. */
@@ -286,6 +292,11 @@ export function updatePalette(frame: PaletteFrame): void {
   // Lèvre de dernière lumière : le sandLit du jour courant, jamais plus froid que KF1.
   mixInto(labLipTmp, L.sandLit, KF_FALAISE.lab.sandLit, smoothstep(10, 1, pe))
   setColor(NPR.uLipColor, labLipTmp)
+  setLab(NPR.uLipLab, labLipTmp)
+  // Heure dorée (≈ KF25 → KF10) : chroma des lavis forts plafonnée (polish W12 : les grandes zones
+  // Safran / Carmin se lisaient comme des aplats vectoriels) ; le couchant garde son vitrail.
+  const golden = smoothstep(34, 25, pe) * smoothstep(5, 9, pe)
+  NPR.uPaintCMax.value = PAINT_C_GOLDEN_MAX + (1 - golden) * (1 - PAINT_C_GOLDEN_MAX)
 }
 
 /** Couleur de palette (jour) interpolée, en RGB linéaire, pour les consommateurs CPU (HUD…). */

@@ -3,7 +3,7 @@
 //   initAudio()                      au démarrage (crée le contexte ; déverrouillé au 1er geste)
 //   preloadAudio(onProgress)         écran de chargement : sons essentiels, progression réelle
 //   setAudioScreen('title' | …)      à chaque changement d'écran (musique + ambiance)
-//   setAudioPaused(bool)             pause (musique étouffée)
+//   setAudioPaused(bool)             pause (musique étouffée ; stinger à jouer à part)
 //   playUi('hover' | …, {…})         sons d'interface
 //   playStinger('roundWin', {…})     ponctuations (résultats, victoire, pause…)
 //   playNarratorLine({lineId, …})    voix + sous-titre (subtitleEvents dans ../bus.ts)
@@ -14,7 +14,7 @@
 // la boucle d'animation interne lit gameView à chaque image.
 import type { Lang } from '../../shared/protocol.ts'
 import type { SimEvent } from '../../sim/types.ts'
-import { simEvents } from '../bus.ts'
+import { simEvents, subtitleEvents } from '../bus.ts'
 import { getSettings, useSettings } from '../settings.ts'
 import { gameView, type GameView } from '../view.ts'
 import { Ambience, type AmbienceScene } from './ambience.ts'
@@ -56,7 +56,9 @@ export class AudioSystem {
     this.engine = new AudioEngine(ctx)
     this.sfx = new SfxSystem(this.engine, getView)
     this.ambience = new Ambience(this.engine, getView, this.sfx)
-    this.music = new MusicDirector(this.engine, getView)
+    // les coups de bois des 5 dernières secondes sont joués par la partition, sur le battement
+    this.music = new MusicDirector(this.engine, getView, (n, when) => this.sfx.lastSecond(n, when))
+    this.sfx.scoreKeepsTime = () => this.music.roundMusic?.drivesLastSeconds ?? false
     this.narrator = new NarratorPlayer(this.engine)
   }
 
@@ -97,18 +99,21 @@ export class AudioSystem {
   setScreen(screen: AudioScreen): void {
     this.music.setScreen(screen)
     this.ambience.setScene(SCENE_OF[screen])
+    this.sfx.setScreen(screen)
     // le reste des sons se charge en tâche de fond une fois le titre affiché
     if (screen !== 'loading') void this.engine.assets.preload(LAZY_ASSETS)
   }
 
   private paused = false
 
-  /** Pause : musique étouffée et ponctuation (harpe descendante / montante). */
+  /**
+   * Pause : musique étouffée. La ponctuation (harpe descendante / montante) est jouée par
+   * l'appelant avec playStinger('pause' | 'resume') : une seule fois.
+   */
   setPaused(paused: boolean): void {
     if (paused === this.paused) return
     this.paused = paused
     this.engine.setPaused(paused)
-    this.sfx.stinger(paused ? 'pause' : 'resume')
   }
 
   dispose(): void {
@@ -158,6 +163,10 @@ export function initAudio(): AudioSystem {
     // calcul et de mémoire en moins qu'à 48 kHz ; le navigateur convertit à la sortie si besoin.
     system = new AudioSystem(new Ctx({ latencyHint: hint, sampleRate: 44100 }))
     system.start()
+    // ?debug : outils de mesure (tools/polish/audio/rec.mjs) branchés sur CE système audio
+    if (new URLSearchParams(location.search).has('debug')) {
+      ;(window as unknown as { __ombresAudio?: unknown }).__ombresAudio = { system, subtitleEvents }
+    }
   }
   return system
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RULES } from './rules.ts'
 import { createMatch, finishRound, isMatchOver, mapOrder, matchStandings, matchTitles, matchWinners, ranksOf, restoreMatch, roundConfig, sunsOf, matchSnapshot } from './match.ts'
-import { assignTitles, emptyTitleStats, type TitleStats } from './titles.ts'
+import { assignTitles, emptyTitleStats, withSovereign, type TitleStats } from './titles.ts'
 import { createSimulation } from './simulation.ts'
 import { makePolicy } from './harness.ts'
 import type { BirdInput, SimState } from './types.ts'
@@ -104,6 +104,31 @@ describe('titres (GDD §11.4)', () => {
     expect(awards.find((a) => a.slot === 3)!.unit).toBe('frac')
   })
 
+  it('le chasseur qui domine est le Rapace, jamais le Kamikaze (titres flatteurs d’abord)', () => {
+    // 7 touches, 0 subie, mais 5 piqués dans le sable : avant, z(Kamikaze) > z(Rapace)
+    const players = [
+      player(0, { hits: 7, misses: 5 }),
+      player(1, { hits: 1, misses: 3 }),
+      player(2, { hits: 0, misses: 0 }),
+      player(3, { hits: 1, misses: 0, gotHit: 4 }),
+    ]
+    const by = Object.fromEntries(assignTitles(players).map((a) => [a.slot, a.title]))
+    expect(by[0]).toBe('rapace')
+    expect(by[1]).toBe('kamikaze')
+    expect(by[3]).toBe('gibier')
+  })
+
+  it('pas de titre moqueur à qui domine son domaine (meilleure anguille ≠ Gibier)', () => {
+    const players = [
+      player(0, { dodges: 6, gotHit: 5, hiddenTime: 40 }), // Lézard pris d'abord : Anguille libre, mais pas Gibier
+      player(1, { dodges: 2, gotHit: 3 }),
+      player(2, { hiddenTime: 50 }),
+    ]
+    const by = Object.fromEntries(assignTitles(players).map((a) => [a.slot, a.title]))
+    expect(by[0]).not.toBe('gibier')
+    expect(by[1]).toBe('gibier')
+  })
+
   it('Dernier Rayon : seulement le plus haut gain de la Grande Ombre, s\'il est positif', () => {
     const awards = assignTitles([player(0, { greatShadowFrac: 0.05 }), player(1, { greatShadowFrac: 0.02 }), player(2, { greatShadowFrac: -0.01 })])
     expect(awards).toEqual([expect.objectContaining({ slot: 0, title: 'dernierRayon' })])
@@ -126,11 +151,26 @@ describe('titres (GDD §11.4)', () => {
       expect(r.shares.reduce((a, v) => a + v, 0)).toBeLessThanOrEqual(1)
       expect(r.winners.length).toBeGreaterThan(0)
       expect(r.suns.reduce((a, v) => a + v, 0)).toBe((6 + 1) * r.multiplier) // 3+2+1+0 + bonus, sans ex æquo
-      if (r.highlight) expect(r.facts[0]).toBe(r.highlight)
+      if (r.highlight) expect(r.facts).toContain(r.highlight)
     }
+    // un fait marquant ne revient jamais dans la même partie
+    const kinds = match.results.map((r) => r.highlight?.kind).filter((k) => k !== undefined)
+    expect(new Set(kinds).size).toBe(kinds.length)
     expect(match.results.map((r) => r.mapId)).toEqual(['parasols', expect.stringMatching(/aiguilles|geantes/), 'cadran'])
     const titles = matchTitles(match)
     expect(new Set(titles.map((t) => t.slot)).size).toBe(titles.length)
     expect(matchWinners(match).length).toBeGreaterThan(0)
+    // le vainqueur a toujours un titre (« Le Souverain » à défaut)
+    for (const w of matchWinners(match)) expect(titles.some((t) => t.slot === w)).toBe(true)
+  })
+
+  it('vainqueur sans titre : « Le Souverain », avec son total de soleils', () => {
+    const awards = assignTitles([player(0, {}), player(1, { hits: 5 }), player(2, {})])
+    expect(awards.map((a) => a.slot)).toEqual([1])
+    const out = withSovereign(awards, [{ slot: 0, suns: 11 }])
+    expect(out).toEqual([expect.objectContaining({ slot: 0, title: 'souverain', value: 11, unit: 'count' }), expect.objectContaining({ slot: 1, title: 'rapace' })])
+    // un vainqueur qui a déjà un titre le garde ; co-vainqueurs : chacun le sien
+    expect(withSovereign(awards, [{ slot: 1, suns: 9 }])).toEqual(awards)
+    expect(withSovereign([], [{ slot: 0, suns: 7 }, { slot: 2, suns: 7 }]).map((a) => a.title)).toEqual(['souverain', 'souverain'])
   })
 })

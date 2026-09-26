@@ -42,6 +42,8 @@
   margin: 8px 0 0;
   font-size: 24px;
   color: var(--ink-60);
+  /* « Manche 2 · Après-midi » : jamais coupé au trait d'union */
+  white-space: nowrap;
 }
 .pause__menu {
   margin-top: 40px;
@@ -159,6 +161,14 @@
 .keys__dim {
   font-size: 21px;
   color: var(--ink-80);
+}
+/* « ou ← ↑ ↓ → (joueur seul) » : ligne à part, sous les touches du joueur 1, sans filet. */
+.keys__table .keys__sub td {
+  padding-top: 0;
+  border-top: none;
+}
+.keys__sub .keys__or:first-child {
+  margin-left: 0;
 }
 .keys__note {
   margin: 8px 0 0;

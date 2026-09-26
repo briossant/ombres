@@ -5,7 +5,7 @@ import type { PhoneView } from '../../shared/messages.ts'
 import { hasKey } from '../../shared/i18n.ts'
 import { colorName } from '../../shared/players.ts'
 import { sendAction, sendReady } from '../link.ts'
-import { formatPct, ordinal, splitOrdinal, useLang, useT, useTn } from '../format.tsx'
+import { NumText, formatPct, pluralOne, splitOrdinal, useLang, useT, useTn } from '../format.tsx'
 import { openSheet, usePhone } from '../store.ts'
 import { Controller } from '../controls/Controller.tsx'
 import { recalibrateTilt } from '../controls/TiltPad.tsx'
@@ -13,6 +13,7 @@ import { Band, PlayBandInfo, PlayInfoPanel } from '../ui/Band.tsx'
 import { Token } from '../ui/Glyph.tsx'
 import { IconCheck, IconCrown, IconEyeOff, IconGear, IconLobby, IconPlay, IconRematch, IconSun } from '../ui/Icons.tsx'
 import { RuleCard, RulesCarousel } from '../ui/RulesCards.tsx'
+import { CELEBRATE_DELAY_MS, InkGlory, WinnerFlood } from '../ui/Celebrate.tsx'
 import { Wash } from '../ui/Wash.tsx'
 import { Deadline, Num } from '../ui/bits.tsx'
 
@@ -86,7 +87,11 @@ export function LobbyScreen({ view }: { view: V }) {
               <span className="label-short">{t('phone.lobby.startShort')}</span>
             </button>
           ) : (
-            <RoomChip />
+            <>
+              {/* Paysage : qui lance, à la place du bouton « Lancer » du meneur (portrait : sous la carte). */}
+              {waiting && <div className="band__wait">{waiting}</div>}
+              <RoomChip />
+            </>
           )}
           <SettingsButton />
         </>
@@ -107,10 +112,16 @@ export function LobbyScreen({ view }: { view: V }) {
           </div>
           <p className="lobby-goals__how">{next ? t(`phone.goal.${next.key}.how`) : t('phone.lobby.allDone')}</p>
         </div>
-        <div className="case lobby-rules">
-          <RulesCarousel />
+        <div className="lobby-mid">
+          <div className="case lobby-rules">
+            <RulesCarousel />
+          </div>
         </div>
-        {waiting && <div className="lobby-wait recitatif">{waiting}</div>}
+        {waiting && (
+          <div className="lobby-wait">
+            <div className="recitatif">{waiting}</div>
+          </div>
+        )}
       </div>
     </Shell>
   )
@@ -221,15 +232,17 @@ export function RoundEndScreen({ view }: { view: V }) {
           <div className="case case--title panel result">
             <h1 className="t-title">{tn('phone.roundEnd.title', { n: r.round })}</h1>
             <div className="result__main">
-              <div className="big-rank t-num">
-                {rn}
-                <sup>{rs}</sup>
-              </div>
-              <div>
-                <div className="result__share t-num">{formatPct(r.share, lang)}</div>
-                <div className="muted">
-                  {t('phone.roundEnd.ofDesert')} · {tn('phone.roundEnd.rankOf', { n: r.of })}
+              {/* Rang et « sur N » ensemble ; part et « du désert » ensemble. */}
+              <div className="result__rank">
+                <div className="big-rank t-num">
+                  {rn}
+                  <sup>{rs}</sup>
                 </div>
+                <div className="muted">{tn('phone.roundEnd.rankOf', { n: r.of })}</div>
+              </div>
+              <div className="result__sharewrap">
+                <div className="result__share t-num">{formatPct(r.share, lang)}</div>
+                <div className="muted">{t('phone.roundEnd.ofDesert')}</div>
               </div>
             </div>
             <div className="suns">
@@ -254,7 +267,7 @@ export function RoundEndScreen({ view }: { view: V }) {
               <Stat label={t('phone.stat.stolen')} value={formatPct(r.stats.stolen, lang)} />
               <Stat label={t('phone.stat.lowFrac')} value={formatPct(r.stats.lowFrac, lang, 0)} />
             </dl>
-            {r.mention && <p className="recitatif result__mention">{t(r.mention.key, r.mention.params)}</p>}
+            {r.mention && <p className="recitatif result__mention">{tn(r.mention.key, r.mention.params)}</p>}
             {r.nextDouble && <p className="result__double">{t('phone.roundEnd.nextDouble')}</p>}
             <div className="result__ready">
               <button type="button" className={`btn btn--primary ${ready ? 'is-voted' : ''}`} onClick={() => sendReady(true)} disabled={ready}>
@@ -285,10 +298,13 @@ export function MatchEndScreen({ view }: { view: V }) {
   const youWin = m.winners.some(w => w.color === view.you.color)
   const headline =
     m.winners.length > 1 ? t('phone.matchEnd.tie') : youWin ? t('phone.matchEnd.youWin') : m.winners[0] ? t('phone.matchEnd.winner', { name: m.winners[0].name }) : ''
-  const sunsLabel = (n: number) => (n === 1 ? tn('phone.matchEnd.suns.one', { n }) : tn('phone.matchEnd.suns.other', { n }))
+  const sunsLabel = (n: number) => (pluralOne(n, lang) ? tn('phone.matchEnd.suns.one', { n }) : tn('phone.matchEnd.suns.other', { n }))
+  // Les autres : leurs chiffres s'écrivent à la plume, l'un après l'autre.
+  const write = (step: number) => (youWin ? {} : { className: 'ink-write', style: { animationDelay: `${CELEBRATE_DELAY_MS + step * 650}ms` } })
   return (
     <Shell view={view} band={<SettingsButton />}>
-      <div className="screen screen--band">
+      {youWin && <WinnerFlood color={view.you.color} originSelector=".result__rank .big-rank" />}
+      <div className={`screen screen--band ${youWin ? 'is-winner' : ''}`}>
         <div className="two-col">
           <div className="case case--title panel result">
             <h1 className="t-title">{t('phone.matchEnd.title')}</h1>
@@ -296,12 +312,19 @@ export function MatchEndScreen({ view }: { view: V }) {
               {youWin && <IconCrown size={28} />} {headline}
             </p>
             <div className="result__main">
-              <div className="big-rank t-num">
-                {splitOrdinal(m.rank, lang)[0]}
-                <sup>{splitOrdinal(m.rank, lang)[1]}</sup>
+              <div className="result__rank">
+                <div className="big-rank t-num">
+                  {youWin && <InkGlory />}
+                  <span {...write(0)}>
+                    {splitOrdinal(m.rank, lang)[0]}
+                    <sup>{splitOrdinal(m.rank, lang)[1]}</sup>
+                  </span>
+                </div>
+                <div className="muted">{tn('phone.roundEnd.rankOf', { n: m.of })}</div>
               </div>
               <div className="suns">
-                <IconSun size={26} /> <b>{sunsLabel(m.suns)}</b>
+                <IconSun size={26} />{' '}
+                <b {...write(1)}>{sunsLabel(m.suns)}</b>
               </div>
             </div>
             <div className="recitatif title-card">
@@ -309,7 +332,13 @@ export function MatchEndScreen({ view }: { view: V }) {
               {m.title ? (
                 <>
                   <div className="t-title">{hasKey(m.title.key) ? t(m.title.key) : (m.title.label ?? t(m.title.key))}</div>
-                  {m.title.value && <div className="t-num">{m.title.value}</div>}
+                  {m.title.value && (
+                    <div className="title-card__value">
+                      <span {...write(2)}>
+                        <NumText text={m.title.value} />
+                      </span>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div>{t('phone.matchEnd.noTitle')}</div>
@@ -320,7 +349,10 @@ export function MatchEndScreen({ view }: { view: V }) {
             <ol className="podium">
               {m.podium.map((p, i) => (
                 <li key={`${p.color}-${i}`}>
-                  <span className="t-num">{ordinal(i + 1, lang)}</span>
+                  <span className="podium__rank t-num">
+                    {splitOrdinal(i + 1, lang)[0]}
+                    <sup>{splitOrdinal(i + 1, lang)[1]}</sup>
+                  </span>
                   <Token index={p.color} size={26} />
                   <span className="podium__name">{p.name}</span>
                   <span className="t-num podium__suns">
@@ -334,13 +366,13 @@ export function MatchEndScreen({ view }: { view: V }) {
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <IconRematch size={24} /> {t('phone.matchEnd.rematch')}
                 </span>
-                <small>{t('phone.matchEnd.votes', { n: m.vote.rematch, total: m.vote.humans })}</small>
+                <small>{tn('phone.matchEnd.votes', { n: m.vote.rematch, total: m.vote.humans })}</small>
               </button>
               <button type="button" className={`btn ${mine === 'toLobby' ? 'is-voted' : ''}`} onClick={() => sendAction('toLobby')}>
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <IconLobby size={24} /> {t('phone.matchEnd.lobby')}
                 </span>
-                <small>{t('phone.matchEnd.votes', { n: m.vote.toLobby, total: m.vote.humans })}</small>
+                <small>{tn('phone.matchEnd.votes', { n: m.vote.toLobby, total: m.vote.humans })}</small>
               </button>
             </div>
             {deadline && <Deadline startAt={deadline.start} endAt={deadline.end} />}

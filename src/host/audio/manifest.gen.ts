@@ -24,7 +24,6 @@ export interface AudioAsset {
 }
 
 export const AUDIO_ASSETS = {
-  amb_chimes_loop: {url: "audio/sfx/amb_chimes_loop.ogg", bytes: 147100, kind: "amb", group: "lazy", loop: true, note: null, duration: 24.0, channels: 1, peakDb: -7.02, lufs: -24.1, mmax: -16.4, onset: 0.004, peakTime: 10.978},
   amb_night_crickets_loop: {url: "audio/sfx/amb_night_crickets_loop.ogg", bytes: 158547, kind: "amb", group: "lazy", loop: true, note: null, duration: 24.0, channels: 1, peakDb: -5.84, lufs: -20.1, mmax: -17.6, onset: 0.004, peakTime: 5.265},
   amb_wind_base_loop: {url: "audio/sfx/amb_wind_base_loop.ogg", bytes: 200248, kind: "amb", group: "critical", loop: true, note: null, duration: 26.0, channels: 2, peakDb: -1.62, lufs: -20.1, mmax: -15.2, onset: 0.004, peakTime: 7.221},
   amb_wind_dark_loop: {url: "audio/sfx/amb_wind_dark_loop.ogg", bytes: 141036, kind: "amb", group: "lazy", loop: true, note: null, duration: 22.0, channels: 1, peakDb: -2.45, lufs: -20.0, mmax: -17.6, onset: 0.004, peakTime: 20.143},
@@ -111,6 +110,11 @@ export const AUDIO_ASSETS = {
   ui_page_flip_1: {url: "audio/sfx/ui_page_flip_1.ogg", bytes: 5998, kind: "ui", group: "critical", loop: false, note: null, duration: 0.2858, channels: 1, peakDb: -1.13, lufs: -26.3, mmax: -26.3, onset: 0.107, peakTime: 0.11},
   ui_page_flip_2: {url: "audio/sfx/ui_page_flip_2.ogg", bytes: 7141, kind: "ui", group: "critical", loop: false, note: null, duration: 0.3956, channels: 1, peakDb: -1.62, lufs: -25.8, mmax: -25.8, onset: 0.004, peakTime: 0.006},
   ui_pluck: {url: "audio/sfx/ui_pluck.ogg", bytes: 4200, kind: "ui", group: "critical", loop: false, note: null, duration: 0.0966, channels: 1, peakDb: -1.03, lufs: -23.9, mmax: -23.9, onset: 0.004, peakTime: 0.004},
+  whoosh_down_01: {url: "audio/sfx/whoosh_down_01.ogg", bytes: 14166, kind: "sfx", group: "critical", loop: false, note: null, duration: 1.6, channels: 1, peakDb: -0.89, lufs: -17.9, mmax: -14.5, onset: 0.005, peakTime: 0.892},
+  whoosh_flap_01: {url: "audio/sfx/whoosh_flap_01.ogg", bytes: 8376, kind: "sfx", group: "critical", loop: false, note: null, duration: 0.6771, channels: 1, peakDb: -1.01, lufs: -19.2, mmax: -18.9, onset: 0.034, peakTime: 0.283},
+  whoosh_flap_02: {url: "audio/sfx/whoosh_flap_02.ogg", bytes: 9149, kind: "sfx", group: "critical", loop: false, note: null, duration: 0.7971, channels: 1, peakDb: -1.2, lufs: -15.5, mmax: -14.8, onset: 0.004, peakTime: 0.342},
+  whoosh_flap_03: {url: "audio/sfx/whoosh_flap_03.ogg", bytes: 9902, kind: "sfx", group: "critical", loop: false, note: null, duration: 0.7971, channels: 1, peakDb: -1.25, lufs: -14.0, mmax: -13.3, onset: 0.004, peakTime: 0.44},
+  whoosh_hide_01: {url: "audio/sfx/whoosh_hide_01.ogg", bytes: 11230, kind: "sfx", group: "lazy", loop: false, note: null, duration: 1.4, channels: 1, peakDb: -0.9, lufs: -17.3, mmax: -13.2, onset: 0.004, peakTime: 0.146},
   whoosh_pass_01: {url: "audio/sfx/whoosh_pass_01.ogg", bytes: 9672, kind: "sfx", group: "critical", loop: false, note: null, duration: 0.7771, channels: 1, peakDb: -1.22, lufs: -21.0, mmax: -21.0, onset: 0.098, peakTime: 0.125},
   whoosh_pass_02: {url: "audio/sfx/whoosh_pass_02.ogg", bytes: 7263, kind: "sfx", group: "critical", loop: false, note: null, duration: 0.4673, channels: 1, peakDb: -1.07, lufs: -17.5, mmax: -17.5, onset: 0.041, peakTime: 0.109},
   wind_gust_01: {url: "audio/sfx/wind_gust_01.ogg", bytes: 61298, kind: "amb", group: "lazy", loop: false, note: null, duration: 7.728, channels: 1, peakDb: -0.93, lufs: -16.4, mmax: -12.5, onset: 0.666, peakTime: 2.29},

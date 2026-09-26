@@ -100,7 +100,9 @@ const BIG_STEAL_MIN_GAP = RULES.leaderChangeMinGap
 // Priorités et plafonds : GDD §16.4, avec deux écarts documentés (director.md §Décisions) :
 // - photoFinish passe en priorité 1 : en priorité 2, l'écart de 8 s après « Dix secondes » (100 s)
 //   et le silence de 107 s le rendaient injouable ;
-// - golden/sunset/greatShadow/tenSeconds ont trois variantes (une par manche d'une partie standard).
+// - golden/sunset/greatShadow/tenSeconds ont trois variantes (une par manche d'une partie standard),
+//   et reviennent (la moins récente) aux manches 4 et 5 d'une partie en cinq manches : le soleil qui
+//   descend est commenté à chaque manche.
 export const KIND_SPECS: Record<NarratorKind, KindSpec> = {
   matchOpen: { priority: 1, scope: 'match', capPerMatch: 1 },
   roundOpen: { priority: 1, scope: 'match', reuse: true },
@@ -132,8 +134,8 @@ export const KIND_SPECS: Record<NarratorKind, KindSpec> = {
   idle: { priority: 5, scope: 'round', capPerRound: 1, sustained: true },
 
   // Spécificité élevée : à priorité égale, l'horloge passe devant un événement survenu au même moment.
-  golden: { priority: 2, scope: 'clock', specificity: 10 },
-  sunset: { priority: 2, scope: 'clock', specificity: 10 },
+  golden: { priority: 2, scope: 'clock', specificity: 10, reuse: true },
+  sunset: { priority: 2, scope: 'clock', specificity: 10, reuse: true },
   greatShadow: { priority: 1, scope: 'clock', reuse: true },
   tenSeconds: { priority: 1, scope: 'clock', reuse: true },
   photoFinish: { priority: 1, scope: 'clock' },

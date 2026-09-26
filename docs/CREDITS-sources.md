@@ -67,6 +67,11 @@ Fichiers servis par l'agent audio (`tools/audio-build.py`). Modifications commun
 | `public/audio/sfx/dive_nighthawk_02.ogg` | https://freesound.org/people/Danjocross/sounds/164207/ (« Nighthawk swoosh 2.aif ») | Danjocross | CC0 1.0 | non |
 | `public/audio/sfx/whoosh_pass_01.ogg` | https://freesound.org/people/florianreichelt/sounds/683101/ (« quick woosh ») | florianreichelt | CC0 1.0 | non |
 | `public/audio/sfx/whoosh_pass_02.ogg` | https://freesound.org/people/qubodup/sounds/60013/ (« Whoosh ») | qubodup | CC0 1.0 | non |
+| `public/audio/sfx/whoosh_flap_01.ogg` | https://freesound.org/people/freakinbehemoth/sounds/243400/ (« woosh.wav ») | freakinbehemoth | CC0 1.0 | non |
+| `public/audio/sfx/whoosh_flap_02.ogg` | https://freesound.org/people/crackles04/sounds/369698/ (« Whoosh.wav ») | crackles04 | CC0 1.0 | non |
+| `public/audio/sfx/whoosh_flap_03.ogg` | https://freesound.org/people/EcoDTR/sounds/27281/ (« Epic whoosh.wav ») | EcoDTR | CC0 1.0 | non |
+| `public/audio/sfx/whoosh_down_01.ogg` | https://freesound.org/people/crackles04/sounds/369698/ (« Whoosh.wav ») | crackles04 | CC0 1.0 | non |
+| `public/audio/sfx/whoosh_hide_01.ogg` | https://freesound.org/people/EcoDTR/sounds/27281/ (« Epic whoosh.wav ») | EcoDTR | CC0 1.0 | non |
 | `public/audio/sfx/impact_punch.ogg` | https://freesound.org/people/janbezouska/sounds/399183/ (« Major punch ») | janbezouska | CC0 1.0 | non |
 | `public/audio/sfx/impact_hit_heavy.ogg` | https://freesound.org/people/leonelmail/sounds/504626/ (« BODY FALL - V HVY - DIRT ») | leonelmail | CC0 1.0 | non |
 | `public/audio/sfx/impact_thud_light.ogg` | https://freesound.org/people/JonasTisell/sounds/496187/ (« Light Body thud (on clothing) ») | JonasTisell | CC0 1.0 | non |
@@ -128,7 +133,6 @@ Fichiers servis par l'agent audio (`tools/audio-build.py`). Modifications commun
 | `public/audio/sfx/amb_wind_howl_loop.ogg` (bouclé) | https://freesound.org/people/swiftoid/sounds/117611/ (« wind_howl2_stereo.wav ») | swiftoid | CC0 1.0 | non |
 | `public/audio/sfx/amb_wind_dark_loop.ogg` (bouclé) | https://freesound.org/people/DarkShroom/sounds/645305/ (« desert_wind.wav ») | DarkShroom | CC0 1.0 | non |
 | `public/audio/sfx/amb_night_crickets_loop.ogg` (bouclé) | https://freesound.org/people/felix.blume/sounds/165526/ (« Wind singing in the mountain, some night cricket in background ») | felix.blume | CC0 1.0 | non |
-| `public/audio/sfx/amb_chimes_loop.ogg` (bouclé) | https://freesound.org/people/giddster/sounds/437337/ (« Wind chimes 1 ») | giddster | CC0 1.0 | non |
 | `public/audio/sfx/sand_paint_loop.ogg` (bouclé) | https://freesound.org/people/benjammin2006/sounds/235966/ (« Rainstick (Stereo) ») | benjammin2006 | CC0 1.0 | non |
 | `public/audio/music/samples/tongue_A3.ogg` | https://freesound.org/people/tosha73/sounds/497849/ (« Steel tongue drum 9 samples.wav ») | tosha73 | CC0 1.0 | non |
 | `public/audio/music/samples/tongue_C4.ogg` | https://freesound.org/people/tosha73/sounds/497849/ (« Steel tongue drum 9 samples.wav ») | tosha73 | CC0 1.0 | non |

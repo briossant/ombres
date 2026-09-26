@@ -176,6 +176,10 @@ describe('session réseau de bout en bout', () => {
     await new Promise(r => setTimeout(r, 150))
     expect(phone.inbox.filter(m => m.k === 'view')).toHaveLength(1)
     expect(phone.inbox.find(m => m.k === 'cue')).toEqual({ k: 'cue', cue: 'windup' })
+    // « Réduire les flashs » du PC : le changement seul renvoie la vue, et le téléphone le reçoit.
+    hub.setView(id, { ...view, reduceFlashes: true })
+    await until(() => phone.inbox.filter(m => m.k === 'view').length === 2, 3000, 'vue « réduire les flashs »')
+    expect(phone.inbox.filter(m => m.k === 'view').at(-1)).toMatchObject({ k: 'view', reduceFlashes: true })
   })
 
   it('reconnexion du téléphone : même id, vue renvoyée', async () => {

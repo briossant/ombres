@@ -97,6 +97,8 @@ body {
   font-family: var(--f-ui);
   font-size: 20px;
   line-height: 1.2;
+  /* Patrick Hand SC dessine « fi », « ff », « ll » en bas de casse au milieu des petites capitales */
+  font-variant-ligatures: no-common-ligatures;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -126,6 +128,13 @@ svg {
   position: fixed;
   inset: 0;
   overflow: hidden;
+  /* Géométrie des commandes, partagée par la manette et les cases qui doivent l'éviter (salon).
+     Diamètres : fraction de la hauteur d'écran (RULES.buttonDiveHeightFrac / buttonFlapHeightFrac,
+     posées en ligne par App.tsx avec --stick-r). */
+  --dive: min(calc(var(--dive-frac, 0.38) * 100dvh), 42vw, 190px);
+  --flap: min(calc(var(--flap-frac, 0.28) * 100dvh), 30vw, 140px);
+  /* Du bord droit de l'écran au bord gauche de l'anneau de COUP D'AILE (anneau : 15 px autour du disque). */
+  --flap-reserve: calc(var(--gut-r) + 10px + var(--dive) * 1.18 + var(--flap) / 2 + 15px);
   background-color: var(--paper);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .17  0 0 0 0 .11  0 0 0 0 .14  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
@@ -428,9 +437,6 @@ svg {
 .ctl {
   position: absolute;
   inset: calc(var(--band) + var(--safe-t)) 0 0 0;
-  /* Diamètres : fraction de la hauteur d'écran (RULES.buttonDiveHeightFrac / buttonFlapHeightFrac). */
-  --dive: min(calc(var(--dive-frac, 0.38) * 100dvh), 42vw, 190px);
-  --flap: min(calc(var(--flap-frac, 0.28) * 100dvh), 30vw, 140px);
 }
 .ctl.is-stunned .stick,
 .ctl.is-stunned .act {
@@ -511,7 +517,9 @@ svg {
   position: absolute;
   font-size: 20px;
   white-space: nowrap;
-  transform: translate(-50%, 84px);
+  /* à cheval sur le bas de l'anneau (place réservée par Controller.tsx, HINT_BELOW) */
+  transform: translate(-50%, calc(var(--stick-r, 70px) - 12px));
+  box-shadow: 3px 3px 0 var(--drop);
   pointer-events: none;
   animation: hint-bob 2.4s ease-in-out infinite;
 }
@@ -600,14 +608,22 @@ svg {
 }
 .act__star {
   position: absolute;
-  inset: -14%;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
   pointer-events: none;
   color: var(--ink);
-  animation: star-spin 6s linear infinite;
+  overflow: hidden;
 }
-@keyframes star-spin {
-  to {
-    rotate: 360deg;
+/* Les rayons battent (vers le centre, jamais au-delà de leur longueur) : l'étoile vit sans sortir du bouton. */
+.act__rays {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: star-beat 0.9s ease-in-out infinite alternate;
+}
+@keyframes star-beat {
+  from {
+    transform: scale(0.92);
   }
 }
 
@@ -833,13 +849,13 @@ h2.t-title {
 }
 .swatches {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(6, minmax(40px, 1fr));
+  gap: 8px;
 }
 .swatch {
   position: relative;
   aspect-ratio: 1;
-  min-width: 44px;
+  min-width: 40px;
   border: none;
   padding: 0;
   background: none;
@@ -881,15 +897,24 @@ h2.t-title {
 }
 
 /* ─── Salon ──────────────────────────────────────────────────────────────── */
-/* Les cases du salon sont purement informatives : les touches passent au travers vers le joystick. */
+/* Les cases du salon sont purement informatives : les touches passent au travers vers le joystick.
+   Mise en page en colonne : objectifs en haut (jamais sous COUP D'AILE), puis la carte des règles dans
+   la colonne centrale, bornée à gauche par le socle du joystick au repos et à droite par l'anneau de
+   COUP D'AILE, puis le message d'attente. */
+.ctl-overlay {
+  display: flex;
+  flex-direction: column;
+  /* socle au repos : x = max(R + 16, 40 % de la moitié gauche) (Controller, restX = 0,4), rayon R */
+  --col-l: calc(max(var(--stick-r, 70px) + 16px, 20vw) + var(--stick-r, 70px) + 14px);
+  --col-r: calc(var(--flap-reserve) + 12px);
+}
 .lobby-goals {
-  position: absolute;
+  position: relative;
   z-index: 0;
-  top: 10px;
-  left: calc(var(--gut-l) + 4px);
-  right: calc(var(--gut-r) + var(--dive) * 1.05 + var(--flap) * 0.6);
-  max-width: 440px;
-  margin: 0 auto;
+  flex: none;
+  align-self: flex-start;
+  margin: 10px 0 0 calc(var(--gut-l) + 4px);
+  width: min(440px, calc(100% - var(--gut-l) - 4px - var(--col-r)));
   padding: 7px 12px 8px;
   pointer-events: none;
 }
@@ -906,8 +931,9 @@ h2.t-title {
 }
 .lobby-goals__how {
   margin: 4px 0 0;
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1.1;
+  text-wrap: balance;
 }
 .goals {
   list-style: none;
@@ -953,15 +979,35 @@ h2.t-title {
     transform: scale(0.2) rotate(-25deg);
   }
 }
+/* Colonne centrale : sa hauteur disponible borne la carte (unités de conteneur). */
+.lobby-mid {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 10px var(--col-r) 0 var(--col-l);
+  container-type: size;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
 .lobby-rules {
-  position: absolute;
+  position: relative;
   z-index: 0;
-  top: 104px;
-  left: 50%;
-  width: min(190px, 30vw);
-  transform: translateX(-62%);
+  /* largeur = colonne, ou ce que permet la hauteur (image 16:9 + légende de deux lignes + points ≈ 64 px) */
+  width: min(100cqw, 240px, (100cqh - 64px) * 1.7778);
   padding: 6px 6px 4px;
   pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+/* Tant qu'un pouce est posé (joystick ou bouton), la carte s'efface : rien sous le socle qui suit le pouce. */
+.app:has(.stick:not(.is-idle)) .lobby-rules,
+.app:has(.act.is-down) .lobby-rules {
+  opacity: 0;
+}
+/* Colonne trop petite (très petit écran) : pas de carte plutôt qu'une carte illisible. */
+@container (max-width: 96px) or (max-height: 110px) {
+  .lobby-rules {
+    display: none;
+  }
 }
 .lobby-rules .rule-card__text {
   font-size: 15px;
@@ -970,15 +1016,37 @@ h2.t-title {
 .lobby-rules .rule-card {
   gap: 4px;
 }
+/* Qui lance la partie : dans le bandeau en paysage (la colonne centrale reste à la carte), sous la
+   carte en portrait (le bandeau est trop étroit). */
+.band__wait {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 34vw;
+  font-size: 17px;
+  line-height: 1.05;
+  text-align: right;
+  text-wrap: balance;
+  color: var(--pc-on);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .lobby-wait {
-  position: absolute;
+  display: none;
+}
+.lobby-wait {
+  position: relative;
   z-index: 0;
-  left: 50%;
-  transform: translateX(-62%);
-  bottom: calc(var(--gut-b) + 8px);
+  flex: none;
+  justify-content: center;
+  margin: 8px var(--col-r) calc(var(--gut-b) + 6px) var(--col-l);
+  pointer-events: none;
+}
+.lobby-wait .recitatif {
   font-size: 18px;
   white-space: nowrap;
-  pointer-events: none;
+  box-shadow: 3px 3px 0 var(--drop);
 }
 .band__start {
   min-height: 44px;
@@ -1008,11 +1076,17 @@ h2.t-title {
   font-size: 19px;
   line-height: 1.1;
   text-align: center;
+  text-wrap: balance;
   min-height: 2.2em;
 }
 .rule-card__num {
   font-family: var(--f-num);
   font-weight: 700;
+}
+/* une phrase par ligne ; une phrase trop longue se replie en lignes équilibrées */
+.rule-card__line {
+  display: block;
+  text-wrap: balance;
 }
 .carousel-dots {
   display: flex;
@@ -1100,8 +1174,7 @@ h2.t-title {
   padding: 6px 12px;
 }
 .vote-row .btn small {
-  font-family: var(--f-num);
-  font-size: 15px;
+  font-size: 17px;
   color: var(--ink-60);
 }
 .vote-row .btn.is-voted {
@@ -1135,8 +1208,10 @@ h2.t-title {
   animation: fade-in 200ms ease-out;
   touch-action: none;
 }
+/* Pause, reconnexion : voile papier (effet calque, même règle que le PC) et non voile d'encre, qui
+   donnait un kaki boueux sur le lavis du joueur. */
 .overlay--dim {
-  background: rgb(43 29 35 / 0.45);
+  background: rgb(247 240 227 / 0.55);
 }
 .overlay .panel {
   max-width: 440px;
@@ -1171,7 +1246,8 @@ h2.t-title {
   display: flex;
   justify-content: center;
   padding: max(10px, var(--safe-t)) var(--gut-r) 0 var(--gut-l);
-  background: rgb(43 29 35 / 0.35);
+  /* même voile papier que la pause (effet calque) */
+  background: rgb(247 240 227 / 0.55);
   animation: fade-in 160ms ease-out;
 }
 .sheet__panel {
@@ -1273,31 +1349,44 @@ h2.t-title {
   translate: 24px 0;
 }
 
-/* Messages courts (récitatifs) sous le bandeau. */
+/* Messages courts (récitatifs) posés sur le bandeau, au-dessus de tout le reste : jamais sous une case
+   (objectifs du salon, panneau du portrait). Entrée et sortie par essuyage d'encre, sans fondu : pas de
+   « fantôme » translucide. */
 .toasts {
   position: absolute;
-  z-index: 15;
+  z-index: 16;
   left: 50%;
-  top: calc(var(--band) + var(--safe-t) + 10px);
+  top: calc(var(--safe-t) + 6px);
   transform: translateX(-50%);
   display: grid;
   gap: 6px;
   justify-items: center;
   pointer-events: none;
-  width: min(92vw, 520px);
+  width: min(72vw, 480px);
 }
 .toast {
-  font-size: 21px;
+  font-size: 20px;
+  line-height: 1.1;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
   text-align: center;
+  text-wrap: balance;
   box-shadow: 4px 4px 0 var(--drop);
-  clip-path: inset(0 0 0 0);
+  clip-path: inset(-2px -8px -8px -2px);
   animation:
     ink-wipe 250ms var(--ease-out),
-    fade-out 300ms ease-in 2.5s forwards;
+    ink-wipe-out 220ms ease-in 2.54s forwards;
 }
+/* indication : bande à la couleur du joueur DANS le cadre d'encre (posée sur le bandeau de même couleur,
+   une bordure colorée se confondait avec lui) */
 .toast--hint {
   border-color: var(--ink);
-  border-left: 8px solid var(--pc);
+  padding-left: calc(0.8em + 8px);
+  box-shadow:
+    inset 8px 0 0 var(--pc),
+    inset 10px 0 0 var(--ink),
+    4px 4px 0 var(--drop);
 }
 .toast--good {
   background: var(--sun);
@@ -1308,20 +1397,19 @@ h2.t-title {
 }
 @keyframes ink-wipe {
   from {
-    clip-path: inset(0 100% 0 0);
+    clip-path: inset(-2px 100% -8px -2px);
   }
 }
-@keyframes fade-out {
+@keyframes ink-wipe-out {
   to {
-    opacity: 0;
+    clip-path: inset(-2px -8px -8px 100%);
   }
 }
-
 /* ─── Effets (vibrations visuelles, prise d'élan, clac, tampons) ─────────── */
 .fx {
   position: absolute;
   inset: 0;
-  z-index: 12;
+  z-index: 17;
   pointer-events: none;
 }
 .fx__border {
@@ -1447,22 +1535,22 @@ h2.t-title {
   background: var(--ink);
   color: var(--paper);
 }
+/* Coup de tampon, puis essuyage d'encre (aucune phase translucide). */
 @keyframes stamp {
   0% {
-    transform: scale(1.6) rotate(-6deg);
+    transform: scale(1.4) rotate(-6deg);
     opacity: 0;
   }
   18% {
     transform: scale(1) rotate(-3deg);
     opacity: 1;
   }
-  80% {
-    transform: scale(1) rotate(-3deg);
-    opacity: 1;
+  82% {
+    clip-path: inset(-12px -12px -12px -12px);
   }
   100% {
-    transform: scale(0.96) rotate(-3deg);
-    opacity: 0;
+    transform: scale(1) rotate(-3deg);
+    clip-path: inset(-12px -12px -12px 100%);
   }
 }
 .fx__count {
@@ -1529,6 +1617,36 @@ h2.t-title {
   }
 }
 
+/* « Réduire les flashs » (réglage du PC, PhoneView.reduceFlashes) : aucun éclair ni clignotement.
+   La prise d'élan reste signalée (bordure rouge tenue, fondue, sans pulsation) ; le clac n'éclaire plus
+   l'écran (reste « COUP D'AILE ! » et l'anneau du bouton, fixe) ; le bandeau ne s'inverse plus. */
+.reduce-flash .fx__border.is-on,
+.reduce-flash .fx__white.is-on {
+  animation: none;
+}
+.reduce-flash .band.is-flash {
+  background: var(--pc);
+}
+.reduce-flash .fx__alert.is-on {
+  animation: alert-soft 900ms ease-in-out;
+}
+@keyframes alert-soft {
+  0% {
+    opacity: 0;
+  }
+  20%,
+  65% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.reduce-flash .act--flap.is-urgent {
+  animation: none;
+  box-shadow: 0 0 0 6px var(--ink);
+}
+
 /* État de jeu au centre (décroché, caché, nuit) */
 .play-state {
   position: absolute;
@@ -1554,7 +1672,7 @@ h2.t-title {
 
 /* ─── Mise en page portrait (secours) ────────────────────────────────────── */
 @media (orientation: portrait) {
-  .ctl {
+  .app {
     --dive: min(40vw, 34dvh, 180px);
     --flap: min(29vw, 24dvh, 130px);
   }
@@ -1570,18 +1688,45 @@ h2.t-title {
     bottom: calc(var(--gut-b) + 6px + var(--dive) + 26px + var(--flap) * 0.35);
   }
   .lobby-goals {
-    right: var(--gut-r);
+    width: auto;
     max-width: none;
+    align-self: stretch;
+    margin-right: var(--gut-r);
+  }
+  /* Portrait : le joystick est en bas ; la carte s'étale sous les objectifs, image à gauche, texte à droite,
+     et s'arrête au-dessus de COUP D'AILE. */
+  .lobby-mid {
+    flex: none;
+    container-type: normal;
+    display: block;
+    margin: 12px var(--gut-r) 0 calc(var(--gut-l) + 4px);
   }
   .lobby-rules {
-    top: 118px;
-    width: min(260px, 66vw);
-    transform: translateX(-50%);
+    width: auto;
+    max-width: 440px;
+    padding: 6px 8px 5px 6px;
+  }
+  .lobby-rules .rule-card {
+    display: grid;
+    grid-template-columns: 48% 1fr;
+    align-items: center;
+    gap: 10px;
+  }
+  .lobby-rules .rule-card__text {
+    font-size: 17px;
+    text-align: left;
+    min-height: 0;
   }
   .lobby-wait {
-    bottom: auto;
-    top: calc(118px + min(260px, 66vw) * 0.5625 + 70px);
-    transform: translateX(-50%);
+    display: flex;
+    justify-content: flex-start;
+    margin: 10px var(--gut-r) 0 calc(var(--gut-l) + 4px);
+  }
+  .lobby-wait .recitatif {
+    font-size: 17px;
+  }
+  .band__wait {
+    display: none;
   }
   .stick-zone {
     top: 52%;
@@ -1608,14 +1753,23 @@ h2.t-title {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  /* paysage : nom puis indication et bouton à gauche, couleurs à droite */
+  grid-template-areas:
+    'main side'
+    'foot side';
+  grid-template-rows: auto 1fr;
+  gap: 8px 22px;
   max-width: 720px;
   max-height: calc(100dvh - 24px);
   overflow: auto;
 }
 .sheet .profile {
   margin: auto;
+}
+/* le panneau ne touche pas les bords de l'écran (zones sûres comprises) */
+.screen > .profile {
+  width: calc(100% - var(--gut-l) - var(--gut-r));
 }
 .profile__col {
   display: grid;
@@ -1625,6 +1779,15 @@ h2.t-title {
 }
 .profile__col > * {
   min-width: 0;
+}
+.profile__main {
+  grid-area: main;
+}
+.profile__side {
+  grid-area: side;
+}
+.profile__foot {
+  grid-area: foot;
 }
 .profile__label {
   font-size: 18px;
@@ -1688,6 +1851,18 @@ h2.t-title {
   gap: 14px;
   width: 100%;
   max-width: 860px;
+  /* « Compris » reste toujours à l'écran : ce sont les cartes qui cèdent (et défilent au besoin). */
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  /* place pour l'ombre décalée des cases */
+  padding: 0 7px 7px 0;
+}
+.intro__head,
+.intro__foot {
+  flex: none;
 }
 .intro__card {
   padding: 8px;
@@ -1731,12 +1906,32 @@ h2.t-title {
 }
 .result__main {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  /* « sur N » et « du désert » sur la même ligne de pied */
+  align-items: flex-end;
+  gap: 20px;
 }
 .result__share {
   font-size: 34px;
   line-height: 1;
+}
+.result__rank,
+.result__sharewrap {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+.result__rank .muted,
+.result__sharewrap .muted {
+  font-size: 19px;
+  line-height: 1;
+}
+.title-card__value {
+  font-size: 19px;
+}
+.podium__rank sup {
+  font-size: 0.6em;
+  vertical-align: 0.5em;
+  margin-left: 1px;
 }
 .result__winner,
 .result__headline {
@@ -1766,6 +1961,149 @@ h2.t-title {
   text-overflow: ellipsis;
 }
 
+/* ─── Fin de partie : le téléphone du vainqueur (W6) ─────────────────────── */
+/* Son lavis couvre le fond en 1,5 s depuis son rang ; le front mouillé (pigment accumulé) sort de l'écran. */
+.winner-flood {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.winner-flood__grow {
+  transform: scale(var(--flood-r, 1));
+  /* départ lent (la tache s'ouvre), puis le front file vers les bords : l'avancée se voit sur 1,5 s */
+  animation: flood var(--flood-ms, 1500ms) cubic-bezier(0.45, 0.1, 0.45, 1) var(--flood-delay, 300ms) both;
+}
+@keyframes flood {
+  from {
+    transform: scale(0.01);
+  }
+}
+.winner-flood__fill {
+  fill: color-mix(in oklab, var(--pc) 52%, var(--paper));
+  opacity: 0.94;
+}
+.winner-flood__wet {
+  fill: none;
+  stroke: color-mix(in oklab, var(--pc) 70%, var(--ink));
+  stroke-width: 12;
+  stroke-opacity: 0.18;
+}
+.winner-flood__rim {
+  fill: none;
+  stroke: color-mix(in oklab, var(--pc) 85%, var(--ink));
+  stroke-width: 3.5;
+  stroke-linejoin: round;
+}
+/* Gloire d'encre derrière « 1er » : disque soleil, rayons hachurés qui tournent lentement. Elle se
+   loge sous tout le contenu de la case (qui l'isole et la rogne) : les textes restent au-dessus. */
+.is-winner .result:has(.ink-glory) {
+  isolation: isolate;
+  overflow: hidden;
+}
+.is-winner .result__rank {
+  padding-left: 14px;
+}
+/* place pour la gloire ; « sur N » est superflu quand on est premier */
+.is-winner .result:has(.ink-glory) .result__main {
+  margin: 10px 0 6px;
+  align-items: center;
+}
+.is-winner .result:has(.ink-glory) .result__rank .muted {
+  display: none;
+}
+.big-rank {
+  position: relative;
+}
+.ink-glory {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 1.9em;
+  height: 1.9em;
+  margin: -0.95em 0 0 -0.95em;
+  pointer-events: none;
+  /* rotation de l'élément entier : composée par le GPU, sans repeindre à chaque image */
+  animation:
+    glory-in 700ms var(--ease-out) 300ms both,
+    glory-spin 24s linear infinite;
+}
+.ink-glory__sun {
+  fill: var(--sun);
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+.ink-glory__rays {
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-opacity: 0.7;
+}
+@keyframes glory-in {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+@keyframes glory-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.reduce-flash .ink-glory {
+  animation: glory-in 700ms var(--ease-out) 300ms both;
+}
+/* Les autres : leurs chiffres s'écrivent à la plume (révélés de gauche à droite, bec d'encre au bord). */
+@property --ink-p {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 100%;
+}
+.ink-write {
+  position: relative;
+  display: inline-block;
+  clip-path: inset(-8px calc(100% - var(--ink-p)) -8px -8px);
+  animation: ink-write 950ms cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
+}
+.ink-write::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--ink-p) - 3px);
+  top: 12%;
+  width: 3px;
+  height: 76%;
+  border-radius: 2px;
+  background: var(--ink);
+  transform: skewX(-18deg);
+  opacity: 0;
+  animation: inherit;
+  animation-name: ink-nib;
+}
+@keyframes ink-write {
+  from {
+    --ink-p: 0%;
+  }
+  to {
+    --ink-p: 100%;
+  }
+}
+@keyframes ink-nib {
+  0% {
+    --ink-p: 0%;
+    opacity: 0;
+  }
+  5%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    --ink-p: 100%;
+    opacity: 0;
+  }
+}
+
 /* ─── Règles (réglages) ──────────────────────────────────────────────────── */
 .rules-grid {
   display: grid;
@@ -1780,8 +2118,14 @@ h2.t-title {
 }
 
 @media (orientation: portrait) {
+  /* portrait : on choisit la couleur AVANT de « Prendre son envol » */
   .profile {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'main'
+      'side'
+      'foot';
+    grid-template-rows: auto;
     gap: 14px;
   }
   .intro__cards,
@@ -1809,10 +2153,15 @@ h2.t-title {
   display: none;
 }
 
-/* Tampons et compte à rebours au centre de la zone libre, entre joystick et boutons. */
+/* Tampons (TOUCHÉ !, ESQUIVÉ !…) en haut, au centre de la zone libre, juste sous le bandeau (où se
+   posent les messages) : loin de COUP D'AILE même à 320 px de haut. Compte à rebours au centre de la
+   zone libre, entre joystick et boutons. */
 .fx__stamp {
-  left: 46%;
-  top: 32%;
+  left: 44%;
+  top: calc(var(--band) + var(--safe-t) + 8px);
+  translate: -50% 0;
+  /* le coup de tampon part d'en haut à gauche : rien ne déborde vers COUP D'AILE (en bas à droite) */
+  transform-origin: 75% 100%;
 }
 .fx__count {
   left: 46%;
@@ -1860,17 +2209,12 @@ h2.t-title {
   .play-state {
     top: 128px;
   }
-  .lobby-rules {
-    top: 104px;
-    width: min(200px, 54vw);
-  }
-  .lobby-wait {
-    top: calc(104px + min(200px, 54vw) * 0.5625 + 64px);
-  }
-  .fx__stamp,
   .fx__count {
     left: 50%;
     top: 30%;
+  }
+  .fx__stamp {
+    left: 50%;
   }
   .intro__head h1 {
     font-size: 19px;
@@ -1908,7 +2252,125 @@ h2.t-title {
     font-size: 20px;
     line-height: 1.1;
   }
-  .title-card .t-num {
+  .title-card__value {
+    font-size: 17px;
+  }
+}
+
+/* ─── Petits écrans paysage (320 à 360 px de haut : iPhone SE, Safari avec ses barres) ─────────────
+   Les disques de la manette gardent leurs fractions de hauteur (RULES) ; ce sont le bandeau, les
+   boutons d'interface, les cases et les textes qui se resserrent, pour que tout tienne à l'écran. */
+@media (orientation: landscape) and (max-height: 360px) {
+  :root {
+    --band: 50px;
+  }
+  .band__id,
+  .band__chip {
+    height: 36px;
+  }
+  .band__name {
+    font-size: 20px;
+  }
+  .band__wait {
+    font-size: 15px;
+  }
+  .btn {
+    min-height: 46px;
+    font-size: 20px;
+  }
+  .btn--primary {
+    min-height: 48px;
+    font-size: 21px;
+  }
+  .band__start {
+    min-height: 40px;
+    height: 40px;
+    font-size: 19px;
+  }
+  .screen--band {
+    padding-top: calc(var(--band) + var(--safe-t) + 6px);
+  }
+  .profile {
+    padding: 10px 16px;
+    gap: 4px 16px;
+  }
+  .profile h1.t-title {
+    font-size: 24px;
+    margin: 0;
+  }
+  .profile .name-input {
+    height: 48px;
+  }
+  .profile .icon-btn--square {
+    width: 48px;
+    height: 48px;
+  }
+  .profile .swatches {
+    gap: 6px;
+  }
+  .lobby-goals {
+    margin-top: 8px;
+    padding: 5px 10px 6px;
+  }
+  .goal {
+    font-size: 19px;
+  }
+  .goal__box {
+    width: 22px;
+    height: 22px;
+  }
+  .goals {
+    gap: 10px;
+  }
+  .lobby-goals__how {
+    margin-top: 3px;
+    font-size: 16.5px;
+  }
+  .lobby-mid {
+    margin-top: 8px;
+  }
+  .lobby-rules .rule-card__text {
+    font-size: 14px;
+  }
+  .stick-hint {
+    font-size: 18px;
+    padding: 0.2em 0.7em;
+  }
+  .intro {
+    gap: 6px;
+  }
+  .intro__head h1 {
+    font-size: 20px;
+  }
+  .intro__double {
+    font-size: 17px;
+    padding: 0.15em 0.6em;
+  }
+  .intro__cards {
+    gap: 10px;
+  }
+  .intro__card {
+    padding: 6px;
+  }
+  .intro__card .rule-card {
+    gap: 4px;
+  }
+  .intro__card .rule-card__text {
     font-size: 16px;
+    min-height: 0;
+  }
+  .intro__foot {
+    gap: 12px;
+  }
+  .intro__count {
+    font-size: 18px;
+  }
+  .fx__stamp {
+    font-size: 28px;
+    padding: 4px 14px 6px;
+  }
+  .toast {
+    font-size: 18px;
+    min-height: 36px;
   }
 }

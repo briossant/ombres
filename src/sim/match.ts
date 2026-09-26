@@ -11,7 +11,7 @@
 import { RULES } from './rules.ts'
 import type { BirdRoundStats, BirdSetup, MapId, SimConfig, SimState } from './types.ts'
 import { hash32 } from './math.ts'
-import { accumulateTitleStats, assignTitles, emptyTitleStats, type TitleAward, type TitleStats } from './titles.ts'
+import { accumulateTitleStats, assignTitles, emptyTitleStats, withSovereign, type TitleAward, type TitleStats } from './titles.ts'
 
 export type RoundLength = keyof typeof RULES.roundLengthPresets
 
@@ -281,7 +281,9 @@ export function finishRound(match: MatchState, state: SimState): RoundResult {
     highlight: null,
   }
   result.facts = roundFacts(state, cells, ranks, winners)
-  result.highlight = result.facts[0] ?? null
+  // un fait marquant ne revient jamais dans la même partie (« Raz-de-marée » trois fois de suite)
+  const told = new Set(match.results.map((r) => r.highlight?.kind))
+  result.highlight = result.facts.find((f) => !told.has(f.kind)) ?? null
   match.results.push(result)
   finished.set(state, result)
   return result
@@ -346,9 +348,14 @@ export function matchTitleStats(match: MatchState): TitleStats[] {
   return [...bySlot.values()].map((e) => e.acc).sort((p, q) => p.slot - q.slot)
 }
 
-/** Titres de fin de partie (GDD §11.4). */
+/**
+ * Titres de fin de partie (GDD §11.4). Polish G10 : le vainqueur de la partie a toujours un
+ * titre ; sans aucun autre, il est « Le Souverain » (son total de soleils en chiffre).
+ */
 export function matchTitles(match: MatchState): TitleAward[] {
-  return assignTitles(matchTitleStats(match))
+  const standings = matchStandings(match)
+  const winners = matchWinners(match).map((slot) => ({ slot, suns: standings.find((s) => s.slot === slot)?.suns ?? 0 }))
+  return withSovereign(assignTitles(matchTitleStats(match)), winners)
 }
 
 /** Titres d'une seule manche (mêmes règles, statistiques de la manche). */

@@ -18,12 +18,14 @@ export interface BotSpec {
 
 /**
  * Bots ajoutés par défaut selon le nombre d'humains (GDD §14.3) : un humain seul reçoit
- * 3 Voyageurs (Faucon, Laboureur, Nomade) ; deux humains, 2 (Pie, Guetteur) ; trois,
+ * 3 Voyageurs (Faucon, Laboureur, Pie) ; deux humains, 2 (Pie, Guetteur) ; trois,
  * 1 (Faucon) ; à partir de quatre, aucun. `level` remplace le niveau Voyageur (réglage
  * de partie « Bots »).
+ * Polish vague 1 (G1) : la Pie remplace le Nomade du GDD en solo. Le Nomade, le moins
+ * menaçant des caractères, laissait le joueur seul sans pression (aucun raid, aucun piqué).
  */
 export function defaultBots(humans: number, level: BotLevel = 1): BotSpec[] {
-  const list: BotPersonality[] = humans <= 1 ? ['falcon', 'ploughman', 'nomad'] : humans === 2 ? ['magpie', 'lookout'] : humans === 3 ? ['falcon'] : []
+  const list: BotPersonality[] = humans <= 1 ? ['falcon', 'ploughman', 'magpie'] : humans === 2 ? ['magpie', 'lookout'] : humans === 3 ? ['falcon'] : []
   // l'Horloger n'apparaît jamais par défaut ; aucun ajustement de niveau n'est nécessaire
   return list.map((personality) => ({ personality, level }))
 }

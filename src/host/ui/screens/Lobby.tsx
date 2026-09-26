@@ -2,14 +2,16 @@
 // (KF50). À gauche : rejoindre (QR, code, URL) et les règles qui tournent. En
 // bas au centre : réglages de partie. À droite : les oiseaux (slots) et Lancer.
 // Le centre haut reste libre : les joueurs y voient voler leur oiseau.
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { getLang, t } from '../../../shared/i18n.ts'
 import { colorName } from '../../../shared/players.ts'
 import { RULES } from '../../../sim/rules.ts'
-import { Btn, Case, Key, Segmented } from '../components.tsx'
-import { botLevelName, botPersonalityName, sentenceLines, slotDisplayName, useLang } from '../format.ts'
+import { Btn, Case, Key, Segmented, SlotName } from '../components.tsx'
+import { botLevelName, sentenceLines, slotDisplayName, useLang } from '../format.ts'
 import { Token } from '../glyphs.tsx'
+import { WorldLayer } from '../hud/WorldLayer.tsx'
 import { Icon } from '../icons.tsx'
+import { keyLabel, useKeyLayout } from '../keys.ts'
 import { useNavScope } from '../nav.ts'
 import { QrCode } from '../QrCode.tsx'
 import { RuleArt } from '../RuleArt.tsx'
@@ -38,6 +40,8 @@ export function Lobby() {
   })
   return (
     <div className="screen lobby" ref={ref}>
+      {/* Étiquettes permanentes des oiseaux et du mannequin, sous les cases. */}
+      <WorldLayer mode="lobby" />
       <div className="lobby__left">
         <JoinCase />
         <RulesCarousel />
@@ -89,22 +93,134 @@ function JoinCase() {
           </span>
         ))}
       </div>
-      {url ? (
-        <div className="join__url">
-          {t('host.lobby.orVisit')} <b>{shortUrl(url)}</b>
-        </div>
-      ) : null}
+      {url ? <JoinUrl url={url} /> : <div className="join__url" />}
     </Case>
   )
 }
 
-/** Rappel pour rejoindre au clavier (Espace = PLONGER du groupe 1, puis AltGr pour le groupe 2). */
-function KeyboardJoinHint() {
-  const keyboardJoined = useLobby(s => s.keyboardJoined)
+/** Taille de l'adresse : 22 px si elle tient, réduite jusqu'à 14 px sinon. */
+const URL_PX_MAX = 22
+const URL_PX_MIN = 14
+/** letter-spacing de .join__url b (em). */
+const URL_LETTER_SPACING = 0.01
+let canvas: HTMLCanvasElement | null = null
+const measureCanvas = () => (canvas ??= document.createElement('canvas'))
+
+/**
+ * « ou ouvre <hôte>/play » dans une boîte de hauteur fixe : sur une ligne si tout
+ * tient, sinon le libellé au-dessus et l'adresse (sans schéma) à la taille qui
+ * remplit la largeur ; au pire, coupure aux points (<wbr>), jamais au milieu d'un mot.
+ */
+function JoinUrl({ url }: { url: string }) {
+  const lang = useLang()
+  const host = shortUrl(url)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const labelRef = useRef<HTMLSpanElement>(null)
+  const urlRef = useRef<HTMLElement>(null)
+  const [fit, setFit] = useState<{ px: number; stacked: boolean }>({ px: URL_PX_MAX, stacked: false })
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    const u = urlRef.current
+    const label = labelRef.current
+    if (!box || !u || !label) return
+    const measure = () => {
+      // largeur naturelle de l'adresse à la taille maximale, sur une ligne (police réelle de <b>)
+      const cs = getComputedStyle(u)
+      const ctx = measureCanvas().getContext('2d')
+      if (!ctx) return
+      ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${URL_PX_MAX}px ${cs.fontFamily}`
+      const natural = ctx.measureText(host).width + host.length * URL_PX_MAX * URL_LETTER_SPACING
+      const bs = getComputedStyle(box)
+      const avail = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight) - 4
+      const inline = label.offsetWidth + parseFloat(bs.columnGap || '8') + natural
+      if (inline <= avail) setFit({ px: URL_PX_MAX, stacked: false })
+      else setFit({ px: Math.max(URL_PX_MIN, Math.min(URL_PX_MAX, Math.floor((URL_PX_MAX * avail * 10) / natural) / 10)), stacked: true })
+    }
+    measure()
+    // les polices peuvent finir de charger après le premier rendu
+    void document.fonts?.ready.then(measure)
+  }, [host, lang])
+  const parts = host.split('.')
+  return (
+    <div className={fit.stacked ? 'join__url is-stacked' : 'join__url'} ref={boxRef}>
+      <span className="join__url-label" ref={labelRef}>
+        {t('host.lobby.orVisit')}
+      </span>
+      <b ref={urlRef} style={{ fontSize: fit.px }}>
+        {parts.map((p, k) => (
+          <Fragment key={k}>
+            {p}
+            {k < parts.length - 1 ? (
+              <>
+                .<wbr />
+              </>
+            ) : null}
+          </Fragment>
+        ))}
+      </b>
+    </div>
+  )
+}
+
+/** Touches physiques de chaque groupe du clavier partagé (src/input/keyboard.ts). */
+const KB_KEYS = {
+  1: { steer: ['KeyW', 'KeyA', 'KeyS', 'KeyD'], dive: 'Space', flap: 'ShiftLeft' },
+  2: { steer: ['KeyI', 'KeyJ', 'KeyK', 'KeyL'], dive: 'AltRight', flap: 'Semicolon' },
+} as const
+
+/**
+ * Pied de la liste des oiseaux, côté clavier : avant d'entrer, la touche pour
+ * rejoindre (Espace = PLONGER du groupe 1, puis AltGr pour le groupe 2) ; une fois
+ * entré, la carte des touches du groupe, son prochain objectif et « Échap : quitter ».
+ */
+function KeyboardJoinHint({ full }: { full: boolean }) {
+  const layout = useKeyLayout()
+  const slots = useRoster(s => s.slots)
+  const players = slots.filter(x => x.kind === 'keyboard' && !x.substitute)
+  const groups = new Set(players.map(p => p.keyboardGroup ?? 1))
+  const nextGroup = !groups.has(1) ? 1 : !groups.has(2) ? 2 : null
   return (
     <div className="kbd-join">
-      <Key>{keyboardJoined ? t('host.key.altgr') : t('host.key.space')}</Key>
-      <span>{t(keyboardJoined ? 'host.lobby.keyboardJoin2' : 'host.lobby.keyboardJoin')}</span>
+      {players.map(p => (
+        <KeyboardCard key={p.slot} s={p} layout={layout} />
+      ))}
+      {nextGroup && !full ? (
+        <div className="kbd-join__next">
+          <Key>{keyLabel(KB_KEYS[nextGroup].dive, layout)}</Key>
+          <span>{t(nextGroup === 1 ? 'host.lobby.keyboardJoin' : 'host.lobby.keyboardJoin2')}</span>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function KeyboardCard({ s, layout }: { s: SlotVM; layout: ReturnType<typeof useKeyLayout> }) {
+  const g = KB_KEYS[s.keyboardGroup ?? 1]
+  const k = (code: string) => <Key>{keyLabel(code, layout)}</Key>
+  const goal = !s.goals.fly ? 'fly' : !s.goals.dive ? 'dive' : !s.goals.strike ? 'strike' : 'done'
+  return (
+    <div className="kbd-card">
+      <div className="kbd-card__head">
+        <Token colorIndex={s.colorIndex} size={26} />
+        <span className="kbd-card__who">{t('host.lobby.kind.keyboard', { n: s.keyboardGroup ?? 1 })}</span>
+        <span className="kbd-card__goal">
+          {t(`host.lobby.kbGoal.${goal}`, { dive: keyLabel(g.dive, layout) })}
+        </span>
+      </div>
+      <div className="kbd-card__keys">
+        <span>
+          <span className="kbd-card__caps">{g.steer.map(c => <Fragment key={c}>{k(c)}</Fragment>)}</span> {t('host.lobby.kbSteer')}
+        </span>
+        <span>
+          {k(g.dive)} {t('host.lobby.kbDive')}
+        </span>
+        <span>
+          {k(g.flap)} {t('host.lobby.kbFlap')}
+        </span>
+        <span>
+          <Key>{t('host.key.esc')}</Key> {t('host.lobby.kbQuit')}
+        </span>
+      </div>
     </div>
   )
 }
@@ -114,15 +230,23 @@ function KeyboardJoinHint() {
 const CARD_MS = 5000
 
 export function RulesCarousel() {
-  const [card, setCard] = useState<1 | 2 | 3>(1)
+  // La carte suivante s'essuie à l'encre par-dessus la précédente : la case n'est jamais vide.
+  const [{ card, prev }, setCards] = useState<{ card: 1 | 2 | 3; prev: 1 | 2 | 3 | null }>({ card: 1, prev: null })
   useEffect(() => {
-    const id = setInterval(() => setCard(c => ((c % 3) + 1) as 1 | 2 | 3), CARD_MS)
+    const id = setInterval(() => setCards(c => ({ card: ((c.card % 3) + 1) as 1 | 2 | 3, prev: c.card })), CARD_MS)
     return () => clearInterval(id)
   }, [])
   return (
     <Case className="carousel" cap={t('host.lobby.rules')} i={1}>
-      <div className="carousel__art" key={card}>
-        <RuleArt card={card} />
+      <div className="carousel__art">
+        {prev ? (
+          <div className="carousel__layer" key={`p${prev}-${card}`}>
+            <RuleArt card={prev} />
+          </div>
+        ) : null}
+        <div className={prev ? 'carousel__layer carousel__layer--in' : 'carousel__layer'} key={card}>
+          <RuleArt card={card} />
+        </div>
       </div>
       <p className="carousel__text" key={`t${card}`}>
         {sentenceLines(t(`host.rules.${card}`)).map((line, j) => (
@@ -243,7 +367,7 @@ function Roster() {
       ) : (
         <div className="roster__full">{t('host.lobby.full')}</div>
       )}
-      {slots.length < RULES.arenaPresets[RULES.arenaPresets.length - 1].maxBirds ? <KeyboardJoinHint /> : null}
+      <KeyboardJoinHint full={slots.length >= RULES.arenaPresets[RULES.arenaPresets.length - 1].maxBirds} />
     </Case>
   )
 }
@@ -326,12 +450,13 @@ function BotRow({ s, style }: { s: SlotVM; style: CSSProperties }) {
         onClick={cyclePersonality}
         onKeyDown={onKeyDown}
       >
-        <span className="slot__name">{botPersonalityName(bot.personality)}</span>
-        <span className="slot__meta">
+        {/* « Azur · Faucon » : même nom qu'au-dessus de l'oiseau, aux résultats et au podium */}
+        <span className="slot__name">
+          <SlotName s={s} />
+        </span>
+        <span className="slot__meta slot__meta--bot">
           <Icon name="bot" size={22} />
-          <span>
-            {colorName(s.colorIndex, getLang())} · {t(`host.botDesc.${bot.personality}`)}
-          </span>
+          <span>{t(`host.botDesc.${bot.personality}`)}</span>
         </span>
       </span>
       <span className="slot__level" title={`${t('host.lobby.botLevel')} : ${botLevelName(bot.level)}`}>

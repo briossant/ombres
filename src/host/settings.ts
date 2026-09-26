@@ -34,7 +34,8 @@ const DEFAULTS: Settings = {
   quality: 'auto',
   colorblind: false,
   hints: 'auto',
-  reduceFlashes: false,
+  // Par défaut, suit la préférence du système (« réduire les animations ») ; réglable ensuite.
+  reduceFlashes: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
   screenShake: true,
 }
 

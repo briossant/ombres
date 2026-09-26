@@ -9,12 +9,17 @@ import { EffectComposer, EffectPass, SMAAEffect, type Pass } from 'postprocessin
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { getSettings } from '../../settings.ts'
-import { feedQualityBench, QUALITY_PRESETS, presetDpr, qualityBenchActive, qualityMonitor, type QualityLevel } from '../quality.ts'
+import { feedQualityBench, QUALITY_PRESETS, qualityBenchActive, qualityMonitor, type QualityLevel } from '../quality.ts'
 import { createGBuffer, GBufferPass } from './gbuffer.ts'
 import { InkEffect } from './InkEffect.ts'
 import { GpuTimer } from './perf.ts'
 import { HeightShadowMap, shadowCasters } from './shadowMap.ts'
 import { NPR } from './uniforms.ts'
+import { gameView } from '../../view.ts'
+import type { RoundPhase } from '../../../sim/types.ts'
+
+/** Phases surveillées par la qualité automatique : de l'heure dorée à la Grande Ombre (le climax). */
+const MONITORED_PHASES: ReadonlySet<RoundPhase> = new Set<RoundPhase>(['golden', 'sunset', 'greatShadow'])
 
 // ─── Hooks exécutés juste avant le rendu (après tous les useFrame de priorité ≤ 0) ──
 
@@ -92,13 +97,8 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const size = useThree((s) => s.size)
   const dpr = useThree((s) => s.viewport.dpr)
-  const setDpr = useThree((s) => s.setDpr)
   const preset = QUALITY_PRESETS[quality]
-
-  // dpr plafonné par le preset (720p / 900p / 1080p, jamais plus même en 4K)
-  useEffect(() => {
-    setDpr(presetDpr(preset, size.height, window.devicePixelRatio || 1))
-  }, [preset, size.height, setDpr])
+  // le dpr plafonné par le preset est passé en prop au <Canvas> (WorldCanvas) : jamais de setDpr ici
 
   const gbuffer = useMemo(() => createGBuffer(), [])
   const shadows = useMemo(() => new HeightShadowMap(preset.shadowRes, preset.farShadowRes), [])
@@ -160,9 +160,11 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
 
   // Mesures GPU (debug seulement)
   const timer = useMemo(() => (measure ? new GpuTimer(gl.getContext() as WebGL2RenderingContext) : null), [gl, measure])
-  // Mesure d'une frame entière pour le banc de qualité automatique (hors debug)
+  // Mesure d'une frame entière (hors debug) : banc de qualité automatique au titre, et
+  // surveillance des manches (heure dorée → Grande Ombre) lue entre deux manches
   const benchTimer = useMemo(() => new GpuTimer(gl.getContext() as WebGL2RenderingContext, 1), [gl])
-  const benchCount = useRef(0)
+  // la surveillance ne mélange pas deux presets : on repart de zéro à chaque changement
+  useEffect(() => qualityMonitor.reset(), [preset])
   const lastReport = useRef(0)
   const timed = (name: string, pass: Pass | null) => {
     if (!pass || !timer) return
@@ -220,26 +222,31 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
       else shadows.render(gl)
       composer.render(delta)
     }
-    // banc de qualité : temps GPU de la frame entière (ou intervalle entre frames sans timer query)
+    // banc de qualité et surveillance : temps GPU de la frame entière (requête lue plus tard) ;
+    // sans timer query, l'intervalle entre frames (borné à 100 ms par le moniteur)
     const bench = qualityBenchActive()
-    if (bench && !timer && benchTimer.supported) benchTimer.time('frame', renderAll)
+    const sim = gameView.sim
+    const watch = sim !== null && sim.config.mode === 'round' && MONITORED_PHASES.has(sim.sun.phase)
+    if ((bench || watch) && !timer && benchTimer.supported) benchTimer.time(bench ? 'bench' : 'round', renderAll)
     else renderAll()
-    qualityMonitor.push(delta * 1000)
-    if (bench) {
-      const auto = getSettings().quality === 'auto'
-      if (timer) {
+    if (!timer && benchTimer.supported) {
+      benchTimer.poll((name, ms) => {
+        if (name === 'bench') feedQualityBench(ms, getSettings().quality === 'auto')
+        else qualityMonitor.pushGpu(ms)
+      })
+    } else if (timer) {
+      // ?debug=perf : somme des passes mesurées (médianes glissantes)
+      if (bench || watch) {
         const m = timer.medians()
         const sum = (m.shadow ?? 0) + (m.gbuffer ?? 0) + (m.ink ?? 0) + (m.smaa ?? 0)
-        if (sum > 0) feedQualityBench(sum, auto)
-      } else if (benchTimer.supported) {
-        benchTimer.poll()
-        const n = benchTimer.samples
-        if (n > benchCount.current || n === 1) {
-          benchCount.current = n
-          const f = benchTimer.medians().frame
-          if (f !== undefined) feedQualityBench(f, auto)
+        if (sum > 0) {
+          if (bench) feedQualityBench(sum, getSettings().quality === 'auto')
+          else qualityMonitor.pushGpu(sum)
         }
-      } else feedQualityBench(delta * 1000, auto)
+      }
+    } else {
+      if (bench) feedQualityBench(Math.min(delta * 1000, 100), getSettings().quality === 'auto')
+      else if (watch) qualityMonitor.push(delta * 1000)
     }
 
     if (timer) {

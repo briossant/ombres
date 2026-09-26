@@ -67,6 +67,9 @@ vec3 birdShadeOf(vec3 albedo, float n){
 /** Préambule de vertex minimal (palette : uPx, uResolution, soleil…). */
 export const GLSL_VERTEX_PRELUDE = GLSL.common + GLSL.palette
 
+/** Front de nuit (nightDist), utilisable aussi dans un vertex shader. */
+export const GLSL_NIGHT = GLSL.night
+
 // ─── IDs d'encre (canal A du G-buffer, cf. npr/ids.ts) ─────────────────────
 
 export const OUTLINE_ID = {

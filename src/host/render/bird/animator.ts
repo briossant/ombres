@@ -103,12 +103,33 @@ export type BirdMode = 'fly' | 'perch'
 
 /** Paramètres « écran » fournis par le rendu. */
 export interface AnimContext {
-  /** Échelle cosmétique demandée par le rendu (1 → 1,3 au dézoom maximal). */
+  /** Échelle cosmétique demandée par le rendu (1 → 1,3 au dézoom maximal, 1,6 au-delà de 8 oiseaux). */
   renderScale: number
   /** Niveau de détail (0 = loin, 1 = gros plan) : mât et fanion masqués au loin. */
   detail: number
   mode: BirdMode
 }
+
+/** Pose du podium (radians) : cormoran qui sèche ses ailes, tête de profil. */
+const PERCH = {
+  pitch: 42 * DEG,
+  shoulderFlap: 0.08,
+  shoulderSweep: -0.12,
+  shoulderTwist: 0.35,
+  elbowFlap: -0.04,
+  elbowSweep: 0.05,
+  wristFlap: -0.28,
+  wristSweep: 0.18,
+  wristTwist: 0.12,
+  fingerFlap: -0.12,
+  fingerSweep: 0.1,
+  neckPitch: -0.3,
+  headPitch: -0.2,
+  headYaw: 1.25,
+  headRoll: 0.2,
+  tailPitch: -0.35,
+  riderPitch: 0.55,
+} as const
 
 const wingReset = (w: WingPose) => {
   w.shoulderFlap = w.shoulderSweep = w.shoulderTwist = 0
@@ -178,9 +199,12 @@ export class BirdAnimator {
    */
   beat = 0
   beatPower = false
+  /** Côté vers lequel la tête se tourne au podium (profil), stable par oiseau. */
+  private readonly perchSide: number
 
   constructor(seed = 0) {
     this.seed = seed
+    this.perchSide = hash01(seed * 3 + 1) < 0.5 ? 1 : -1
     this.phase = hash01(seed * 31 + 7) * TAU
     this.nextBurst = 1 + hash01(seed * 17 + 3) * 3
   }
@@ -465,31 +489,39 @@ export class BirdAnimator {
     return P
   }
 
-  /** Posture perchée (podium) : ailes repliées le long du corps, pattes sorties, cou dressé. */
+  /**
+   * Posture perchée (podium) : le cormoran qui sèche ses ailes (polish B3). Corps
+   * redressé, ailes grandes ouvertes à l'horizontale, surface tournée vers la caméra
+   * (bande de couleur lisible), mains légèrement tombantes qui « respirent », pattes
+   * sorties, cou dressé et tête de profil (bec lisible). Le V héraldique d'avant se
+   * lisait comme un artichaut à contre-jour.
+   */
   private applyPerch(P: BirdPose): void {
     const k = this.legs.x
     if (k <= 1e-3) return
+    const breathe = Math.sin(this.time * 1.7) * 0.05
     for (const side of SIDES) {
       const w = side > 0 ? P.wingL : P.wingR
-      // Ailes levées en V héraldique (silhouette de podium), qui « respirent » lentement :
-      // un repli complet de la membrane se lit mal (testé : ailes en paquets autour du corps).
-      const breathe = Math.sin(this.time * 1.9) * 0.06
-      w.shoulderFlap = lerp(w.shoulderFlap, 0.95 + breathe, k)
-      w.shoulderSweep = lerp(w.shoulderSweep, 0.3, k)
-      w.shoulderTwist = lerp(w.shoulderTwist, 0.25, k)
-      w.elbowSweep = lerp(w.elbowSweep, 0.1, k)
-      w.elbowFlap = lerp(w.elbowFlap, -0.2 - breathe * 0.5, k)
-      w.wristSweep = lerp(w.wristSweep, 0.35, k)
-      w.wristFlap = lerp(w.wristFlap, -0.45, k)
-      w.wristTwist = lerp(w.wristTwist, 0.1, k)
-      w.fingerSweep = lerp(w.fingerSweep, 0.25, k)
-      w.fingerFlap = lerp(w.fingerFlap, 0.2 + breathe, k)
+      w.shoulderFlap = lerp(w.shoulderFlap, PERCH.shoulderFlap + breathe, k)
+      w.shoulderSweep = lerp(w.shoulderSweep, PERCH.shoulderSweep, k)
+      w.shoulderTwist = lerp(w.shoulderTwist, PERCH.shoulderTwist, k)
+      w.elbowFlap = lerp(w.elbowFlap, PERCH.elbowFlap, k)
+      w.elbowSweep = lerp(w.elbowSweep, PERCH.elbowSweep, k)
+      w.wristFlap = lerp(w.wristFlap, PERCH.wristFlap - breathe * 0.6, k)
+      w.wristSweep = lerp(w.wristSweep, PERCH.wristSweep, k)
+      w.wristTwist = lerp(w.wristTwist, PERCH.wristTwist, k)
+      w.fingerFlap = lerp(w.fingerFlap, PERCH.fingerFlap + breathe * 0.5, k)
+      w.fingerSweep = lerp(w.fingerSweep, PERCH.fingerSweep, k)
     }
-    P.pitch = lerp(P.pitch, 36 * DEG, k)
+    P.pitch = lerp(P.pitch, PERCH.pitch, k)
     P.roll = lerp(P.roll, 0, k)
-    P.neckPitch = lerp(P.neckPitch, 0.55, k)
-    P.headPitch = lerp(P.headPitch, -0.35, k)
-    P.tailPitch = lerp(P.tailPitch, -0.3, k)
-    P.riderPitch = lerp(P.riderPitch, -0.3, k)
+    P.neckPitch = lerp(P.neckPitch, PERCH.neckPitch, k)
+    P.neckYaw = lerp(P.neckYaw, 0, k)
+    P.headPitch = lerp(P.headPitch, PERCH.headPitch, k)
+    P.headYaw = lerp(P.headYaw, PERCH.headYaw * this.perchSide, k)
+    P.headRoll = lerp(P.headRoll, PERCH.headRoll * this.perchSide, k)
+    P.tailPitch = lerp(P.tailPitch, PERCH.tailPitch, k)
+    P.riderPitch = lerp(P.riderPitch, PERCH.riderPitch, k)
+    P.riderRoll = lerp(P.riderRoll, 0, k)
   }
 }

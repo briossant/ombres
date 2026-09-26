@@ -5,10 +5,10 @@ import { Emitter } from '../bus.ts'
 import type { SimEvent } from '../../sim/types.ts'
 import { RULES } from '../../sim/rules.ts'
 import { fmtPct, ordinal, sentenceLines, titleStat } from './format.ts'
-import { parseCredits, groupCredits } from './credits.ts'
+import { groupCredits, localizeCreditLine, normalizeLicense, parseCredits } from './credits.ts'
 import { GLYPH_INNER, GLYPH_KEYS, glyphKeyForColor } from './glyphShapes.ts'
 import { PLAYER_COLORS } from '../../shared/players.ts'
-import { connectHudEvents, pushToast, resetHud, showBanner, showSubtitle, useHud } from './viewModel.ts'
+import { connectHudEvents, HINT_MAX_BUBBLES, pushToast, resetHud, showBanner, showHint, showSubtitle, useHud } from './viewModel.ts'
 import { t, hasKey } from '../../shared/i18n.ts'
 import { host } from '../../shared/strings/host.ts'
 import { titles } from '../../shared/strings/titles.ts'
@@ -68,7 +68,21 @@ describe('crédits', () => {
     expect(e[1].title).toBe('Dizzycrow negev desert loop')
     const g = groupCredits(e)
     expect(g.find(x => x.kind === 'sfx')?.lines).toEqual([{ main: 'anebulafont', sub: 'CC0 1.0' }])
-    expect(g.find(x => x.kind === 'voice')?.lines[0]).toEqual({ main: 'Voix synthétisée avec Pocket TTS de Kyutai (CC BY 4.0)', sub: 'CC-BY 4.0' })
+    expect(g.find(x => x.kind === 'voice')?.lines[0]).toEqual({ main: 'Voix synthétisée avec Pocket TTS de Kyutai (CC BY 4.0)', sub: 'CC BY 4.0' })
+    expect(localizeCreditLine(g.find(x => x.kind === 'voice')!.lines[0]!, 'en').main).toBe(t('host.credits.voice.tts', undefined, 'en'))
+  })
+  it('licences uniformes, échantillons regroupés par instrument', () => {
+    expect(normalizeLicense('poids du modèle CC-BY 4.0')).toBe('CC BY 4.0')
+    expect(normalizeLicense('CC0')).toBe('CC0 1.0')
+    const e = parseCredits(`| a | b | c | d | e |
+|---|---|---|---|---|
+| \`audio/music/samples/oud_A2.ogg\` | x (« a2.wav ») | hammondman | CC0 1.0 | non |
+| \`audio/music/samples/oud_C3.ogg\` | y (« c3.wav ») | hammondman | CC0 1.0 | non |
+| \`audio/music/samples/tongue_A3.ogg\` | z | tosha73 | CC0 1.0 | non |`)
+    expect(groupCredits(e).find(x => x.kind === 'samples')?.lines).toEqual([
+      { main: 'Oud', sub: 'hammondman · CC0 1.0' },
+      { main: 'Tongue drum', sub: 'tosha73 · CC0 1.0' },
+    ])
   })
 })
 
@@ -116,5 +130,70 @@ describe('HUD dérivé des événements', () => {
     expect(useHud.getState().toasts.length).toBe(0)
     showBanner('host.banner.lastRound', { tone: 'alert', seconds: 1 })
     expect(useHud.getState().banner?.tone).toBe('alert')
+  })
+  it('Grande Ombre : bandeau fin, 2,5 s au plus, flèche vers l’est', () => {
+    vi.useFakeTimers()
+    resetHud(1, 3, false)
+    const bus = new Emitter<SimEvent>()
+    const off = connectHudEvents(bus)
+    bus.emit({ type: 'phase', phase: 'greatShadow' })
+    const b = useHud.getState().banner
+    expect(b?.layout).toBe('strip')
+    expect(b?.arrow).toBe('east')
+    vi.advanceTimersByTime(2500 + 10)
+    expect(useHud.getState().banner).toBeNull()
+    bus.emit({ type: 'phase', phase: 'golden' })
+    expect(useHud.getState().banner?.arrow).toBe('northSouth')
+    off()
+  })
+})
+
+describe('bulles d’indication', () => {
+  afterEach(() => vi.useRealTimers())
+  const fake = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] })
+  it('même texte : une seule bulle avec les jetons des joueurs concernés', () => {
+    fake()
+    resetHud(1, 3, false)
+    showHint(0, 'hints.holdDive')
+    vi.advanceTimersByTime(800)
+    showHint(3, 'hints.holdDive')
+    const hints = useHud.getState().hints
+    expect(hints.length).toBe(1)
+    expect(hints[0]!.slots).toEqual([0, 3])
+    // paramètres différents = autre texte
+    showHint(5, 'hints.firstLock', { color: 2 })
+    expect(useHud.getState().hints.length).toBe(2)
+    // paramètres différents mais inutilisés par la phrase (touches du clavier) : même texte, même bulle
+    resetHud(1, 3, false)
+    showHint(1, 'hints.towerShade', { dive: 'Espace', flap: 'Maj' })
+    showHint(2, 'hints.towerShade', { dive: 'PLONGER', flap: 'COUP D’AILE' })
+    expect(useHud.getState().hints.map(h => h.slots)).toEqual([[1, 2]])
+  })
+  it(`au plus ${HINT_MAX_BUBBLES} bulles ; la plus ancienne cède sa place une fois lue`, () => {
+    fake()
+    resetHud(1, 3, false)
+    showHint(1, 'hints.holdDive')
+    showHint(2, 'hints.towerShade')
+    showHint(4, 'hints.releaseClimb')
+    expect(useHud.getState().hints.map(h => h.slot)).toEqual([1, 2])
+    vi.advanceTimersByTime(1300)
+    showHint(4, 'hints.releaseClimb')
+    expect(useHud.getState().hints.map(h => h.slot)).toEqual([2, 4])
+    vi.advanceTimersByTime(4600)
+    expect(useHud.getState().hints.length).toBe(0)
+  })
+  it('la bulle d’esquive disparaît quand le piqué est résolu', () => {
+    fake()
+    resetHud(1, 3, false)
+    const bus = new Emitter<SimEvent>()
+    const off = connectHudEvents(bus)
+    showHint(6, 'hints.dodge')
+    showHint(7, 'hints.holdDive')
+    bus.emit({ type: 'diveCancel', hunter: 1, target: 6, reason: 'feint' })
+    expect(useHud.getState().hints.map(h => h.slot)).toEqual([7])
+    showHint(6, 'hints.dodge')
+    bus.emit({ type: 'diveMiss', hunter: 1, target: 6, dodged: true, x: 0, y: 0 })
+    expect(useHud.getState().hints.map(h => h.key)).toEqual(['hints.holdDive'])
+    off()
   })
 })

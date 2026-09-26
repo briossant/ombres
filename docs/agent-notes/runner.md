@@ -28,7 +28,7 @@ App.tsx          <WorldCanvas> : RunnerFrame (−10) · PodiumStage (−3) · Ga
 
 | Phase | Écran UI | Caméra | Audio | Simulation | Téléphones |
 |---|---|---|---|---|---|
-| `boot` | loading | loading | — | démo (chauffe) | lobby |
+| `boot` | loading | loading | — | démo (chauffe) | lobby, ou l'écran sauvegardé en pause si le PC se recharge (G5) |
 | `title` | title | title | title | démo `demoTeam(6)`, change de carte à chaque boucle | lobby |
 | `credits` | credits | credits | credits | démo | lobby |
 | `lobby` | lobby | lobby | lobby | lobby (joueurs + bots + mannequin) | lobby (profil, objectifs, Lancer) |
@@ -177,10 +177,22 @@ Rien de visible sans `?debug`.
 
 ## 10. Limites connues
 
-- Un joueur au clavier ne peut pas quitter le salon (aucune touche prévue) ; il reste dans la session.
+- ~~Un joueur au clavier ne peut pas quitter le salon~~ : Échap le retire (polish G7, §11).
 - Après un rafraîchissement, le son reste bloqué par le navigateur jusqu'au premier geste sur le PC (toast
   `runner.audioUnlock` ; en partie, la voix et la musique reprennent au premier clic ou touche).
 - Rafraîchi pendant les cartes des règles : retour au salon (8 s à refaire).
 - Avertissement console `THREE.Clock … deprecated` : émis par R3F 9.8 avec three 0.186 (bibliothèque).
 - Étiquettes des oiseaux qui passent tout en haut du cadre : partiellement sous la bande de sable (cadrage).
 - iOS réel non testé (émulation seulement) ; manette réelle non testée (Gamepad API émulée dans `flows.mjs`).
+
+## 11. Polish vague 1 (correcteur game, ordres G3-G8, G11, G12) — détail : docs/polish/fix-game.md
+
+- **Hiérarchie des impacts** (G4, `maybeFlash` / `maybeSlowmo`) : flash « planche » seulement pour une touche de couronne, un vol ≥ 1 % de l'arène (moments forts, au plus un toutes les 6 s) ou une touche impliquant un humain (mineure : au plus 2 par manche, 12 s après le flash précédent) ; au plus 4 flashs par manche (`RULES.plancheFlash*`). Esquive (`diveMiss` `dodged`) impliquant un humain : ralenti 0,6× pendant 0,2 s (`RULES.dodgeSlowmo*`), soumis à `hitSlowmoMinGap`. `?debug` : `runner.impactLog` (instant, genre, raison de chaque flash et ralenti).
+- **Rechargement du PC** (G5) : `restoreEarly` garde l'écran sauvegardé (`bootView` : manche, résultats, podium, cartes) ; pendant le chargement, `viewContext()` le rend aux téléphones avec `resuming` → `paused: { by: null, canResume: false }` (« Mise en pause depuis l'écran »). Plus de passage par le salon.
+- **Écrans de secours** (G6, `src/host/loading/Fallback.tsx`) : `main.tsx` teste `getContext('webgl2')` ; sans WebGL 2, écran explicatif (clés `host.webgl.*`) et `runner.start()` n'est pas appelé (aucune salle). `App.tsx` : `ErrorBoundary` autour de `<WorldCanvas>` et de `<UiRoot>` (sauvegarde immédiate, case « Recharger », clés `host.error.*`). `?debug` : `window.__ombresCrash('ui' | 'world')` lève une exception de rendu. Téléphone : borne d'erreur autour de `<PhoneApp/>` (`src/phone/main.tsx`).
+- **Clavier au salon** (G7, `lobbyBack`) : Échap retire d'abord le dernier joueur au clavier (toast `runner.toast.keyboardLeft`) ; s'il reste des téléphones, un Échap arme la sortie (toast `runner.toast.escAgain`, 2 s) et le second ramène au titre. Retour arrière ne quitte plus le salon (touche mémorisée par un écouteur en capture). Hors du salon (titre, crédits, chargement), `phoneView` ne désigne plus de meneur : les téléphones affichent « La partie se lance depuis l'écran ». `localButtonLabels(2)` passe par `keyLabel` (« AltGr » / « Alt droit », « M » / « Point-virgule »).
+- **Toasts de connexion** (G8) : « X rejoint le désert » à la première validation du profil (nom et couleur définitifs), plus à la connexion ; « a perdu la connexion » au plus une fois par téléphone toutes les 20 s (`LEAVE_TOAST_MIN_GAP_S`).
+- **Onglet en arrière-plan** (G11, `onVisibilityChange`) : manche en cours → pause « depuis l'écran » (les téléphones ne peuvent pas la lever tant que l'onglet est masqué) ; au retour, reprise automatique avec « 3, 2, 1 ». Le passage en arrière-plan qui suit `beforeunload` / `pagehide` (rechargement) n'est pas une pause.
+- **Chargement** (G12, `loader.ts`) : chauffe honnête — les 30 premières images mènent la barre à 95 %, la stabilité (8 images < 50 ms) au reste ; 100 % seulement à la fin ; délai limite 6 s (au lieu de 20 s).
+- Demandes traitées : `reduceFlashes` → `markViews()` (phone P4) ; sous-titre du narrateur retiré au `hide` du lecteur, la durée locale devient un filet de 4 s (audio A8).
+- `players.ts` : `uiTitleId(award)` (le miroir `TitleId` de l'UI ne connaît pas encore `souverain`, demande hostui).

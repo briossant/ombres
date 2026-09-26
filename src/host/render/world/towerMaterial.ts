@@ -6,8 +6,15 @@
 // fissures, jupe de sable aux couleurs du sol, fanions qui flottent.
 import * as THREE from 'three'
 import { NPR_FRAGMENT_PRELUDE } from '../npr/glsl/index.ts'
+import { OBJ_ID } from '../npr/ids.ts'
 import { NPR } from '../npr/uniforms.ts'
 import { DECO } from './geoBuilder.ts'
+
+export interface TowerUniforms {
+  uBaseId: { value: number }
+  /** Dissolution en trame active (0 au podium). */
+  uDissolve: { value: number }
+}
 
 const VERT = /* glsl */ `
 attribute vec4 tloc;
@@ -57,7 +64,12 @@ ${NPR_FRAGMENT_PRELUDE}
 #define M_INK ${DECO.ink}.0
 #define M_BANDS ${DECO.bands}.0
 #define M_PANELS ${DECO.panels}.0
+#define SCREEN_DOOR_ID ${OBJ_ID.screenDoor}.0
 uniform float uBaseId;
+// dissolution en trame (polish W9) : oiseaux à l'écran (x, y px du tampon, rayon px, distance m)
+uniform vec4 uBirdScr[12];
+uniform float uBirdScrN;
+uniform float uDissolve;
 varying vec3 vWorld;
 varying vec4 vLoc;
 varying vec3 vNormalW;
@@ -119,18 +131,44 @@ void main(){
   float fog = fogAt(vDist);
   float lineFade = 1.0 - smoothstep(0.3, 0.55, fog);
 
-  // ── hachures du flanc à l'ombre : méridiens, croisées dans les creux ──
+  // ── hachures (polish W7) : des traits d'encre, pas du papier millimétré ──
+  // Méridiens dont l'épaisseur suit un ton (principe de hatchTone : les traits naissent en
+  // épaississant) qui ne vit que dans une bande le long de la silhouette et du terminateur,
+  // plus en remplissage ; couche croisée seulement dans les vrais creux (cavité < 0,25, anneaux
+  // exacts 2 et 6 m sous les surplombs) ; pas de 8,5 px et opacité × 0,6 quand le fût dépasse
+  // ~150 px de large ; à contre-jour, aplat ombré sans hachures et filet de lumière côté soleil.
   float shade = 1.0 - light;
   float hatchOn = uQuality.x * (1.0 - smoothstep(0.25, 0.4, fog));
   float cav = vDeco.w;
   float vert = step(abs(N.y), 0.8);
-  float h1 = hatchU(hu, hdu, 6.0 * uPx, 1.0 * uPx) * vert;
-  float h2 = hatchU(hv, hdv, 6.0 * uPx, 1.0 * uPx) * (1.0 - smoothstep(0.25, 0.4, cav)) * vert;
+  vec3 V = normalize(cameraPosition - vWorld);
+  float ndv = dot(N, V);
+  vec2 vh = -V.xz / max(length(V.xz), 1e-4);
+  float backlit = smoothstep(0.3, 0.7, dot(vh, sd)) * smoothstep(0.0, 0.08, 1.0 - abs(V.y));
+  float tone = shade * max(1.0 - smoothstep(0.05, 0.5, abs(ndv)), 1.0 - smoothstep(0.0, 0.3, -ndl));
+  float widePx = 2.0 * arcR / max(hdv, 1e-4);
+  float wide = smoothstep(120.0, 180.0, widePx);
+  float spacing = mix(6.0, 8.5, wide) * uPx;
+  float h1 = hatchU(hu, hdu, spacing, clamp((tone - 0.15) * 3.0, 0.0, 1.0) * 1.1 * uPx) * vert;
+  float h2 = hatchU(hv, hdv, spacing, 1.0 * uPx) * (1.0 - smoothstep(0.2, 0.25, cav)) * vert * shade;
   // dessous (faces vers le bas) : lignes parallèles
-  float h3 = hatchU(px_, dpx, 6.0 * uPx, 1.0 * uPx) * step(N.y, -0.5);
+  float h3 = hatchU(px_, dpx, spacing, 1.0 * uPx) * step(N.y, -0.5) * shade;
   float noHatch = max(max(float(isMode(M_SKIRT)), float(isMode(M_FLAG))), float(isMode(M_INK)));
-  float hatch = max(max(h1, h2), h3) * shade * (1.0 - noHatch);
-  col = mix(col, palHatch(n), hatch * palHatchOpacity(n) * hatchOn);
+  float hatch = max(max(h1, h2), h3) * (1.0 - noHatch) * (1.0 - backlit);
+  col = mix(col, palHatch(n), hatch * palHatchOpacity(n) * hatchOn * mix(1.0, 0.6, wide));
+  // filet de contre-jour : 1,5 px de lumière rasante (sandLit) sur la silhouette, côté soleil, tant que
+  // le disque du soleil est au-dessus de l'horizon (il plonge derrière la Falaise à la Grande Ombre)
+  // Juste à l'intérieur du trait de silhouette de l'encre (~1,5 px, posé côté objet) : distance
+  // écran à la silhouette calculée sur le solide de révolution (rayon de profil, angle entre le
+  // rayon local et la visée), N·V interpolé étant trop grossier sur un 48-gone ; filet entre 1,5 et
+  // 3 px du bord. Côté soleil = bord du côté où le soleil déborde à l'écran (composante du soleil
+  // perpendiculaire à la visée) ; soleil à moins de ~7° derrière la tour : les deux bords.
+  vec2 sPerp = sd - vh * dot(sd, vh);
+  vec2 ur = vLoc.xz / max(length(vLoc.xz), 1e-4);
+  float silPx = arcR * (1.0 - abs(ur.x * vh.y - ur.y * vh.x)) / max(hdv, 1e-4);
+  float rimSun = backlit * smoothstep(1.2 * uPx, 1.7 * uPx, silPx) * (1.0 - smoothstep(2.8 * uPx, 3.3 * uPx, silPx))
+               * step(-0.12, dot(ur, sPerp)) * vert * (1.0 - noHatch) * smoothstep(-0.01, 0.03, uSunDiscDir.y);
+  col = mix(col, oklab2lin(uLabSandLit), rimSun * lineFade);
 
   // ── fenêtres : trous d'encre 0,8 × 1,4 m, par étages ; certaines s'allument la nuit ──
   if (isMode(M_WINDOWS) && vLoc.y > vZone.x && vLoc.y < vZone.y) {
@@ -191,17 +229,34 @@ void main(){
 
   col = applyFog(col, fog, n);
   col += (ign(gl_FragCoord.xy) - 0.5) / 255.0;
+
+  // ── dissolution en trame (polish W9, bible §6.8) : au-dessus de 20 m, ce qui est à moins de
+  // 60 m de la caméra ou passe devant un oiseau s'efface en trame IGN fixe à l'écran (jamais un
+  // fondu alpha, qui griserait l'aplat). Les pixels gardés portent l'ID « trame » : l'encre ne
+  // les cerne pas (sinon chaque point de la trame deviendrait un point noir). Après toutes les
+  // dérivées : le discard ne les perturbe pas.
+  float sdoor = 0.0;
+  if (uDissolve > 0.5 && vWorld.y > 20.0) {
+    sdoor = 1.0 - smoothstep(40.0, 60.0, vDist);
+    for (int i = 0; i < 12; i++) {
+      if (float(i) >= uBirdScrN) break;
+      vec4 B = uBirdScr[i];
+      if (vDist < B.w) sdoor = max(sdoor, 1.0 - smoothstep(0.7, 1.0, length(gl_FragCoord.xy - B.xy) / B.z));
+    }
+    if (ign(gl_FragCoord.xy) < 0.72 * sdoor) discard;
+  }
   gl_FragColor = vec4(col, 1.0);
-  writeGBuffer(vViewN, uBaseId + vDeco.x);
+  writeGBuffer(vViewN, sdoor > 0.0 ? SCREEN_DOOR_ID : uBaseId + vDeco.x);
 }
 `
 
-export function createTowerMaterial(): THREE.ShaderMaterial {
+export function createTowerMaterial(): THREE.ShaderMaterial & { uniforms: TowerUniforms } {
+  const own: TowerUniforms = { uBaseId: { value: 0 }, uDissolve: { value: 0 } }
   return new THREE.ShaderMaterial({
     name: 'world.tower',
-    uniforms: { ...NPR, uBaseId: { value: 0 } },
+    uniforms: { ...NPR, ...own },
     vertexShader: VERT,
     fragmentShader: FRAG,
     side: THREE.FrontSide,
-  })
+  }) as THREE.ShaderMaterial & { uniforms: TowerUniforms }
 }

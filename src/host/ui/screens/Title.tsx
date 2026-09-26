@@ -7,7 +7,8 @@ import { t } from '../../../shared/i18n.ts'
 import { Btn, Key } from '../components.tsx'
 import { Logo } from '../Logo.tsx'
 import { useNavScope } from '../nav.ts'
-import { uiActions, useUi } from '../viewModel.ts'
+import { QrCode } from '../QrCode.tsx'
+import { uiActions, useLobby, useUi } from '../viewModel.ts'
 import './title.css'
 
 export function Title() {
@@ -21,8 +22,38 @@ export function Title() {
         {t('game.pitch')}
       </p>
       {menuOpen ? <TitleMenu /> : <PressAnyKey />}
-      <div className="title__foot enter" style={{ ['--i' as string]: 3 }}>
-        <span>{t('host.title.players')}</span>
+      <TitleFoot />
+    </div>
+  )
+}
+
+/**
+ * Pied du titre, case papier opaque : un petit QR et le code de la salle (déjà
+ * ouverte : un groupe sans clavier à portée peut entrer depuis son canapé), le
+ * nombre de joueurs et le rappel du plein écran.
+ */
+function TitleFoot() {
+  const code = useLobby(s => s.roomCode)
+  const url = useLobby(s => s.joinUrl)
+  const online = useLobby(s => s.connection === 'online')
+  const ready = online && !!code && !!url
+  return (
+    <div className={ready ? 'title__foot case enter' : 'title__foot title__foot--noqr case enter'} style={{ ['--i' as string]: 3 }}>
+      {ready ? <QrCode text={url} size={150} className="title__qr" /> : null}
+      <div className="title__foot-text">
+        {ready ? (
+          <>
+            <span className="title__scan">{t('host.title.scan')}</span>
+            <span className="title__code" aria-label={t('host.lobby.code')}>
+              {code.split('').map((ch, k) => (
+                <span key={k} className="title__letter t-num">
+                  {ch}
+                </span>
+              ))}
+            </span>
+          </>
+        ) : null}
+        <span className="title__players">{t('host.title.players')}</span>
         <span className="title__fs">
           <Key>F</Key> {t('host.keys.fullscreen')}
         </span>

@@ -32,6 +32,12 @@ export const worldView = {
   hideStorm: false,
   /** Oiseaux dont le fil d'ombre est masqué (slots), en plus de la règle automatique. */
   hideThreads: 0 as number,
+  /**
+   * Leviers de mesure (polish W5, scripts sous ?debug) : cascade focus sur le cadre de la manche,
+   * lissage B-spline des ombres selon la taille du texel à l'écran. Toujours vrais en jeu.
+   */
+  roundFocus: true,
+  shadowSmooth: true,
 }
 
 export type WorldView = typeof worldView

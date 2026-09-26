@@ -71,7 +71,11 @@ export function titleStat(id: TitleId, value: number, lang: Lang = getLang()): s
  */
 export function sentenceLines(text: string): string[] {
   const parts = text.match(/[^.!?]+[.!?]+\s*/g)?.map(p => p.trim()) ?? [text]
-  if (parts.length < 2) return [text]
+  if (parts.length < 2) {
+    // Une seule phrase longue : on coupe après les deux-points (« Pique d'en haut : » / « sa traînée… »).
+    const colon = text.match(/^(.{8,}?\s?:)\s+(.{8,})$/)
+    return colon && text.length > 28 ? [colon[1]!, colon[2]!] : [text]
+  }
   let best = 1
   let bestCost = Infinity
   for (let k = 1; k < parts.length; k++) {

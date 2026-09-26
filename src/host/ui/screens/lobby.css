@@ -80,28 +80,106 @@
   font-size: 62px;
   line-height: 1;
 }
+/* Adresse de secours : boîte de hauteur fixe (la case ne grandit jamais), marge intérieure
+   garantie ; l'adresse ne se coupe qu'aux points (<wbr>), sa taille est ajustée (Lobby.tsx). */
 .join__url {
-  margin-top: 14px;
+  align-self: stretch;
+  height: 62px;
+  margin-top: 10px;
+  padding: 0 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: 8px;
+  row-gap: 1px;
+  overflow: hidden;
   font-size: 24px;
+  line-height: 1.15;
   color: var(--ink-80);
+  text-align: center;
+}
+.join__url.is-stacked {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.join__url.is-stacked .join__url-label {
+  font-size: 20px;
 }
 .join__url b {
+  max-width: 100%;
   font-weight: 400;
   color: var(--ink);
   font-family: var(--f-num);
   font-size: 22px;
+  line-height: 1.1;
   letter-spacing: 0.01em;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
-/* Rappel clavier, en pied de la liste des oiseaux. */
+/* Clavier, en pied de la liste des oiseaux : touche pour rejoindre, puis carte des touches du groupe. */
 .kbd-join {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   margin-top: auto;
   padding: 12px 6px 4px;
   border-top: 2px dashed var(--ink-35);
-  font-size: 25px;
+}
+.kbd-join__next {
+  display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 12px;
+  font-size: 25px;
+}
+.kbd-card {
+  padding: 8px 12px 9px;
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+}
+.kbd-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 23px;
+}
+.kbd-card__who {
+  white-space: nowrap;
+}
+.kbd-card__goal {
+  margin-left: auto;
+  padding: 1px 9px 0;
+  background: var(--sun);
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  font-size: 20px;
+  white-space: nowrap;
+}
+.kbd-card__keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 14px;
+  margin-top: 6px;
+  font-size: 19px;
+  color: var(--ink-80);
+}
+.kbd-card__keys > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.kbd-card__caps {
+  display: inline-flex;
+  gap: 2px;
+}
+.kbd-card .key {
+  font-size: 17px;
 }
 
 /* ─── Règles qui tournent ─── */
@@ -114,17 +192,54 @@
   align-items: center;
 }
 .carousel__art {
+  position: relative;
   border: 2px solid var(--ink);
   border-radius: 2px;
   overflow: hidden;
   width: 382px;
   height: 220px;
   flex: none;
-  animation: ui-fade-in 300ms linear both;
+  background: var(--paper);
 }
 .carousel__art .rule-art {
   width: 378px;
   height: auto;
+}
+/* Changement de carte : la nouvelle s'essuie à l'encre par-dessus l'ancienne (jamais de case vide). */
+.carousel__layer {
+  position: absolute;
+  inset: 0;
+}
+.carousel__layer--in {
+  animation: ui-wipe 460ms var(--ease-out) both;
+}
+.carousel__layer--in::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  translate: -100% 0;
+  background: var(--ink);
+  animation: carousel-edge 460ms var(--ease-out) both;
+}
+@keyframes carousel-edge {
+  from {
+    left: 0;
+  }
+  90% {
+    opacity: 1;
+  }
+  to {
+    left: 100%;
+    opacity: 0;
+  }
+}
+.reduce-motion .carousel__layer--in {
+  animation: ui-fade-in 300ms linear both;
+}
+.reduce-motion .carousel__layer--in::after {
+  display: none;
 }
 .carousel__text {
   margin: 12px 0 0;
@@ -132,11 +247,11 @@
   line-height: 1.15;
   text-align: center;
   text-wrap: balance;
-  animation: ui-enter var(--enter-ms) var(--ease-out) both;
+  animation: ui-wipe 460ms var(--ease-out) both;
 }
 .carousel__text > span {
   display: block;
-  white-space: nowrap;
+  text-wrap: balance;
 }
 .carousel__num {
   display: inline-flex;
@@ -273,6 +388,15 @@
 }
 .slot__meta .icon {
   flex: none;
+}
+/* Caractère d'un bot : la description passe à la ligne plutôt que « laboure au ras du s… ». */
+.slot__meta--bot {
+  align-items: flex-start;
+  white-space: normal;
+}
+.slot__meta--bot > span {
+  line-height: 1.1;
+  padding-top: 2px;
 }
 .slot__meta > span {
   min-width: 0;
@@ -450,4 +574,15 @@
   align-self: flex-start;
   padding: 2px 10px;
   border-radius: 2px;
+}
+/* Salon plein (> 8 oiseaux) : la carte clavier se réduit à sa ligne de tête (la liste garde ses 12 lignes). */
+.roster--dense .kbd-join {
+  gap: 4px;
+  padding-top: 8px;
+}
+.roster--dense .kbd-card {
+  padding: 4px 10px 3px;
+}
+.roster--dense .kbd-card__keys {
+  display: none;
 }

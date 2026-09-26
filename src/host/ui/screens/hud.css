@@ -119,6 +119,25 @@
   border: 1.5px solid var(--ink);
   color: var(--ink);
 }
+.sandbar__pct-tag {
+  position: absolute;
+  top: calc(100% + 5px);
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 1px 3px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 21px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: left 300ms ease-out;
+}
+.sandbar__pct-tag .t-num {
+  padding-top: 2px;
+}
 .sandbar__neutral {
   flex: 1 1 auto;
   min-width: 0;
@@ -253,6 +272,47 @@
   background: var(--ink);
   color: var(--paper);
 }
+.banner__sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.banner__arrow {
+  flex: none;
+}
+/* Bandeau fin sous la bande de sable (Grande Ombre) : une ligne, hors de l'arène. */
+.banner-wrap--strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--safe-y) + 34px + 38px + 12px);
+}
+.banner--strip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 5px 22px 4px;
+  border-width: 2px;
+  box-shadow: 4px 4px 0 var(--drop);
+}
+.banner--strip .banner__title {
+  font-size: 28px;
+  white-space: nowrap;
+}
+.banner--strip .banner__sub {
+  margin-top: 0;
+  font-size: 25px;
+  white-space: nowrap;
+}
+.banner--strip .banner__sub::before {
+  content: '';
+  width: 2px;
+  height: 26px;
+  margin-right: 6px;
+  background: currentColor;
+  opacity: 0.5;
+}
 
 /* ─── Récitatif du narrateur ─── */
 .subtitle-wrap {
@@ -263,12 +323,9 @@
   display: flex;
   justify-content: center;
 }
-/* Podium : au-dessus de la grille des titres (ajout qa). */
+/* Podium : au-dessus de la grille des titres, marge garantie (--titles-h mesurée par MatchResults). */
 .ui-root[data-screen='matchResults'] .subtitle-wrap {
-  bottom: 300px;
-}
-.ui-root[data-screen='matchResults']:has(.match-res--dense) .subtitle-wrap {
-  bottom: 350px;
+  bottom: calc(var(--safe-y) + var(--titles-h, 260px) + 22px);
 }
 .recitatif {
   margin: 0;
@@ -321,15 +378,19 @@
 }
 .anchor .tag,
 .anchor__token,
-.anchor .hint,
+.anchor__human,
 .anchor .offarrow {
   position: absolute;
 }
+/* Étiquette de nom : absente de la mise en page quand elle est masquée (fondu d'entrée ; la
+   sortie est immédiate, sinon elle chevaucherait l'étiquette qui prend sa place).
+   --tag-dy : décalage vertical quand elle toucherait une autre étiquette (WorldLayer), sans
+   transition pour la même raison. */
 .tag {
   left: 0;
   top: 6px;
-  transform: translateX(-50%);
-  display: flex;
+  translate: -50% var(--tag-dy, 0px);
+  display: none;
   align-items: center;
   gap: 7px;
   padding: 3px 12px 3px 4px;
@@ -340,7 +401,7 @@
   line-height: 1;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 220ms linear;
+  transition: opacity 200ms linear;
 }
 .tag__name {
   padding-top: 2px;
@@ -349,13 +410,48 @@
   fill: var(--sun);
 }
 .anchor.is-shown .tag {
+  display: flex;
   opacity: 1;
+}
+@starting-style {
+  .anchor.is-shown .tag {
+    opacity: 0;
+  }
 }
 .anchor.is-hidden-bird .tag {
   background: rgb(247 240 227 / 0.3);
   border-style: dashed;
 }
-.anchor__token {
+/* Trait de rappel : de l'oiseau à son étiquette décalée. */
+.tag__lead {
+  display: none;
+  position: absolute;
+  left: -1.5px;
+  top: 2px;
+  width: 3px;
+  height: calc(var(--tag-dy, 0px) + 6px);
+  background: var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1.5px var(--paper);
+}
+.anchor.is-lead .tag__lead {
+  display: block;
+}
+/* « C'est moi » : pulsation (salon tant que « Vole » n'est pas coché ; COUP D'AILE au départ). */
+.anchor.is-pulse .tag {
+  box-shadow: 0 0 0 4px var(--sun);
+  animation: tag-pulse 900ms ease-in-out infinite;
+}
+@keyframes tag-pulse {
+  50% {
+    scale: 1.14;
+  }
+}
+.reduce-motion .anchor.is-pulse .tag {
+  animation: none;
+}
+.anchor__token,
+.anchor__human {
   display: none;
   left: 0;
   top: 8px;
@@ -364,9 +460,17 @@
 .world--cb .anchor[data-mode='tag']:not(.is-shown) .anchor__token {
   display: block;
 }
+/* Au-delà de 6 oiseaux : jeton permanent sous chaque humain (ART_BIBLE §3.5, mécanisme du jeton daltonien). */
+.world--crowded:not(.world--cb) .anchor.is-human[data-mode='tag']:not(.is-shown) .anchor__human {
+  display: block;
+}
+.anchor__human .token {
+  box-shadow: 0 0 0 2px var(--paper);
+}
 .anchor[data-mode='arrow'] .tag,
-.anchor[data-mode='arrow'] .hint,
-.anchor[data-mode='arrow'] .anchor__token {
+.anchor[data-mode='arrow'] .anchor__token,
+.anchor[data-mode='arrow'] .anchor__human,
+.anchor[data-mode='arrow'] .tag__lead {
   display: none;
 }
 .offarrow {
@@ -393,23 +497,76 @@
   transform: translate(-50%, -50%);
   color: var(--ink);
 }
-.hint {
+
+/* Salon : le mannequin (anneau-cible pointillé sous l'oiseau + étiquette). */
+.dummy__ring {
+  position: absolute;
+  left: -66px;
+  top: -24px;
+}
+.dummy__ring ellipse[stroke-dasharray] {
+  animation: dummy-dash 1.4s linear infinite;
+}
+@keyframes dummy-dash {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+.reduce-motion .dummy__ring ellipse {
+  animation: none;
+}
+.dummy .dummy__tag {
+  top: 32px;
+  padding: 3px 14px 3px 6px;
+}
+.dummy.is-covered {
+  visibility: hidden;
+}
+
+/* ─── Bulles d'indication ───
+   .bubble suit l'oiseau (transform écrit à chaque frame) ; .hint porte le côté
+   (--hint-y : au-dessus ou au-dessous) et le décalage horizontal (--hint-dx),
+   la pointe restant sur l'oiseau. */
+.bubble {
+  position: absolute;
   left: 0;
-  bottom: 96px;
-  /* Propriété `translate` (et non `transform`, écrasé par l'animation d'entrée .enter) ;
-     --hint-dx garde la bulle dans le cadre (WorldLayer), la pointe reste sur l'oiseau. */
-  translate: calc(-50% + var(--hint-dx, 0px)) 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+.bubble[data-side='measure'] {
+  visibility: hidden;
+}
+.bubble[data-side='hidden'] {
+  display: none;
+}
+.hint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* Propriété `translate` (et non `transform`, pris par l'animation d'entrée .enter). */
+  translate: calc(-50% + var(--hint-dx, 0px)) var(--hint-y, 0px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: max-content;
-  max-width: 440px;
-  padding: 10px 18px 9px;
+  max-width: 470px;
+  padding: 9px 18px 8px 10px;
   background: var(--paper);
   border: 4px solid;
   border-radius: 6px;
   box-shadow: 5px 5px 0 var(--drop);
   font-size: 27px;
   line-height: 1.2;
-  text-align: center;
   text-wrap: balance;
+}
+.hint__tokens {
+  flex: none;
+  display: flex;
+}
+.hint__tokens .token + .token {
+  margin-left: -9px;
 }
 .hint__tail {
   position: absolute;
@@ -417,6 +574,11 @@
   bottom: -21px;
   margin-left: -17px;
   translate: calc(-1 * var(--hint-dx, 0px)) 0;
+}
+.bubble[data-side='below'] .hint__tail {
+  bottom: auto;
+  top: -21px;
+  transform: scaleY(-1);
 }
 .gain {
   position: absolute;

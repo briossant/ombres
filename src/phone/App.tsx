@@ -1,6 +1,7 @@
 // Racine de l'app téléphone : choisit l'écran d'après la connexion et la vue envoyée par le PC,
 // et pose les surcouches (reconnexion, pause, réglages, messages, effets).
-import { useEffect } from 'react'
+import { useEffect, type CSSProperties } from 'react'
+import { PHONE_RULES } from '../net/phoneRules.ts'
 import { displayedColor, usePhone } from './store.ts'
 import { playerVars } from './format.tsx'
 import { enterFullscreen, guardGestures, lockLandscape } from './device/screen.ts'
@@ -60,12 +61,24 @@ function Screen({ onJoin }: { onJoin: (code: string) => void }) {
   }
 }
 
+/**
+ * Géométrie des commandes (RULES), posée sur la racine : la manette ET les cases du salon qui doivent
+ * l'éviter (carte des règles, objectifs) calculent leurs réserves à partir des mêmes variables.
+ */
+const CONTROL_VARS = {
+  '--stick-r': `${PHONE_RULES.joystickRadiusPx}px`,
+  '--dive-frac': PHONE_RULES.buttonDiveHeightFrac,
+  '--flap-frac': PHONE_RULES.buttonFlapHeightFrac,
+} as CSSProperties
+
 export function PhoneApp({ onJoin }: { onJoin: (code: string) => void }) {
   useFirstGesture()
   const color = usePhone(displayedColor)
   const screen = usePhone(s => s.view?.screen ?? 'none')
+  // « Réduire les flashs » du PC : aucun éclair ni clignotement sur le téléphone non plus.
+  const reduceFlashes = usePhone(s => s.view?.reduceFlashes ?? false)
   return (
-    <div className="app" style={playerVars(color)} data-screen={screen}>
+    <div className={`app ${reduceFlashes ? 'reduce-flash' : ''}`} style={{ ...CONTROL_VARS, ...playerVars(color) }} data-screen={screen}>
       <Screen onJoin={onJoin} />
       <Toasts />
       <FxLayer />

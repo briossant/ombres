@@ -26,8 +26,12 @@ export function loadKeyboardLayout(): void {
     })
 }
 
-/** Libellés { dive, flap } des boutons du groupe local, pour les textes d'indication. */
+/**
+ * Libellés { dive, flap } des boutons du groupe local, pour les textes d'indication. Noms lisibles
+ * (polish G7) : « AltGr » en AZERTY, « Alt droit » ailleurs ; « M » en AZERTY, « Point-virgule »
+ * en QWERTY (jamais « ; », illisible à 3 m).
+ */
 export function localButtonLabels(group: LocalGroup): { dive: string; flap: string } {
   if (group === 1) return { dive: t('host.key.space'), flap: t('host.key.shift') }
-  return { dive: t('host.key.altgr'), flap: keyLabel('Semicolon', layout) }
+  return { dive: keyLabel('AltRight', layout), flap: keyLabel('Semicolon', layout) }
 }

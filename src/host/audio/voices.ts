@@ -33,6 +33,11 @@ export interface SoundDef {
    * à `peakAt` secondes après le déclenchement (ex. le « boum » du piqué sur l'impact).
    */
   align?: 'onset' | { peakAt: number }
+  /**
+   * Signal de jeu (compte à rebours, phases, dernières secondes, nuit, couronne) : jamais refusé
+   * par le plafond global de voix (SoundPlayer.maxTotalVoices). Les sons d'interface non plus.
+   */
+  essential?: boolean
   /** Tranche du fichier (s). */
   offset?: number
   duration?: number
@@ -107,7 +112,7 @@ export class SoundPlayer {
   private lastTime = new Map<string, number>()
   /** Facteur global de vitesse (ralenti : les nouveaux sons sont joués plus graves). */
   rateScale = 1
-  /** Garde-fou CPU : voix simultanées au total. */
+  /** Garde-fou CPU : voix simultanées au total (hors signaux essentiels et interface). */
   maxTotalVoices = 48
   random: () => number = Math.random
   /** Trace des lectures (page de dev : part de chaque son dans le mixage). */
@@ -143,7 +148,7 @@ export class SoundPlayer {
       for (let i = l.length - 1; i >= 0; i--) if (l[i]!.endsAt <= when) l.splice(i, 1)
       total += l.length
     }
-    if (total >= this.maxTotalVoices) return null
+    if (total >= this.maxTotalVoices && !def.essential && def.bus !== 'ui') return null
     // polyphonie par son : on libère la plus ancienne
     const list = this.voices.get(name) ?? []
     const max = def.maxVoices ?? 4

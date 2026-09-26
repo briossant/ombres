@@ -142,6 +142,10 @@ export const NPR = {
   uNSun: color(),
   /** Lèvre de dernière lumière : sandLit de KF1 (corail). */
   uLipColor: color(),
+  /** Même couleur en OKLab (bande de lumière rasante devant le front, polish W6). */
+  uLipLab: vec3(),
+  /** Plafond de chroma du lavis fort (0,12 à l'heure dorée, sans plafond sinon ; polish W12). */
+  uPaintCMax: num(1),
 
   // ── soleil (repère three.js : Y en haut) ──
   /** Direction unitaire VERS le soleil, élévation de gameplay (bornée à 2° pour la projection). */
@@ -163,6 +167,8 @@ export const NPR = {
   uShadowMapFocus: { value: emptyShadowTexture() as THREE.Texture },
   uShadowAreaFocus: { value: new THREE.Vector4(0, 0, 80, 0) },
   uShadowResFocus: num(2048),
+  /** Lissage B-spline des bords d'ombre quand un texel couvre plus d'un pixel (1 ; 0 = mesure A/B). */
+  uShadowSmooth: num(1),
 
   // ── brume (ART_BIBLE §6.4) ──
   uFogK: num(0.0011),
@@ -180,6 +186,8 @@ export const NPR = {
   uNightSpan: num(1),
   /** Palette de nuit forcée partout (0..1) : fin de manche, résultats. */
   uNightAll: num(0),
+  /** Vitesse d'avance du front (m/s de temps de sim) : âge du passage de la lèvre (polish W6). */
+  uNightSpeed: num(30),
 
   // ── joueurs, indexés par code propriétaire (0 neutre, slot + 1) ──
   /** (cos h, sin h, dL, cs) du lavis de territoire. */
@@ -189,6 +197,19 @@ export const NPR = {
   /** Variante « texte » (fil d'ombre). */
   uOwnerText: { value: Array.from({ length: OWNER_CODES }, () => new THREE.Color()) },
   uColorblind: num(0),
+  /**
+   * Ellipse d'empreinte par code propriétaire (x, z three du centre, demi-axe le long des
+   * ombres, demi-axe en travers) : tirets du liseré pâle (polish W11).
+   */
+  uFpEllipse: { value: Array.from({ length: OWNER_CODES }, () => new THREE.Vector4(0, 0, 1, 1)) },
+  /** Axe « le long des ombres » des empreintes (xz three, unitaire). */
+  uFpDir: { value: new THREE.Vector2(1, 0) },
+  /**
+   * Oiseaux projetés à l'écran (x, y en px du tampon, origine en bas à gauche ; rayon de dégagement
+   * en px ; distance à la caméra en m) : dissolution en trame des tours et du Simoun (polish W9, W10).
+   */
+  uBirdScr: { value: Array.from({ length: 12 }, () => new THREE.Vector4(0, 0, 1, 0)) },
+  uBirdScrN: num(0),
 
   // ── divers ──
   /** Hauteur du buffer / 1080 : tous les px de la bible se multiplient par uPx. */
@@ -201,6 +222,14 @@ export const NPR = {
   uNoise: { value: makeNoiseTexture() as THREE.Texture },
   /** Flash « planche » (0..1), lu par l'InkEffect. */
   uFlash: num(0),
+  /**
+   * Crayonné du compte à rebours (polish W13, 0 = off) : même mélange vers le papier que le flash,
+   * à l'EST de `uSketchFront` (x monde, m) ; la coulée de couleur d'ouest en est le fait avancer.
+   */
+  uSketch: num(0),
+  uSketchFront: num(-1e4),
+  /** Demi-largeur (m) de la coulée ; les x monde (ciel compris) y sont ramenés. */
+  uSketchSpan: num(200),
 }
 
 export type NprUniforms = typeof NPR

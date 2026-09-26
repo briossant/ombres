@@ -3,7 +3,13 @@
 // d'une case de BD (ciel de papier, bande de désert) ; chaque lettre projette
 // une ombre plate `castShadow` qui s'allonge et tourne avec un soleil fictif
 // (dessiné dans la case) en 12 s. Boil du trait à 8 images/s.
+// Logo vivant (polish H15) : quand une simulation tourne derrière (démo du titre),
+// les ombres des lettres suivent SON soleil (élévation, azimut) à 10 Hz ; au coucher
+// de la démo, elles s'allongent et virent au violet. Sans simulation, soleil fictif.
 import { useEffect, useRef } from 'react'
+import { worldView } from '../render/worldView.ts'
+import { gameView } from '../view.ts'
+import { mixHex } from './color.ts'
 
 const WORD = 'OMBRES'
 const FONT_SIZE = 168
@@ -35,8 +41,26 @@ function sunAt(t: number): { elevDeg: number; az: number } {
   return { elevDeg: ELEV_MIN + (ELEV_SPAN / 2) * (1 - Math.cos(ph)), az: 0.95 + 0.25 * Math.sin(ph) }
 }
 
-function shadowMatrix(t: number): string {
-  const { elevDeg, az } = sunAt(t)
+/** Soleil de la démo (ou imposé par la mise en scène), ramené à la plage lisible du logo ; null sans simulation. */
+const LOGO_ELEV_MAX = 62
+function liveSun(): { elevDeg: number; az: number; realElevDeg: number } | null {
+  const o = worldView.sunOverride
+  const sun = gameView.sim?.sun
+  if (!o && !sun) return null
+  const realElevDeg = o ? o.elevDeg : ((sun?.elevation ?? 0) * 180) / Math.PI
+  const azRad = o ? (o.azDeg * Math.PI) / 180 : (sun?.azimuth ?? 0)
+  // soleil haut : ombres courtes mais présentes ; soleil bas : longues lames (bornées à la case)
+  const elevDeg = Math.max(ELEV_MIN - 2, Math.min(LOGO_ELEV_MAX, realElevDeg))
+  return { elevDeg, az: 0.95 + 0.3 * Math.sin(azRad), realElevDeg }
+}
+
+/** Ombre des lettres : lavande le jour, violet profond au coucher (de 16° à 6° de soleil réel). */
+const SHADOW_DAY = '#9C88A0'
+const SHADOW_DUSK = '#4E3B7E'
+const shadowColor = (realElevDeg: number) => mixHex(SHADOW_DAY, SHADOW_DUSK, Math.min(1, Math.max(0, (16 - realElevDeg) / 10)))
+
+function shadowMatrix(t: number, sun = sunAt(t)): string {
+  const { elevDeg, az } = sun
   const cot = 1 / Math.tan((elevDeg * Math.PI) / 180)
   const kx = cot * Math.cos(az) * 0.5
   const ky = cot * Math.sin(az) * 0.3
@@ -45,8 +69,8 @@ function shadowMatrix(t: number): string {
 }
 
 /** Hauteur du disque dans le ciel de la case : il touche presque l'horizon quand le soleil est au plus bas. */
-const sunY = (t: number) => {
-  const k = (sunAt(t).elevDeg - ELEV_MIN) / ELEV_SPAN
+const sunY = (t: number, sun = sunAt(t)) => {
+  const k = Math.min(1, Math.max(0, (sun.elevDeg - ELEV_MIN) / (LOGO_ELEV_MAX - ELEV_MIN)))
   return (BASE - 26 - (BASE - 26 - 6) * k).toFixed(1)
 }
 
@@ -67,12 +91,27 @@ export function Logo({ animate = true, className }: { animate?: boolean; classNa
     if (!animate) return
     let raf = 0
     let lastBoil = -1
+    let lastSun = -Infinity
+    const shadowTexts = [...shadow.querySelectorAll('text')]
     const rnd = rng(11)
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop)
       const t = (now - t0) / 1000
-      shadow.setAttribute('transform', shadowMatrix(t))
-      sun.setAttribute('cy', sunY(t))
+      const live = liveSun()
+      if (!live) {
+        shadow.setAttribute('transform', shadowMatrix(t))
+        sun.setAttribute('cy', sunY(t))
+      } else if (now - lastSun >= 100) {
+        // soleil de la démo : 10 Hz suffisent (il avance de moins d'un degré par seconde)
+        lastSun = now
+        shadow.setAttribute('transform', shadowMatrix(t, live))
+        sun.setAttribute('cy', sunY(t, live))
+        const c = shadowColor(live.realElevDeg)
+        for (const el of shadowTexts) {
+          el.setAttribute('fill', c)
+          el.setAttribute('stroke', c)
+        }
+      }
       const frame = Math.floor(t * BOIL_FPS)
       if (frame !== lastBoil) {
         lastBoil = frame

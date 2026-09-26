@@ -36,10 +36,16 @@ export class BotCoordinator {
   private lastTick = -1
   /** Dernière touche subie par slot (s, state.time) : la vrille se voit, tout le monde le sait. */
   private readonly lastHitAt = new Float64Array(12).fill(-Infinity)
+  /** Dernière prise d'élan contre chaque slot (s, state.time) : le « ! » se voit aussi. */
+  private readonly lastDivedAt = new Float64Array(12).fill(-Infinity)
   /** Incrémenté quand le désert est remis à zéro (boucle de démo, lobby) : les bots replanifient. */
   resetCount = 0
 
+  /** Instant de création (state.time) : origine de sinceDivedOn avant le premier piqué. */
+  private readonly startTime: number
+
   constructor(state: SimState) {
+    this.startTime = state.time
     this.values = new ValueMap(state.grid)
     this.shade = new ShadeForecast(state)
     this.shade.update(state, true)
@@ -54,6 +60,7 @@ export class BotCoordinator {
     for (const e of events) {
       if (e.type === 'territoryReset') reset = true
       else if (e.type === 'diveHit') this.lastHitAt[e.target] = state.time
+      else if (e.type === 'diveWindup') this.lastDivedAt[e.target] = state.time
     }
     this.history.record(state)
     this.shade.update(state)
@@ -61,6 +68,7 @@ export class BotCoordinator {
       this.resetCount++
       this.engagements.length = 0
       this.lastHitAt.fill(-Infinity)
+      this.lastDivedAt.fill(-Infinity)
       this.shade.invalidate()
       this.shade.update(state, true)
       this.values.rebuild(this.shade.mask)
@@ -73,6 +81,15 @@ export class BotCoordinator {
   /** Secondes depuis la dernière touche subie par cet oiseau (Infinity s'il n'a jamais été touché). */
   sinceHit(slot: number, now: number): number {
     return now - (this.lastHitAt[slot] ?? -Infinity)
+  }
+
+  /**
+   * Secondes depuis la dernière prise d'élan subie par cet oiseau, tous chasseurs confondus.
+   * Avant le premier piqué de la manche : secondes depuis le début de la simulation.
+   */
+  sinceDivedOn(slot: number, now: number): number {
+    const at = this.lastDivedAt[slot] ?? -Infinity
+    return at === -Infinity ? now - this.startTime : now - at
   }
 
   registerBot(slot: number, level = 1): void {

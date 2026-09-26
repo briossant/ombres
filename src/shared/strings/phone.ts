@@ -2,6 +2,8 @@ import type { StringTable } from './index.ts'
 
 // Chaînes du domaine « phone » (app manette). Clés préfixées par « phone. ».
 // Ton : court, direct, tutoiement ; les noms des boutons (PLONGER, COUP D'AILE) sont ceux de la TV.
+// Glossaire EN (docs/polish/ORDERS.md §9) : DIVE = le bouton tenu (voler bas) ; l'attaque d'en haut =
+// strike / strikes / STRIKE ; COUP D'AILE = WINGBEAT. Jamais « dive » pour l'attaque.
 export const phone: StringTable = {
   fr: {
     'phone.title': 'Ombres — manette',
@@ -58,10 +60,10 @@ export const phone: StringTable = {
     'phone.goal.dive': 'Plonge',
     'phone.goal.dive.how': 'Maintiens PLONGER : petite ombre, qui peint fort.',
     'phone.goal.strike': 'Pique',
-    'phone.goal.strike.how': 'Relâche pour monter, puis plonge sur le mannequin.',
+    'phone.goal.strike.how': 'Relâche pour monter, puis pique sur le mannequin.',
     'phone.lobby.start': 'Lancer la partie',
     'phone.lobby.startShort': 'Lancer',
-    'phone.lobby.waitLeader': '{name} lance la partie',
+    'phone.lobby.waitLeader': 'C’est {name} qui lance la partie',
     'phone.lobby.waitScreen': 'La partie se lance depuis l’écran',
     'phone.lobby.thumbHere': 'Pouce ici',
     'phone.lobby.watch': 'Ton oiseau vole sur l’écran',
@@ -97,9 +99,9 @@ export const phone: StringTable = {
     'phone.rotate': 'Tourne ton téléphone',
 
     // Cartes des règles (GDD §2)
-    'phone.card.1': 'Ton ombre peint le sable.',
-    'phone.card.2': 'Bas : fort. Haut : grand. Le fort gagne.',
-    'phone.card.3': 'Pique d’en haut. À la nuit, on compte.',
+    'phone.card.1': 'Ton ombre peint le sable. À la nuit, on compte.',
+    'phone.card.2': 'Bas : fort. Haut : grand. Le fort recouvre le pâle.',
+    'phone.card.3': 'Pique d’en haut : sa traînée devient la tienne.',
 
     // Avant la manche
     'phone.intro.round': 'Manche {n} sur {total}',
@@ -128,7 +130,7 @@ export const phone: StringTable = {
     'phone.stat.gotHit': 'Décrochages subis',
     'phone.stat.dodges': 'Esquives',
     'phone.stat.misses': 'Piqués ratés',
-    'phone.stat.stolen': 'Sable volé',
+    'phone.stat.stolen': 'Pris aux autres',
     'phone.stat.lowFrac': 'Au ras du sable',
     'phone.stat.hidden': 'Caché',
     'phone.stat.seconds': '{n} s',
@@ -183,7 +185,7 @@ export const phone: StringTable = {
   en: {
     'phone.title': 'Ombres — controller',
     'phone.names':
-      'Mirage,Sirocco,Fennec,Oasis,Gecko,Zephyr,Flint,Dune,Mehari,Khamsin,Chergui,Harmattan,Scarab,Caravan,Tamarisk,Agave,Onyx,Nopal,Saguaro,Ocelot,Alizé,Mistral,Sandy,Sahel',
+      'Mirage,Sirocco,Fennec,Oasis,Gecko,Zephyr,Flint,Dune,Mehari,Khamsin,Chergui,Harmattan,Scarab,Caravan,Tamarisk,Agave,Onyx,Nopal,Saguaro,Ocelot,Simoom,Mistral,Mesa,Sahel',
 
     'phone.join.title': 'Join the game',
     'phone.join.prompt': 'Enter the code shown on the screen.',
@@ -231,17 +233,17 @@ export const phone: StringTable = {
     'phone.goal.dive': 'Dive',
     'phone.goal.dive.how': 'Hold DIVE: a small shadow that paints strong.',
     'phone.goal.strike': 'Strike',
-    'phone.goal.strike.how': 'Release to climb, then dive onto the dummy.',
+    'phone.goal.strike.how': 'Release to climb, then strike the dummy from above.',
     'phone.lobby.start': 'Start the game',
     'phone.lobby.startShort': 'Start',
-    'phone.lobby.waitLeader': '{name} starts the game',
+    'phone.lobby.waitLeader': '{name} will start the game',
     'phone.lobby.waitScreen': 'The game starts from the screen',
     'phone.lobby.thumbHere': 'Thumb here',
     'phone.lobby.watch': 'Your bird is flying on the screen',
 
     'phone.btn.dive': 'Dive',
     'phone.btn.strike': 'Strike',
-    'phone.btn.diving': 'Diving!',
+    'phone.btn.diving': 'Striking!',
     'phone.btn.flap': 'Wingbeat',
     'phone.btn.flapShort': 'Wingbeat',
     'phone.pause.hold': 'Hold to pause',
@@ -267,9 +269,9 @@ export const phone: StringTable = {
     'phone.fx.win': 'Victory!',
     'phone.rotate': 'Turn your phone sideways',
 
-    'phone.card.1': 'Your shadow paints the sand.',
-    'phone.card.2': 'Low: strong. High: wide. Strong wins.',
-    'phone.card.3': 'Dive from above. At nightfall, we count.',
+    'phone.card.1': 'Your shadow paints the sand. At nightfall, we count.',
+    'phone.card.2': 'Low: strong. High: wide. Strong covers pale.',
+    'phone.card.3': 'Strike from above: their trail becomes yours.',
 
     'phone.intro.round': 'Round {n} of {total}',
     'phone.intro.double': 'Last sunset: it counts double!',
@@ -292,11 +294,11 @@ export const phone: StringTable = {
     'phone.roundEnd.winner': 'The desert belongs to {name}',
     'phone.roundEnd.youWin': 'The desert is yours!',
     'phone.roundEnd.nextDouble': 'The next round counts double.',
-    'phone.stat.hits': 'Successful dives',
+    'phone.stat.hits': 'Strikes landed',
     'phone.stat.gotHit': 'Times knocked out',
     'phone.stat.dodges': 'Dodges',
-    'phone.stat.misses': 'Missed dives',
-    'phone.stat.stolen': 'Sand stolen',
+    'phone.stat.misses': 'Missed strikes',
+    'phone.stat.stolen': 'Taken from others',
     'phone.stat.lowFrac': 'Flying low',
     'phone.stat.hidden': 'Hidden',
     'phone.stat.seconds': '{n} s',
@@ -340,7 +342,7 @@ export const phone: StringTable = {
     'phone.scheme.tilt': 'Tilt',
     'phone.scheme.tilt.desc': 'Lean the phone where you want to go. Buttons stay on screen.',
     'phone.settings.assist': 'Flight assist',
-    'phone.settings.assist.desc': 'Easier dives, automatic dodge half the time. A feather shows next to your name.',
+    'phone.settings.assist.desc': 'Easier strikes, automatic dodge half the time. A feather shows next to your name.',
     'phone.settings.haptics': 'Vibration',
     'phone.settings.rules': 'The rules',
   },

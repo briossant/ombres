@@ -61,6 +61,14 @@ const PENT = [57, 60, 62, 64, 67, 69, 72, 74, 76, 79, 81]
 const GLASS = [81, 84, 86, 88, 91]
 /** Notes des couleurs de joueurs (mêmes que PLAYER_NOTES de sfx.ts), en MIDI. */
 const PLAYER_NOTE_MIDI = [57, 60, 62, 64, 67, 69, 72, 74, 76, 79, 81, 84]
+/** Secondes comptées à la fin de la manche (événements lastSeconds 5..1 de la simulation). */
+const LAST_SECONDS = 5
+/**
+ * Relief de la partition à midi et l'après-midi (dB, son direct) : la nappe, le bourdon et les
+ * cloches passaient 5 à 9 LU sous les bruitages ; le relief retombe pendant les deux premières
+ * mesures de l'heure dorée, quand percussions, oud et duduk entrent.
+ */
+const EARLY_LIFT_DB = 4
 
 /** Rythmes de motifs (doubles croches : [début, durée]) et contours (degrés relatifs au centre). */
 const RHYTHMS: [number, number][][] = [
@@ -126,12 +134,20 @@ export class Score {
   /** Coupure de la nappe : valeur au début de la mesure courante et visée en fin de mesure. */
   private padFrom = 650
   private padTo = 650
+  /** Temps (index) où tombent les coups de bois des dernières secondes → n (5..1). */
+  private readonly lastTicks = new Map<number, number>()
+  private readonly ticked = new Set<number>()
+  private liftDb = NaN
 
   constructor(
     private readonly ins: Instruments,
     readonly map: TempoMap,
     seed: number,
+    /** Coup de bois d'une des dernières secondes, joué sur le battement de cœur le plus proche. */
+    private readonly onLastSecond?: (n: number, when: number) => void,
   ) {
+    // le battement de cœur le plus proche de chaque seconde T − n : bois et cœur ne font qu'un
+    for (let n = LAST_SECONDS; n >= 1; n--) this.lastTicks.set(Math.round(map.beatAt(map.T - n)), n)
     this.rng = new Rng(seed ^ 0x5eed)
     this.variant = { noon: this.rng.int(0, 1), afternoon: this.rng.int(0, 1), golden: this.rng.int(0, 1) }
     this.motifs = Array.from({ length: 3 }, () => ({ rhythm: this.rng.pick(RHYTHMS), contour: this.rng.pick(CONTOURS) }))
@@ -159,6 +175,7 @@ export class Score {
     this.countdownDone = true
     const ins = this.ins
     const dur = Math.max(0.5, goAudio - startAudio)
+    this.setLift(EARLY_LIFT_DB, startAudio, 0)
     ins.startDrone(startAudio, dur)
     ins.chord('pad', [45, 52, 57], dur + 0.4, startAudio, 0.42)
     // la nappe s'ouvre pendant le compte à rebours (pas de 100 ms)
@@ -195,6 +212,7 @@ export class Score {
       this.ins.startDrone(p.t, 3)
     }
     if (p.s === 0) this.downbeat(p)
+    if (p.sec === 'greatShadow' && p.s % 4 === 0) this.lastSecondTick(beat, p.t)
     // coupure de la nappe, interpolée à chaque double croche (pas inaudibles, voir padCutoffAt)
     this.ins.padCutoffAt(this.padFrom * Math.pow(this.padTo / this.padFrom, p.s / p.stepsPerBar), p.t)
     this.reverseSwell(p)
@@ -209,11 +227,30 @@ export class Score {
     if (!sk.has('heart')) this.heart(p)
   }
 
+  /** Relief du son direct (dB), rampe de `seconds` ; rien si déjà à cette valeur. */
+  private setLift(db: number, when: number, seconds: number): void {
+    if (db === this.liftDb) return
+    this.liftDb = db
+    this.ins.setLift(db, when, seconds)
+  }
+
+  /** Coups de bois des dernières secondes, sur le battement de cœur. */
+  private lastSecondTick(beat: number, when: number): void {
+    const n = this.lastTicks.get(beat)
+    if (n === undefined || this.ticked.has(n)) return
+    this.ticked.add(n)
+    this.onLastSecond?.(n, when)
+  }
+
   /** Premier temps : harmonie, ouverture des filtres, impact et montée de la Grande Ombre. */
   private downbeat(p: Pos): void {
     const ins = this.ins
     const m = this.map
     const barDur = p.stepsPerBar * p.six
+    // relief de midi et de l'après-midi, qui retombe sur les deux premières mesures de l'heure dorée
+    if (p.sec === 'noon' || p.sec === 'afternoon') this.setLift(EARLY_LIFT_DB, p.t, 0.05)
+    else if (p.sec === 'golden' && p.barInSec === 0) this.setLift(0, p.t, 2 * barDur)
+    else this.setLift(0, p.t, 0.5)
     if (p.chordName !== this.lastChord || p.sec === 'greatShadow') {
       // tenue jusqu'au prochain changement d'accord
       let bars = 1

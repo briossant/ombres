@@ -76,6 +76,14 @@ add('dive_nighthawk_01', R('dive_nighthawk_01'), 'sfx', 'critical', fsid=164201,
 add('dive_nighthawk_02', R('dive_nighthawk_02'), 'sfx', 'critical', fsid=164207, **ONE)
 add('whoosh_pass_01', R('whoosh_pass_01'), 'sfx', 'critical', fsid=683101, trim=(0.12, 0.9), **ONE)
 add('whoosh_pass_02', R('whoosh_pass_02'), 'sfx', 'critical', fsid=60013, **ONE)
+# Souffles distincts (polish audio A4) : le même whoosh_pass_02 servait cinq sons (1,6 lecture/s en
+# manche). Variantes du souffle du COUP D'AILE, souffle du piqué qui descend, souffle étouffé (caché).
+def WH(n): return f'{STAGING}/sfx/whoosh/{n}.mp3'
+add('whoosh_flap_01', WH('whoosh_freakinbehemoth__fs243400'), 'sfx', 'critical', fsid=243400, trim=(0.42, 1.1), fade_out=0.2, **ONE)
+add('whoosh_flap_02', R('whoosh_long'), 'sfx', 'critical', fsid=369698, trim=(0.95, 1.75), fade_out=0.35, **ONE)
+add('whoosh_flap_03', WH('whoosh_epic__fs27281'), 'sfx', 'critical', fsid=27281, trim=(1.2, 2.0), fade_out=0.35, **ONE)
+add('whoosh_down_01', R('whoosh_long'), 'sfx', 'critical', fsid=369698, trim=(0.4, 2.0), fade_out=0.6, **ONE)
+add('whoosh_hide_01', WH('whoosh_epic__fs27281'), 'sfx', 'lazy', fsid=27281, trim=(2.0, 3.4), fade_out=0.6, **ONE)
 # Impacts
 add('impact_punch', R('impact_punch'), 'sfx', 'critical', fsid=399183, onset=True, trim=(0, 0.9), **ONE)
 add('impact_hit_heavy', R('impact_hit_heavy'), 'sfx', 'critical', fsid=504626, **ONE)
@@ -138,7 +146,8 @@ add('amb_wind_eerie_loop', R('amb_wind_eerie_loop'), 'amb', 'lazy', fsid=156414,
 add('amb_wind_howl_loop', R('amb_wind_howl_loop'), 'amb', 'lazy', fsid=117611, loop=(2.0, 24.0, 3.0), **AMB)
 add('amb_wind_dark_loop', R('amb_wind_dark_loop'), 'amb', 'lazy', fsid=645305, loop=(2.0, 22.0, 3.0), mono=True, **AMB)
 add('amb_night_crickets_loop', R('amb_wind_night_crickets_loop'), 'amb', 'lazy', fsid=165526, loop=(4.0, 24.0, 3.0), mono=True, **AMB)
-add('amb_chimes_loop', R('amb_chimes_loop'), 'amb', 'lazy', fsid=437337, loop=(4.0, 24.0, 4.0), mono=True, **{**AMB, 'norm': ('lufs', -24.0)})
+# (amb_chimes_loop retiré : fa −24 cents sous la boucle du salon en sol majeur ; remplacé par un
+#  carillon généré en sol pentatonique, src/host/audio/ambience.ts)
 add('sand_paint_loop', R('sand_paint_rainstick_loop'), 'amb', 'critical', fsid=235966, loop=(2.0, 14.0, 2.0), mono=True, **AMB)
 
 # Échantillons de la partition générative (réaccordés, passe-haut contre le ronflement à 46 Hz)

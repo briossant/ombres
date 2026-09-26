@@ -15,6 +15,7 @@ import type { MapId, RoundPhase, SimEvent, SimState } from '../../sim/types.ts'
 import { RULES } from '../../sim/rules.ts'
 import type { PlayerKind } from '../view.ts'
 import { simEvents, type Emitter } from '../bus.ts'
+import { t } from '../../shared/i18n.ts'
 
 // ─── Écrans ────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,9 @@ export interface ShareVM {
   cells: number
 }
 
+/** Flèche d'indication d'une bannière (effet `HintEffect` du directeur des indications). */
+export type BannerArrow = 'northSouth' | 'east'
+
 export interface BannerVM {
   id: number
   /** Clé i18n du titre (ex. 'host.phase.golden'). */
@@ -181,6 +185,10 @@ export interface BannerVM {
   params?: Record<string, string | number>
   /** Ton : 'phase' (case papier) ou 'alert' (inversion encre, ex. dernière manche). */
   tone: 'phase' | 'alert'
+  /** 'strip' : bandeau fin sous la bande de sable (hors de l'arène) ; défaut : case centrale. */
+  layout?: 'case' | 'strip'
+  /** Flèche dessinée dans la bannière (↕ heure dorée, → Grande Ombre). */
+  arrow?: BannerArrow
 }
 
 export interface SubtitleVM {
@@ -195,9 +203,18 @@ export interface SubtitleVM {
 
 export interface HintVM {
   id: number
+  /** Oiseau qui porte la bulle (la pointe le désigne). */
   slot: number
+  /**
+   * Joueurs concernés (slot en premier) : une même indication arrivée pour
+   * plusieurs joueurs à moins de HINT_MERGE_MS forme UNE bulle, avec leurs jetons.
+   */
+  slots: number[]
   key: string
   params?: Record<string, string | number>
+  /** performance.now (ms) d'apparition et de fin. */
+  at: number
+  until: number
 }
 
 export type ToastTone = 'info' | 'alert'
@@ -247,6 +264,8 @@ export interface HudState {
   gains: GainVM[]
   /** Étiquettes de nom : instant (performance.now, ms) jusqu'auquel l'étiquette du slot est visible. */
   tagsUntil: number[]
+  /** Étiquettes qui pulsent (COUP D'AILE au départ : « où suis-je ? ») : instant de fin par slot. */
+  tagPulseUntil: number[]
 }
 
 const emptyTags = (): number[] => Array.from({ length: 12 }, () => 0)
@@ -270,7 +289,17 @@ export const useHud = create<HudState>(() => ({
   toasts: [],
   gains: [],
   tagsUntil: emptyTags(),
+  tagPulseUntil: emptyTags(),
 }))
+
+/** Au plus deux bulles d'indication à la fois sur la TV (le téléphone reçoit toujours son message). */
+export const HINT_MAX_BUBBLES = 2
+/** Une même indication arrivée à moins de 2 s d'intervalle forme une seule bulle (jetons des joueurs). */
+export const HINT_MERGE_MS = 2000
+/** Une bulle affichée depuis au moins ce temps peut céder sa place à une nouvelle. */
+const HINT_MIN_SHOWN_MS = 1200
+/** Fenêtre après « Envol ! » où un COUP D'AILE fait pulser l'étiquette du joueur. */
+export const FLAP_FIND_MS = 5000
 
 /**
  * Positions écran des oiseaux, écrites par le runner À CHAQUE FRAME (après le
@@ -349,7 +378,7 @@ export const useRoundResults = create<RoundResultsState>(() => ({
 
 // ─── Résultats de partie ───────────────────────────────────────────────────
 
-/** Les 12 titres (GDD §11.4), clés i18n `titles.<id>.name|desc|stat`. */
+/** Les 12 titres (GDD §11.4) + « souverain », repli du vainqueur sans titre (polish G10) ; clés i18n `titles.<id>.name|desc|stat`. */
 export type TitleId =
   | 'rapace'
   | 'gibier'
@@ -363,8 +392,9 @@ export type TitleId =
   | 'dernierRayon'
   | 'lezard'
   | 'revenant'
+  | 'souverain'
 
-export const TITLE_IDS: readonly TitleId[] = ['rapace', 'gibier', 'anguille', 'kamikaze', 'pilleur', 'raseMottes', 'nuage', 'batisseur', 'notaire', 'dernierRayon', 'lezard', 'revenant']
+export const TITLE_IDS: readonly TitleId[] = ['rapace', 'gibier', 'anguille', 'kamikaze', 'pilleur', 'raseMottes', 'nuage', 'batisseur', 'notaire', 'dernierRayon', 'lezard', 'revenant', 'souverain']
 
 /** Unité du chiffre d'un titre : compte, fraction (affichée en %), secondes, places. */
 export type TitleUnit = 'count' | 'frac' | 'seconds' | 'places'
@@ -381,6 +411,7 @@ export const TITLE_UNITS: Readonly<Record<TitleId, TitleUnit>> = {
   dernierRayon: 'frac',
   lezard: 'seconds',
   revenant: 'places',
+  souverain: 'count',
 }
 
 /** Statistiques de partie d'un joueur (cumulées sur les manches). */
@@ -534,9 +565,12 @@ export function setScreenState(screen: ScreenId): void {
 }
 
 /** Bannière de phase / d'annonce (RULES.phaseBannerSeconds par défaut). */
-export function showBanner(key: string, opts: { subKey?: string; params?: Record<string, string | number>; tone?: BannerVM['tone']; seconds?: number } = {}): void {
+export function showBanner(
+  key: string,
+  opts: { subKey?: string; params?: Record<string, string | number>; tone?: BannerVM['tone']; seconds?: number; layout?: BannerVM['layout']; arrow?: BannerArrow } = {},
+): void {
   const id = nextId++
-  useHud.setState({ banner: { id, key, subKey: opts.subKey, params: opts.params, tone: opts.tone ?? 'phase' } })
+  useHud.setState({ banner: { id, key, subKey: opts.subKey, params: opts.params, tone: opts.tone ?? 'phase', layout: opts.layout, arrow: opts.arrow } })
   later((opts.seconds ?? RULES.phaseBannerSeconds) * 1000, () => {
     if (useHud.getState().banner?.id === id) useHud.setState({ banner: null })
   })
@@ -554,12 +588,84 @@ export function showSubtitle(sub: { key?: string; text?: string; colorIndex?: nu
   })
 }
 
-/** Bulle d'indication à la couleur du joueur, près de son oiseau (GDD §15.4). */
+/**
+ * Signature d'une indication : le texte affiché (deux joueurs peuvent recevoir la même phrase
+ * avec des paramètres différents, ex. libellés de touches non utilisés par cette phrase).
+ */
+const hintSig = (key: string, params?: Record<string, string | number>): string => t(key, params)
+
+/** Retire les bulles expirées ; se reprogramme tant qu'il en reste. */
+let hintSweep: ReturnType<typeof setTimeout> | undefined
+function scheduleHintSweep(): void {
+  clearTimeout(hintSweep)
+  const hints = useHud.getState().hints
+  if (!hints.length) return
+  const next = Math.min(...hints.map(h => h.until))
+  hintSweep = setTimeout(
+    () => {
+      const now = performance.now()
+      useHud.setState(s => ({ hints: s.hints.filter(h => h.until > now + 5) }))
+      scheduleHintSweep()
+    },
+    Math.max(16, next - performance.now()),
+  )
+}
+
+/**
+ * Bulle d'indication à la couleur du joueur, près de son oiseau (GDD §15.4).
+ * - une bulle par joueur (la nouvelle remplace l'ancienne) ;
+ * - même texte déjà affiché, ou apparu il y a moins de HINT_MERGE_MS : le joueur
+ *   rejoint cette bulle (son jeton s'y ajoute) au lieu d'en ouvrir une seconde ;
+ * - au plus HINT_MAX_BUBBLES bulles : la plus ancienne cède sa place si elle a été
+ *   lue (HINT_MIN_SHOWN_MS), sinon la nouvelle n'apparaît que sur le téléphone.
+ */
 export function showHint(slot: number, key: string, params?: Record<string, string | number>, seconds = 4.5): void {
-  const id = nextId++
-  useHud.setState(s => ({ hints: [...s.hints.filter(h => h.slot !== slot), { id, slot, key, params }] }))
-  showTag(slot, seconds)
-  later(seconds * 1000, () => useHud.setState(s => ({ hints: s.hints.filter(h => h.id !== id) })))
+  const now = performance.now()
+  const sig = hintSig(key, params)
+  const cur = removeSlotFromHints(useHud.getState().hints, slot)
+  const same = cur.find(h => hintSig(h.key, h.params) === sig && (h.until > now || now - h.at < HINT_MERGE_MS))
+  let hints: HintVM[]
+  if (same) {
+    const merged: HintVM = { ...same, slots: [...same.slots, slot], until: Math.max(same.until, now + HINT_MERGE_MS) }
+    hints = cur.map(h => (h === same ? merged : h))
+  } else {
+    hints = cur
+    if (hints.length >= HINT_MAX_BUBBLES) {
+      const oldest = hints.reduce((a, b) => (b.at < a.at ? b : a))
+      if (now - oldest.at < HINT_MIN_SHOWN_MS) {
+        if (hints !== useHud.getState().hints) useHud.setState({ hints })
+        return
+      }
+      hints = hints.filter(h => h !== oldest)
+    }
+    hints = [...hints, { id: nextId++, slot, slots: [slot], key, params, at: now, until: now + seconds * 1000 }]
+    showTag(slot, seconds)
+  }
+  useHud.setState({ hints })
+  scheduleHintSweep()
+}
+
+/** Retire un joueur des bulles : la sienne disparaît, il quitte celles qu'il partage. */
+function removeSlotFromHints(hints: HintVM[], slot: number, key?: string): HintVM[] {
+  let changed = false
+  const out: HintVM[] = []
+  for (const h of hints) {
+    if ((key && h.key !== key) || !h.slots.includes(slot)) {
+      out.push(h)
+      continue
+    }
+    changed = true
+    const rest = h.slots.filter(s => s !== slot)
+    if (rest.length) out.push({ ...h, slot: rest[0]!, slots: rest })
+  }
+  return changed ? out : hints
+}
+
+/** Retire la bulle `key` (toutes si absent) d'un joueur : l'indication n'a plus d'objet. */
+export function dismissHint(slot: number, key?: string): void {
+  const cur = useHud.getState().hints
+  const next = removeSlotFromHints(cur, slot, key)
+  if (next !== cur) useHud.setState({ hints: next })
 }
 
 /** Toast d'événement de session (connexion, remplaçant…). Visible sur tous les écrans. */
@@ -592,6 +698,18 @@ export function showTag(slot: number, seconds = 3): void {
   })
 }
 
+/** Fait pulser l'étiquette d'un joueur (et la montre) pendant `seconds`. */
+export function pulseTag(slot: number, seconds = 2): void {
+  if (slot < 0 || slot > 11) return
+  showTag(slot, seconds)
+  const until = performance.now() + seconds * 1000
+  useHud.setState(s => {
+    const tagPulseUntil = s.tagPulseUntil.slice()
+    tagPulseUntil[slot] = until
+    return { tagPulseUntil }
+  })
+}
+
 /** Toutes les étiquettes (début de manche : RULES.nameTagSeconds). */
 export function showAllTags(seconds: number = RULES.nameTagSeconds): void {
   const until = performance.now() + seconds * 1000
@@ -617,12 +735,16 @@ export function resetHud(round: number, rounds: number, doubleRound: boolean): v
     hints: [],
     gains: [],
     tagsUntil: emptyTags(),
+    tagPulseUntil: emptyTags(),
   })
 }
 
 // ─── Dérivation depuis la simulation ───────────────────────────────────────
 
 let lastHudSync = -Infinity
+
+/** Bulle « esquive » (COUP D'AILE) : retirée dès que le piqué est résolu. */
+const DODGE_HINT_KEY = 'hints.dodge'
 
 /**
  * À appeler à chaque tick (ou frame) par le runner : recopie soleil, parts et
@@ -644,13 +766,22 @@ export function hudFromSim(state: SimState, force = false): void {
   })
 }
 
-/** Clés de bannière par phase (les indications « à tous » viennent du domaine hints). */
-const PHASE_BANNERS: Partial<Record<RoundPhase, { key: string; subKey?: string; tone?: BannerVM['tone'] }>> = {
+/** Grande Ombre : bandeau bref, la nuit qui avance reste le sujet (au plus 2,5 s). */
+const GREAT_SHADOW_BANNER_SECONDS = 2.5
+
+/**
+ * Bannières de phase (les indications « à tous » viennent du domaine hints, avec
+ * leur effet : flèche nord-sud à l'heure dorée, vers l'est à la Grande Ombre).
+ */
+const PHASE_BANNERS: Partial<Record<RoundPhase, { key: string; subKey?: string; tone?: BannerVM['tone']; layout?: BannerVM['layout']; arrow?: BannerArrow; seconds?: number }>> = {
   afternoon: { key: 'host.phase.afternoon' },
-  golden: { key: 'host.phase.golden', subKey: 'host.phaseHint.golden' },
+  golden: { key: 'host.phase.golden', subKey: 'host.phaseHint.golden', arrow: 'northSouth', seconds: RULES.phaseBannerSeconds + 1.5 },
   sunset: { key: 'host.phase.sunset' },
-  greatShadow: { key: 'host.phase.greatShadow', subKey: 'host.phaseHint.greatShadow', tone: 'alert' },
+  greatShadow: { key: 'host.phase.greatShadow', subKey: 'host.phaseHint.greatShadow', tone: 'alert', layout: 'strip', arrow: 'east', seconds: GREAT_SHADOW_BANNER_SECONDS },
 }
+
+/** Instant (performance.now) de « Envol ! » : fenêtre du COUP D'AILE qui montre son oiseau. */
+let goAt = -Infinity
 
 /**
  * Abonne le HUD aux événements de simulation : compte à rebours, bannières de
@@ -664,6 +795,7 @@ export function connectHudEvents(bus: Emitter<SimEvent> = simEvents): () => void
       case 'countdown': {
         useHud.setState({ countdown: e.n })
         if (e.n === 3) showAllTags(RULES.countdownSeconds + RULES.nameTagSeconds)
+        if (e.n === 0) goAt = performance.now()
         const my = ++countdownClear
         if (e.n === 0) later(900, () => my === countdownClear && useHud.setState({ countdown: null }))
         break
@@ -671,7 +803,7 @@ export function connectHudEvents(bus: Emitter<SimEvent> = simEvents): () => void
       case 'phase': {
         useHud.setState({ phase: e.phase })
         const b = PHASE_BANNERS[e.phase]
-        if (b) showBanner(b.key, { subKey: b.subKey, tone: b.tone, seconds: b.subKey ? RULES.phaseBannerSeconds + 1.5 : undefined })
+        if (b) showBanner(b.key, { subKey: b.subKey, tone: b.tone, layout: b.layout, arrow: b.arrow, seconds: b.seconds })
         if (e.phase === 'night' || e.phase === 'over') useHud.setState({ lastSeconds: null, banner: null })
         break
       }
@@ -690,10 +822,19 @@ export function connectHudEvents(bus: Emitter<SimEvent> = simEvents): () => void
         if (e.stolenCells > 0) popGain(e.hunter, e.stolenCells / cells)
         showTag(e.hunter)
         showTag(e.target)
+        dismissHint(e.target, DODGE_HINT_KEY)
         break
       }
       case 'diveMiss':
         showTag(e.hunter, 2)
+        dismissHint(e.target, DODGE_HINT_KEY)
+        break
+      case 'diveCancel':
+        dismissHint(e.target, DODGE_HINT_KEY)
+        break
+      case 'flap':
+        // « Où est mon oiseau ? » : un COUP D'AILE juste après l'envol fait pulser son étiquette.
+        if (performance.now() - goAt < FLAP_FIND_MS) pulseTag(e.slot, 1.6)
         break
       case 'crown':
         if (e.slot >= 0) showTag(e.slot)

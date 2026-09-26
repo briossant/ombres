@@ -117,3 +117,74 @@ import { WorldCanvas } from './render/WorldCanvas.tsx'
   prévue par la bible ; à trancher par le lead si besoin (éclaircir le sol derrière le front).
 - La caméra de jeu (phase 3) doit être la caméra par défaut du Canvas (`makeDefault`) : le pipeline suit
   automatiquement le changement de caméra (passes reconstruites).
+
+## Polish vague 1 (correcteur world, ordres W1-W13 de docs/polish/ORDERS.md)
+
+Détail, preuves et mesures : `docs/polish/fix-world.md`. Changements d'API et écarts à la bible :
+
+- **dpr** (W1) : `WorldCanvas` calcule le dpr plafonné (`presetDpr(QUALITY_PRESETS[level], hauteur CSS du
+  canvas, devicePixelRatio)`, suivi par ResizeObserver + `resize`) et le passe en **prop** au `<Canvas>` ;
+  plus aucun `setDpr` dans `NprPipeline` (R3F remettait la prop à chaque rendu du Canvas).
+- **Qualité auto** (W2, `quality.ts`) : banc High seulement si médiane ≤ `BENCH_HIGH_MAX_MS` (8,5 ms), Medium
+  ≤ 12 ms. `QualityMonitor.pushGpu(ms)` (temps GPU de chaque image de manche, phases golden → greatShadow,
+  requête TIME_ELAPSED du pipeline lue en asynchrone), `gpuP90()`, `verdict(level)` ;
+  **`shouldDowngrade(level)` inchangée côté appelant** (runner.ts, aux résultats) : un cran plus bas si
+  p90 > budget × 1,1 (repli sans timer query : intervalles d'image bornés à 100 ms), puis remise à zéro
+  (chaque appel clôt la manche ; changement de preset = remise à zéro). Sans banc mémorisé, le niveau de
+  départ est **Medium** (chauffe du chargement). `GpuTimer.time()` s'efface si une requête TIME_ELAPSED est
+  déjà active (sondes de QA) ; `GpuTimer.poll(onSample?)`.
+- **Uniforms partagés ajoutés** (`npr/uniforms.ts`) : `uFpEllipse[13]`, `uFpDir` (ellipses d'empreinte,
+  écrites par `BirdFootprints`), `uNightSpeed` (vitesse du front, `frontSpeed` de la sim), `uLipLab`,
+  `uPaintCMax` (plafond de chroma de l'heure dorée, `PAINT_C_GOLDEN_MAX` = 0,125 dans `palette.ts`),
+  `uBirdScr[12]` / `uBirdScrN` (oiseaux projetés à l'écran, `world/birdScreen.ts`, pour la dissolution en
+  trame), `uSketch` / `uSketchFront` / `uSketchSpan` (crayonné du compte à rebours, `world/countdownSketch.ts`).
+- **ID « trame »** `OBJ_ID.screenDoor = 254` (`npr/ids.ts`) : pixels gardés d'une dissolution en trame
+  (screen-door IGN). L'encre ne les cerne pas et ignore leurs frontières (normales, IDs) : sans cela chaque
+  point de la trame devenait un point noir. Utilisable par les FX (birds) pour leurs dissolutions.
+- **Ombres** (W5) : chunk `shadow` → `sampleShadowAuto(wp, bias, dp0)` : B-spline 3×3 dès qu'un texel de la
+  cascade couvre plus d'un pixel (dp0 = |fwidth(p0)|), 4 taps sinon (au lieu du seuil `vDist < 170 m`).
+  En manche, cascade focus sur `cameraState.frame` + 20 m (lecture seule de `camera/cue.ts`) si ce cadre est
+  plus serré que 0,7 × la cascade proche.
+- **Tours** : anneaux de sommets 2 et 6 m sous chaque surplomb (`Seg.inner`, cavité exacte) ; hachures en
+  bande (silhouette + terminateur), couche croisée seulement si cavité < 0,25, pas 8,5 px et opacité × 0,6
+  au-delà de ~150 px de large, contre-jour sans hachures + filet `sandLit` côté soleil (W7) ; dissolution en
+  trame au-dessus de 20 m (< 60 m de la caméra ou devant un oiseau), coupée au podium (W9).
+- **Simoun** (W10) : rideau opaque (ID `storm`, cerné par l'encre), festons découpés net, dissolution en
+  trame < 80 m de la caméra ou devant un oiseau. Il écrit la profondeur : le sol derrière est éliminé par
+  l'early-Z.
+- **Amendements de la bible** (arbitrages du lead §1.2) :
+  - §4.5 / §5.1 — ombre sur la **peinture** : luminosité au ratio de l'ombre (inchangée), chroma × 0,85 et
+    teinte tournée vers 290° (violet des ombres) par le chemin court, de 0,22 × l'écart côté rouge / 0,15 côté
+    vert (≤ 40°) ; le sable nu garde 100 % vers `castShadow`. Même règle pour l'ombre teintée des empreintes
+    sur la peinture. ΔE entre joueurs gelés ≥ 0,059 (0,0591), aucune ombre olive (h 60-110°, L < 0,55).
+  - §4.6 — côté **nuit** pendant la Grande Ombre : lavis KF-4 puis L − 0,10, C × 0,52 et même rotation
+    (sans rotation, Safran virait au kaki), granulation « sec » doublée ; vague de 0,3 s au passage de la
+    lèvre (liseré papier qui s'éteint) ; bande de lumière rasante de 6 à 12 m devant le front (L + 0,06,
+    35 % vers `sandLit` KF1) ; lèvre de 4 px. L'illumination des résultats (§4.7) rallume tout.
+  - §4.1 — garde **pâle / sol** : ΔE(pâle, sol local) ≥ 0,06 (L d'abord, du côté du fort, ≤ 0,05 d'écart ; puis
+    chroma ≤ 0,85 × celle du fort). Chroma des forts plafonnée à **0,125** (et non 0,12) à l'heure dorée :
+    à 0,12, Corail / Carmin gelés tombaient à 0,058. Lavis inégal ± 3,5 % de L sur ~30 m, liseré ≥ 0,8 m.
+  - §5.3 — tirets du liseré pâle paramétrés par la **longueur d'arc de l'ellipse** de gameplay (1,8 m, 50 %,
+    nombre entier de tirets) au lieu d'une formule monde (damier).
+  - §6.5 — rideau du Simoun **opaque** (plus d'alpha 70 %).
+- Portes ajoutées : `docs/art/tools/final.mjs` (portes `game*`, formules en jeu dans `docs/art/tools/game.mjs`)
+  et `tools/polish/art/pale-vs-ground.mjs` (≥ 0,05, code de sortie 1 sinon). `docs/art/tools` n'a pas de
+  `node_modules` : lancer `final.mjs` depuis une copie qui voit culori 4.0.2.
+- Outils : `tools/polish/world/` (`cap.mjs` captures figées et reproductibles, `title.mjs`, `countdown.mjs`,
+  `profile.mjs` coût par famille d'objets, `swatches.mjs`, `nohmr.mjs` : préchargement qui coupe le HMR de Vite
+  dans les pages de test, sinon les éditions des autres correcteurs rechargent la page).
+- **Budget GPU (W3)** : High = SMAA MEDIUM, 1 500 cailloux ; rides dans une branche (< 160 m) ; territoire non lu
+  hors de l'arène (ρ > 1,06) ; ombres non lues derrière le front de nuit ; sol plat sans conversion OKLab ; rotation
+  OKLCH de W4 seulement sous une ombre. Avant / après (A/B entrelacé, build d'avant le polish contre le code courant,
+  scène figée, 12 oiseaux, High 1080p ; GPU jamais calme pendant la session) :
+
+  | Phase | avant p10 / p50 / p90 (ms) | après p10 / p50 / p90 (ms) |
+  |---|---|---|
+  | Midi | 10,12 / 11,05 / 13,58 | 9,39 / 9,52 / 9,67 |
+  | Heure dorée | 10,58 / 10,72 / 10,89 | 9,98 / 10,18 / 10,40 |
+  | Grande Ombre | 11,74 / 12,09 / 12,72 | 10,79 / 11,66 / 12,40 |
+
+  Sous saturation (99 %), p50 −12 à −14 %. Le p90 ≤ 9,5 ms au calme à la Grande Ombre reste à vérifier
+  (`perfmatrix.mjs --q=high --n=12 --speed=1`, GPU calme) et n'est probablement pas atteint : le G-buffer passe de
+  ~5,9 ms à midi à ~9 ms à la Grande Ombre. Leviers suivants : SMAA LOW en High, seuil B-spline du territoire.
+- High-key : tout passe sauf la Grande Ombre (médiane 0,497 pour 0,50), effet du côté nuit assombri (W6).

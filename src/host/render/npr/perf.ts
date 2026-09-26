@@ -1,6 +1,6 @@
-// Instrumentation GPU par passe (EXT_disjoint_timer_query_webgl2), active
-// seulement avec ?debug (ou dans les pages de dev). Les requêtes sont lues de
-// manière asynchrone (quelques frames plus tard) : aucune attente GPU.
+// Instrumentation GPU (EXT_disjoint_timer_query_webgl2) : par passe avec ?debug (ou dans
+// les pages de dev), et image entière pour le banc et la surveillance de qualité. Les
+// requêtes sont lues de manière asynchrone (quelques frames plus tard) : aucune attente GPU.
 export class GpuTimer {
   private readonly ext: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null
   private readonly pending: Array<[string, WebGLQuery]> = []
@@ -23,6 +23,9 @@ export class GpuTimer {
   /** Mesure `fn` sous le nom `name`. Pas d'imbrication (une requête active à la fois). */
   time<T>(name: string, fn: () => T): T {
     if (!this.ext || this.active) return fn()
+    // une seule requête TIME_ELAPSED active à la fois par contexte : si une sonde externe mesure
+    // déjà (outils de QA), on s'efface plutôt que de lever INVALID_OPERATION
+    if (this.gl.getQuery(this.ext.TIME_ELAPSED_EXT, this.gl.CURRENT_QUERY)) return fn()
     const q = this.gl.createQuery()
     if (!q) return fn()
     this.active = true
@@ -36,8 +39,8 @@ export class GpuTimer {
     }
   }
 
-  /** Relève les requêtes terminées (à appeler une fois par frame). */
-  poll(): void {
+  /** Relève les requêtes terminées (à appeler une fois par frame) ; `onSample` reçoit chaque mesure. */
+  poll(onSample?: (name: string, ms: number) => void): void {
     if (!this.ext) return
     const gl = this.gl
     const disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT) as boolean
@@ -47,7 +50,11 @@ export class GpuTimer {
         i++
         continue
       }
-      if (!disjoint) this.record(name, (gl.getQueryParameter(q, gl.QUERY_RESULT) as number) / 1e6)
+      if (!disjoint) {
+        const ms = (gl.getQueryParameter(q, gl.QUERY_RESULT) as number) / 1e6
+        this.record(name, ms)
+        onSample?.(name, ms)
+      }
       gl.deleteQuery(q)
       this.pending.splice(i, 1)
     }

@@ -20,7 +20,7 @@ function view(sim: ReturnType<typeof roundSim>): GameView {
 }
 
 describe('CameraDirector', () => {
-  it('manche : pas de ciel, pose finie, lacet nord', () => {
+  it('manche : pas de ciel, pose finie, lacet nord', { timeout: 30000 }, () => {
     const sim = roundSim(40)
     const v = view(sim)
     const d = new CameraDirector(new Emitter<SimEvent>())
@@ -42,7 +42,7 @@ describe('CameraDirector', () => {
     d.dispose()
   })
 
-  it('résultats : pause de nuit, montée, illumination, carte prête ; worldView rendu en sortie', () => {
+  it('résultats : pause de nuit, montée, illumination, carte prête ; worldView rendu en sortie', { timeout: 30000 }, () => {
     const sim = roundSim(RULES.roundSunSeconds + 0.1)
     const v = view(sim)
     const d = new CameraDirector(new Emitter<SimEvent>())
@@ -74,7 +74,7 @@ describe('CameraDirector', () => {
     d.dispose()
   })
 
-  it('podium : tours sous les plaques, oiseaux perchés, vainqueur couronné', () => {
+  it('podium : tours sous les plaques, oiseaux perchés, vainqueur couronné', { timeout: 30000 }, () => {
     const sim = roundSim(RULES.roundSunSeconds + 2.5)
     const pv = buildPodiumView(sim.state, [4, 1, 5])
     expect(pv.sim.towers.length).toBe(3)

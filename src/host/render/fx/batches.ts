@@ -93,8 +93,10 @@ void main(){
   float lw = vMisc.x * uPx;
   float body = 1.0 - smoothstep(-0.5, 0.5, bPx);
   float outline = lw > 0.0 ? (1.0 - smoothstep(lw - 0.5, lw + 0.5, abs(bPx + lw * 0.35))) : 0.0;
-  // Détail intérieur : pour les formes « traits » (sans corps), épaissi d'au moins 1 px.
-  float ink = 1.0 - smoothstep(-0.5 - vMisc.y, 0.5 - vMisc.y, iPx);
+  // Détail intérieur : pour les formes « traits » (sans corps), épaissi de vMisc.y px de chaque
+  // côté (le bord passe de iPx = 0 à iPx = +vMisc.y). Polish B7 : le signe était inversé, ce qui
+  // amincissait au lieu d'épaissir (étoiles du décroché réduites à des points, anneau de couronne invisible).
+  float ink = 1.0 - smoothstep(-0.5 + vMisc.y, 0.5 + vMisc.y, iPx);
   float fillA = body * vFill.a;
   vec3 col = vFill.rgb;
   float a = fillA;

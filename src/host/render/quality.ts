@@ -5,8 +5,9 @@
 //   `setLevel()` change le preset à chaud (le pipeline se reconfigure sans rechargement).
 // - `applyQualitySetting(setting)` : traduit le réglage utilisateur ('auto' | niveau).
 // - `QualityBench` : banc court (≈ 2 s) qui mesure le coût GPU réel et choisit le niveau.
-// - `QualityMonitor` : moyenne glissante du temps de frame ; `shouldDowngrade()` à
-//   interroger ENTRE deux manches seulement (jamais pendant, le changement se verrait).
+// - `QualityMonitor` : temps GPU des images de manche (heure dorée → Grande Ombre) ;
+//   `shouldDowngrade()` à interroger ENTRE deux manches seulement (jamais pendant, le
+//   changement se verrait).
 import { SMAAPreset } from 'postprocessing'
 import { create } from 'zustand'
 import type { QualityPreset as QualitySetting } from '../settings.ts'
@@ -80,7 +81,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
   high: {
     level: 'high',
     targetHeight: 1080,
-    smaa: SMAAPreset.HIGH,
+    // SMAA MEDIUM (polish W3 : −0,3 ms à 1080p ; l'encre porte déjà les contours)
+    smaa: SMAAPreset.MEDIUM,
     shadowRes: 2048,
     farShadowRes: 1024,
     hatching: true,
@@ -89,7 +91,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
     wobble: 0.7,
     paper: 0.04,
     thick: 1.5,
-    pebbles: 2200,
+    // 1 500 cailloux comme Medium (polish W3 : budget GPU à 12 oiseaux)
+    pebbles: 1500,
     pebbleShadows: true,
     clouds: 4,
     groundSegments: 200,
@@ -123,8 +126,10 @@ function loadBench(): QualityLevel | null {
   }
 }
 
+// Sans banc mémorisé (premier lancement), on démarre en Medium : la chauffe du chargement (compilation
+// des shaders, premières images) ne doit pas se faire dans le preset le plus cher sur une machine inconnue.
 export const useRenderQuality = create<RenderQualityStore>((set) => ({
-  level: loadBench() ?? 'high',
+  level: loadBench() ?? 'medium',
   benchLevel: loadBench(),
   setLevel: (level) => set({ level }),
   setBenchLevel: (level) => {
@@ -142,14 +147,20 @@ export const getRenderQuality = (): QualityPreset => QUALITY_PRESETS[useRenderQu
 /** Applique le réglage utilisateur : un niveau explicite, ou le résultat du banc en 'auto'. */
 export function applyQualitySetting(setting: QualitySetting): void {
   const s = useRenderQuality.getState()
-  if (setting === 'auto') s.setLevel(s.benchLevel ?? 'high')
+  if (setting === 'auto') s.setLevel(s.benchLevel ?? 'medium')
   else s.setLevel(setting)
 }
 
+/** Seuils du banc (médiane GPU en High, scène du titre) : High seulement avec 15 % de marge. */
+export const BENCH_HIGH_MAX_MS = 8.5
+export const BENCH_MEDIUM_MAX_MS = 12
+
 /**
  * Banc court : on rend en 'high' pendant `frames` frames et on mesure le temps
- * GPU (timer queries si disponibles, sinon temps de frame). Choix : high si
- * ≤ 10 ms, medium si ≤ 14 ms (on descend à 900p et SMAA medium), sinon low.
+ * GPU (timer queries si disponibles, sinon temps de frame). Choix : high si la
+ * médiane est ≤ 8,5 ms (la scène du titre, 6 oiseaux, coûte ~10 % de moins qu'une
+ * manche à 12 au climax : il faut de la marge sous le budget de 10 ms), medium si
+ * ≤ 12 ms (900p et SMAA medium ≈ 0,7 × High), sinon low.
  */
 export class QualityBench {
   private samples: number[] = []
@@ -167,20 +178,56 @@ export class QualityBench {
     const s = this.samples.slice(this.skip).sort((a, b) => a - b)
     const median = s[Math.floor(s.length / 2)]!
     this.done = true
-    return median <= 10 ? 'high' : median <= 14 ? 'medium' : 'low'
+    return median <= BENCH_HIGH_MAX_MS ? 'high' : median <= BENCH_MEDIUM_MAX_MS ? 'medium' : 'low'
   }
 }
 
-/** Moyenne glissante sur ~2 s ; descente d'un cran si elle dépasse `limitMs()` (entre deux manches). */
+/** Plus long intervalle d'image retenu (ms) : un retour d'onglet caché ne pèse pas plus qu'une image ratée. */
+export const MONITOR_MAX_FRAME_MS = 100
+/** Nombre minimal d'images mesurées au GPU pour décider sur le p90 (≈ 4 s à 60 i/s). */
+export const MONITOR_MIN_GPU_SAMPLES = 240
+/** Tolérance du p90 GPU au-dessus du budget du preset avant de descendre d'un cran. */
+export const MONITOR_BUDGET_TOLERANCE = 1.1
+
+/**
+ * Surveillance de la qualité pendant les manches, lue ENTRE deux manches (`shouldDowngrade`).
+ *
+ * - Source principale : temps GPU de chaque image (requête TIME_ELAPSED, lue de façon
+ *   asynchrone par le pipeline), gardé de l'heure dorée à la Grande Ombre, là où la manche
+ *   coûte le plus. Décision : p90 > budget du preset × 1,1 → un cran plus bas.
+ * - Repli (pas de timer query) : intervalles d'image de la même fenêtre, bornés à 100 ms,
+ *   comparés à `limitMs()` (calé sur l'intervalle d'affichage).
+ * Chaque appel de `shouldDowngrade` clôt la manche : les mesures repartent de zéro.
+ */
 export class QualityMonitor {
-  private buf = new Float32Array(120)
+  private gpu = new Float32Array(4096)
+  private gpuI = 0
+  private gpuN = 0
+  private buf = new Float32Array(1200)
   private i = 0
   private n = 0
 
+  /** Temps GPU d'une image de manche (ms), fenêtre heure dorée → Grande Ombre. */
+  pushGpu(ms: number): void {
+    if (!(ms > 0) || !Number.isFinite(ms)) return
+    this.gpu[this.gpuI] = ms
+    this.gpuI = (this.gpuI + 1) % this.gpu.length
+    this.gpuN = Math.min(this.gpuN + 1, this.gpu.length)
+  }
+
+  /** Intervalle d'image (ms), même fenêtre ; borné à 100 ms (onglet caché, chargement). */
   push(frameMs: number): void {
-    this.buf[this.i] = frameMs
+    if (!(frameMs > 0)) return
+    this.buf[this.i] = Math.min(frameMs, MONITOR_MAX_FRAME_MS)
     this.i = (this.i + 1) % this.buf.length
     this.n = Math.min(this.n + 1, this.buf.length)
+  }
+
+  /** p90 des temps GPU mesurés (null s'il n'y en a pas assez). */
+  gpuP90(): number | null {
+    if (this.gpuN < MONITOR_MIN_GPU_SAMPLES) return null
+    const s = Array.from(this.gpu.subarray(0, this.gpuN)).sort((a, b) => a - b)
+    return s[Math.min(s.length - 1, Math.floor(s.length * 0.9))]!
   }
 
   average(): number {
@@ -190,7 +237,7 @@ export class QualityMonitor {
   }
 
   /**
-   * Seuil de descente (ms) : 15 ms, ou 1,15 × l'intervalle d'affichage à 60 Hz. Correctif qa : les
+   * Seuil de descente du repli (ms) : 15 ms, ou 1,15 × l'intervalle d'affichage à 60 Hz. Correctif qa : les
    * intervalles d'images sont calés sur la synchro verticale, donc jamais sous 16,7 ms sur un écran
    * 60 Hz (la cible : une TV) ; avec le seul seuil de 15 ms, le preset descendait d'un cran à
    * CHAQUE entracte (High → Medium → Low en trois manches), même à 60 i/s constants.
@@ -203,16 +250,27 @@ export class QualityMonitor {
     return Math.max(15, Math.min(refresh, 1000 / 60) * 1.15)
   }
 
-  /** À appeler entre deux manches : renvoie le niveau inférieur si la moyenne dépasse le seuil. */
-  shouldDowngrade(level: QualityLevel): QualityLevel | null {
-    if (this.n < this.buf.length || this.average() <= this.limitMs()) return null
+  /** Décision sans la clore (tests, debug). */
+  verdict(level: QualityLevel): QualityLevel | null {
     const i = QUALITY_LEVELS.indexOf(level)
-    return i > 0 ? QUALITY_LEVELS[i - 1]! : null
+    if (i <= 0) return null
+    const p90 = this.gpuP90()
+    const over = p90 !== null ? p90 > QUALITY_PRESETS[level].budgetMs * MONITOR_BUDGET_TOLERANCE : this.n >= 120 && this.average() > this.limitMs()
+    return over ? QUALITY_LEVELS[i - 1]! : null
+  }
+
+  /** À appeler entre deux manches : renvoie le niveau inférieur si la manche a dépassé le budget. */
+  shouldDowngrade(level: QualityLevel): QualityLevel | null {
+    const v = this.verdict(level)
+    this.reset()
+    return v
   }
 
   reset(): void {
     this.n = 0
     this.i = 0
+    this.gpuN = 0
+    this.gpuI = 0
   }
 }
 

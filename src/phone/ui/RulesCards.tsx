@@ -1,34 +1,107 @@
 // Les 3 cartes des règles (GDD §2 « La règle en 3 images »), animées en boucle, en ligne claire :
 // 1. l'ombre peint ; 2. bas = fort, haut = grand, le fort gagne ; 3. piquer d'en haut, puis la nuit.
-// Vue de dessus, sable clair, ombres lavande, lavis des joueurs (Corail et Lagon).
+// Vue de dessus, sable clair, ombres lavande, lavis des joueurs : le joueur dans SA couleur (il peint,
+// il gagne au bas, il pique), face à un rival contrasté (Lagon, ou Corail pour les teintes froides).
 // Animations SMIL : trajectoires le long de chemins et traînées synchronisées dans chaque carte.
-import { useEffect, useState, type ReactNode } from 'react'
-import { useT } from '../format.tsx'
+import { useEffect, useId, useState, type ReactNode } from 'react'
+import { PLAYER_COLORS } from '../../shared/players.ts'
+import { RULE_BIRD, RULE_BIRD_MIRROR, ruleBirdShapes } from '../../shared/ruleBird.ts'
+import { sentenceLines, useT } from '../format.tsx'
+import { displayedColor, usePhone } from '../store.ts'
 
 const SAND = '#F1DABE'
 const SHADOW = '#A18EA1'
 const INK = '#2B1D23'
-const CORAL = '#E07148'
-const CORAL_STRONG = '#E27F5C'
-const LAGOON = '#6ADDD9'
-const LAGOON_STRONG = '#4DC4C0'
-const LAGOON_PALE = '#ACE0DD'
+
+/**
+ * Lavis de territoire par joueur (ART_BIBLE §3.3) : « fort » à la keyframe KF16 (sable des cartes),
+ * « pâle » à KF80 (bien distinct du fort à la taille d'une vignette). Index = PLAYER_COLORS.
+ */
+const WASH: readonly (readonly [strong: string, pale: string])[] = [
+  ['#E27F5C', '#FCC6B4'], // Corail
+  ['#4DC4C0', '#ACE0DD'], // Lagon
+  ['#7686D7', '#C7D2FE'], // Indigo
+  ['#D1AA3C', '#E6D3A3'], // Safran
+  ['#68B0E9', '#B6D9F7'], // Azur
+  ['#CC6474', '#FDC3C9'], // Carmin
+  ['#B882C1', '#E6C9EA'], // Prune
+  ['#8EC167', '#C3DEB2'], // Anis
+  ['#1FA4B6', '#ABDFE7'], // Sarcelle
+  ['#E991AB', '#F5C6D2'], // Rose
+  ['#AEA0FD', '#D3CEFE'], // Lilas
+  ['#5AA370', '#BBDFC3'], // Jade
+]
+const CORAIL = 0
+const LAGON = 1
+
+/** Couleurs d'une carte : le joueur (identité, lavis fort) et son rival (identité, fort, pâle). */
+export interface RulePalette {
+  me: string
+  meStrong: string
+  rival: string
+  rivalStrong: string
+  rivalPale: string
+}
+
+const hueGap = (a: number, b: number) => {
+  const d = Math.abs(a - b) % 360
+  return d > 180 ? 360 - d : d
+}
+
+/** Palette des cartes pour la couleur du joueur (null = Corail, comme avant le profil). */
+export function rulePalette(color: number | null): RulePalette {
+  const me = color !== null && PLAYER_COLORS[color] ? color : CORAIL
+  // Rival : celui de Corail / Lagon dont la teinte est la plus éloignée de celle du joueur.
+  const h = PLAYER_COLORS[me]!.oklch[2]
+  const rival = me === CORAIL ? LAGON : me === LAGON ? CORAIL : hueGap(h, PLAYER_COLORS[CORAIL]!.oklch[2]) > hueGap(h, PLAYER_COLORS[LAGON]!.oklch[2]) ? CORAIL : LAGON
+  return {
+    me: PLAYER_COLORS[me]!.hex,
+    meStrong: WASH[me]![0],
+    rival: PLAYER_COLORS[rival]!.hex,
+    rivalStrong: WASH[rival]![0],
+    rivalPale: WASH[rival]![1],
+  }
+}
 const NIGHT = '#554C70'
 
 /** Durées de boucle (s) : 2,5 s (GDD §2) ; la carte 3 enchaîne piqué puis nuit, un peu plus longue. */
 const DUR = [2.5, 2.5, 3.6] as const
 
-/** Oiseau vu de dessus, tête vers +x, couleur du joueur sur les bandes d'ailes. */
+/**
+ * Oiseau vu de dessus, tête vers +x, couleur du joueur sur les bandes d'ailes : le pictogramme
+ * partagé avec la TV (src/shared/ruleBird.ts, édit ciblé hostui H8), ramené à ≈ 23 d'envergure.
+ */
+const BIRD_K = 0.242
 function Bird({ color, scale = 1, folded = false }: { color: string; scale?: number; folded?: boolean }) {
-  const wing = folded
-    ? 'M5 0 C1 -1.6 -3 -3.4 -8 -4.2 C-5.5 -2 -4.4 -1 -4 0 C-4.4 1 -5.5 2 -8 4.2 C-3 3.4 1 1.6 5 0 Z'
-    : 'M4 0 C2 -3 -2 -8 -8.5 -11.5 C-6.3 -6.2 -4.6 -2.6 -4 0 C-4.6 2.6 -6.3 6.2 -8.5 11.5 C-2 8 2 3 4 0 Z'
+  const id = useId()
+  const clip = (mirror?: boolean) => `${id}${mirror ? 'b' : 't'}`
   return (
-    <g transform={`scale(${scale})`}>
-      <path d={wing} fill="#EDEDDF" stroke={INK} strokeWidth={1.1} strokeLinejoin="round" />
-      {!folded && <path d="M-6.9 -8.9 L-5.4 -6.5 M-6.9 8.9 L-5.4 6.5" stroke={color} strokeWidth={2.6} strokeLinecap="round" />}
-      <ellipse cx="0.6" cy="0" rx="4.6" ry="1.8" fill="#EDEDDF" stroke={INK} strokeWidth={1} />
-      <circle cx="1.6" cy="0" r="1.25" fill={color} />
+    <g transform={`scale(${scale * BIRD_K}) translate(-50 -50)`} stroke={INK} strokeWidth={1.1 / BIRD_K} strokeLinejoin="round" strokeLinecap="round">
+      <defs>
+        <clipPath id={clip()}>
+          <path d={RULE_BIRD.wing} />
+        </clipPath>
+        <clipPath id={clip(true)}>
+          <path d={RULE_BIRD.wing} transform={RULE_BIRD_MIRROR} />
+        </clipPath>
+      </defs>
+      {ruleBirdShapes(folded).map((sh, k) =>
+        sh.role === 'band' ? (
+          <g key={k} clipPath={`url(#${clip(sh.mirror)})`}>
+            <path d={sh.d} transform={sh.mirror ? RULE_BIRD_MIRROR : undefined} fill={color} stroke="none" />
+          </g>
+        ) : sh.circle ? (
+          <circle key={k} {...sh.circle} fill={sh.role === 'eye' ? INK : color} stroke={sh.role === 'eye' ? 'none' : undefined} />
+        ) : (
+          <path key={k} d={sh.d} transform={sh.mirror ? RULE_BIRD_MIRROR : undefined} fill="#EDEDDF" />
+        ),
+      )}
+      {folded ? null : (
+        <g fill="none">
+          <path d={RULE_BIRD.wing} />
+          <path d={RULE_BIRD.wing} transform={RULE_BIRD_MIRROR} />
+        </g>
+      )}
     </g>
   )
 }
@@ -70,14 +143,14 @@ function Frame({ children, label, dur }: { children: ReactNode; label: string; d
 }
 
 /** Carte 1 : un oiseau passe, son ombre laisse derrière elle une bande à sa couleur. */
-export function Card1({ label }: { label: string }) {
+export function Card1({ label, pal }: { label: string; pal: RulePalette }) {
   const dur = DUR[0]
   const trail = 'M10 52 C38 44 66 60 96 52 S136 42 154 48'
   const kt = '0;0.78;1'
   const kp = '0;1;1'
   return (
     <Frame label={label} dur={dur}>
-      <path d={trail} stroke={CORAL_STRONG} strokeWidth="16" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
+      <path d={trail} stroke={pal.meStrong} strokeWidth="16" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
         <Draw dur={dur} values="100;0;0" keyTimes={kt} />
       </path>
       {/* l'ombre (qui peint) suit la bande ; l'oiseau vole au-dessus, décalé vers le soleil */}
@@ -87,7 +160,7 @@ export function Card1({ label }: { label: string }) {
       <g transform="translate(-4 -15)">
         <g>
           <Motion path={trail} dur={dur} keyTimes={kt} keyPoints={kp} />
-          <Bird color={CORAL} />
+          <Bird color={pal.me} />
         </g>
       </g>
     </Frame>
@@ -95,7 +168,7 @@ export function Card1({ label }: { label: string }) {
 }
 
 /** Carte 2 : le bas (petite ombre forte) mord sur le pâle ; le haut (grande ombre pâle) glisse sur le fort sans l'entamer. */
-export function Card2({ label }: { label: string }) {
+export function Card2({ label, pal }: { label: string; pal: RulePalette }) {
   const dur = DUR[1]
   const low = 'M10 50 L72 50'
   const high = 'M94 50 L150 50'
@@ -108,9 +181,9 @@ export function Card2({ label }: { label: string }) {
   }
   return (
     <Frame label={label} dur={dur}>
-      <path d="M5 22 C22 13 58 15 76 23 L78 74 C58 82 20 80 7 72 Z" fill={LAGOON_PALE} />
-      <path d="M84 22 C104 13 140 15 156 23 L156 74 C136 82 100 80 84 72 Z" fill={CORAL_STRONG} />
-      <path d={low} stroke={CORAL_STRONG} strokeWidth="11" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
+      <path d="M5 22 C22 13 58 15 76 23 L78 74 C58 82 20 80 7 72 Z" fill={pal.rivalPale} />
+      <path d="M84 22 C104 13 140 15 156 23 L156 74 C136 82 100 80 84 72 Z" fill={pal.meStrong} />
+      <path d={low} stroke={pal.meStrong} strokeWidth="11" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
         <Draw dur={dur} values="100;0;0" keyTimes={kt} />
       </path>
       {/* bas : petite ombre dense juste sous l'oiseau */}
@@ -120,17 +193,17 @@ export function Card2({ label }: { label: string }) {
       <g transform="translate(-2 -6)">
         <g>
           <Motion path={low} dur={dur} keyTimes={kt} keyPoints={kp} rotate="0" />
-          <Bird color={CORAL} scale={0.78} />
+          <Bird color={pal.me} scale={0.78} />
         </g>
       </g>
       {/* haut : grande ombre pâle au liseré pointillé, oiseau loin au-dessus */}
-      <ellipse rx="15" ry="11" fill={SHADOW} opacity="0.42" stroke={LAGOON} strokeWidth="1.2" strokeDasharray="2.4 2">
+      <ellipse rx="15" ry="11" fill={SHADOW} opacity="0.42" stroke={pal.rival} strokeWidth="1.2" strokeDasharray="2.4 2">
         <Motion path={high} dur={dur} keyTimes={kt} keyPoints={kp} rotate="0" />
       </ellipse>
       <g transform="translate(-9 -30)">
         <g>
           <Motion path={high} dur={dur} keyTimes={kt} keyPoints={kp} rotate="0" />
-          <Bird color={LAGOON} scale={1.3} />
+          <Bird color={pal.rival} scale={1.3} />
         </g>
       </g>
       <g stroke={INK} strokeWidth="1.5" strokeLinecap="round">
@@ -145,18 +218,18 @@ export function Card2({ label }: { label: string }) {
 }
 
 /** Carte 3 : un oiseau haut replie ses ailes et fond sur un oiseau bas ; la traînée change de couleur. Puis la nuit. */
-export function Card3({ label }: { label: string }) {
+export function Card3({ label, pal }: { label: string; pal: RulePalette }) {
   const dur = DUR[2]
   const victim = 'M8 64 L98 64'
   const hunter = 'M12 12 L48 14 L94 58 L122 40'
   const hit = 0.4
   return (
     <Frame label={label} dur={dur}>
-      <path d={victim} stroke={LAGOON_STRONG} strokeWidth="12" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
+      <path d={victim} stroke={pal.rivalStrong} strokeWidth="12" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
         <Draw dur={dur} values="100;0;0" keyTimes={`0;${hit};1`} />
       </path>
       {/* vol de traînée : la vague de couleur remonte la traînée depuis l'impact */}
-      <path d="M98 64 L8 64" stroke={CORAL_STRONG} strokeWidth="12.6" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
+      <path d="M98 64 L8 64" stroke={pal.meStrong} strokeWidth="12.6" fill="none" strokeLinecap="round" pathLength={100} strokeDasharray="100 100" strokeDashoffset="100">
         <Draw dur={dur} values="100;100;0;0" keyTimes={`0;${hit + 0.03};${hit + 0.2};1`} />
       </path>
       {/* victime : peint bas, puis décroche (vrille) */}
@@ -168,7 +241,7 @@ export function Card3({ label }: { label: string }) {
           <Motion path={victim} dur={dur} keyTimes={`0;${hit};1`} keyPoints="0;1;1" rotate="0" />
           <g>
             <animateTransform attributeName="transform" type="rotate" dur={`${dur}s`} repeatCount="indefinite" values="0;0;540;540" keyTimes={`0;${hit};${hit + 0.18};1`} />
-            <Bird color={LAGOON} scale={0.78} />
+            <Bird color={pal.rival} scale={0.78} />
           </g>
         </g>
       </g>
@@ -177,11 +250,11 @@ export function Card3({ label }: { label: string }) {
         <Motion path={hunter} dur={dur} keyTimes={`0;0.18;${hit};${hit + 0.12};1`} keyPoints="0;0.28;0.76;1;1" />
         <g>
           <Fade dur={dur} values="1;0;1" keyTimes={`0;0.18;${hit}`} discrete />
-          <Bird color={CORAL} scale={1.3} />
+          <Bird color={pal.me} scale={1.3} />
         </g>
         <g opacity="0">
           <Fade dur={dur} values="0;1;0" keyTimes={`0;0.18;${hit}`} discrete />
-          <Bird color={CORAL} scale={1.3} folded />
+          <Bird color={pal.me} scale={1.3} folded />
         </g>
       </g>
       {/* éclaboussure d'encre à l'impact */}
@@ -210,13 +283,20 @@ const CARDS = [Card1, Card2, Card3]
 
 export function RuleCard({ index }: { index: number }) {
   const t = useT()
+  const color = usePhone(displayedColor)
   const Art = CARDS[index] ?? Card1
   const text = t(`phone.card.${index + 1}`)
+  // Une phrase par ligne (« Pique d'en haut. » / « À la nuit, on compte. »), jamais « À la / nuit ».
+  const lines = sentenceLines(text)
   return (
     <figure className="rule-card" style={{ margin: 0 }}>
-      <Art label={text} />
+      <Art label={text} pal={rulePalette(color)} />
       <figcaption className="rule-card__text">
-        <span className="rule-card__num">{index + 1}.</span> {text}
+        {lines.map((line, j) => (
+          <span key={j} className="rule-card__line">
+            {j === 0 && <span className="rule-card__num">{index + 1}.</span>} {line}
+          </span>
+        ))}
       </figcaption>
     </figure>
   )

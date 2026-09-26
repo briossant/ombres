@@ -188,7 +188,7 @@ describe('bots de service', () => {
   })
 
   it('composition par défaut selon le nombre d’humains (GDD §14.3)', () => {
-    expect(defaultBots(1).map((b) => b.personality)).toEqual(['falcon', 'ploughman', 'nomad'])
+    expect(defaultBots(1).map((b) => b.personality)).toEqual(['falcon', 'ploughman', 'magpie'])
     expect(defaultBots(2).map((b) => b.personality)).toEqual(['magpie', 'lookout'])
     expect(defaultBots(3).map((b) => b.personality)).toEqual(['falcon'])
     expect(defaultBots(4)).toEqual([])

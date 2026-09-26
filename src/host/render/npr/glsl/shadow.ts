@@ -19,7 +19,7 @@ uniform highp sampler2D uShadowMapFocus;
 uniform vec4 uShadowArea;     // (cx, cz, demi-taille, plage de hauteur)
 uniform vec4 uShadowAreaFar;
 uniform vec4 uShadowAreaFocus; // (cx, cz, demi-taille, active)
-uniform float uShadowRes, uShadowResFar, uShadowResFocus;
+uniform float uShadowRes, uShadowResFar, uShadowResFocus, uShadowSmooth;
 vec4 shadowTaps(highp sampler2D map, float res, vec2 uv, float ref){
   vec2 tc = uv * res - 0.5;
   vec2 f = fract(tc);
@@ -70,6 +70,25 @@ vec4 sampleShadowSmooth(vec3 wp, float bias){
   if (all(greaterThan(uv, vec2(0.001))) && all(lessThan(uv, vec2(0.999)))) return shadowTaps9(uShadowMap, uShadowRes, uv, ref);
   vec2 uvf = (p0 - uShadowAreaFar.xy) / (2.0 * uShadowAreaFar.z) + 0.5;
   if (all(greaterThan(uvf, vec2(0.0))) && all(lessThan(uvf, vec2(1.0)))) return shadowTaps9(uShadowMapFar, uShadowResFar, uvf, ref);
+  return vec4(0.0);
+}
+// Polish W5 : lissage B-spline dès qu'un texel de la cascade couvre plus d'un pixel (sinon
+// escaliers de texels, quelle que soit la distance), 4 taps sinon. dp0 = |fwidth(p0)| en m/px,
+// calculé par l'appelant HORS branche (p0 = shadowProject(wp)).
+vec4 shadowPick(highp sampler2D map, float res, float half_, vec2 uv, float ref, float dp0){
+  return dp0 * res < 2.0 * half_ && uShadowSmooth > 0.5 ? shadowTaps9(map, res, uv, ref) : shadowTaps(map, res, uv, ref);
+}
+vec4 sampleShadowAuto(vec3 wp, float bias, float dp0){
+  vec2 p0 = shadowProject(wp);
+  float ref = wp.y + 100.0 + bias;
+  if (uShadowAreaFocus.w > 0.5) {
+    vec2 uvc = (p0 - uShadowAreaFocus.xy) / (2.0 * uShadowAreaFocus.z) + 0.5;
+    if (all(greaterThan(uvc, vec2(0.002))) && all(lessThan(uvc, vec2(0.998)))) return shadowPick(uShadowMapFocus, uShadowResFocus, uShadowAreaFocus.z, uvc, ref, dp0);
+  }
+  vec2 uv = (p0 - uShadowArea.xy) / (2.0 * uShadowArea.z) + 0.5;
+  if (all(greaterThan(uv, vec2(0.001))) && all(lessThan(uv, vec2(0.999)))) return shadowPick(uShadowMap, uShadowRes, uShadowArea.z, uv, ref, dp0);
+  vec2 uvf = (p0 - uShadowAreaFar.xy) / (2.0 * uShadowAreaFar.z) + 0.5;
+  if (all(greaterThan(uvf, vec2(0.0))) && all(lessThan(uvf, vec2(1.0)))) return shadowPick(uShadowMapFar, uShadowResFar, uShadowAreaFar.z, uvf, ref, dp0);
   return vec4(0.0);
 }
 vec4 sampleShadow(vec3 wp, float bias){

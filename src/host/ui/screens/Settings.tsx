@@ -126,6 +126,8 @@ export function KeysReference() {
       <Key>→</Key>
     </span>
   )
+  // Une ligne par commande, une colonne par joueur ; ce qui ne concerne qu'un joueur (flèches du
+  // joueur seul) ou tout le monde (pause, plein écran) a sa propre ligne.
   return (
     <div className="keys">
       <table className="keys__table">
@@ -146,8 +148,6 @@ export function KeysReference() {
                 {k('KeyS')}
                 {k('KeyD')}
               </span>
-              <span className="keys__or">{t('host.keys.or')}</span>
-              {arrows}
             </td>
             <td>
               <span className="keys__group">
@@ -158,30 +158,33 @@ export function KeysReference() {
               </span>
             </td>
           </tr>
+          <tr className="keys__sub">
+            <td />
+            <td colSpan={2}>
+              <span className="keys__or">{t('host.keys.or')}</span>
+              {arrows}
+              <span className="keys__or">{t('host.keys.solo')}</span>
+            </td>
+          </tr>
           <tr>
             <td>{t('host.keys.dive')}</td>
-            <td>
-              <Key>{t('host.key.space')}</Key>
-            </td>
-            <td>
-              <Key>{t('host.key.altgr')}</Key>
-            </td>
+            <td>{k('Space')}</td>
+            <td>{k('AltRight')}</td>
           </tr>
           <tr>
             <td>{t('host.keys.flap')}</td>
-            <td>
-              <Key>{t('host.key.shift')}</Key>
-            </td>
+            <td>{k('ShiftLeft')}</td>
             <td>{k('Semicolon')}</td>
           </tr>
-          <tr>
+          <tr className="keys__all">
             <td>{t('host.keys.pause')}</td>
-            <td>
+            <td colSpan={2}>
               <Key>{t('host.key.esc')}</Key>
             </td>
-            <td className="keys__dim">
-              {t('host.keys.fullscreen')} {k('KeyF')}
-            </td>
+          </tr>
+          <tr className="keys__all">
+            <td>{t('host.keys.fullscreen')}</td>
+            <td colSpan={2}>{k('KeyF')}</td>
           </tr>
         </tbody>
       </table>

@@ -43,25 +43,25 @@ Le runner écrit, la caméra lit. Utiliser `cueCamera(mode, { winnerSlot, podium
 
 **Coupes et fondus.** La caméra coupe d'elle-même quand `gameView.sim` change d'objet (nouvelle manche, salon, démo, podium) — y compris si la sim change dans la demi-seconde qui précède ou suit le changement de mode. Sinon elle glisse (fondu de caméra de 2,2-2,6 s : salon → règles, titre ↔ crédits). `cut: true` force une coupe.
 
-**Retour vers le runner** : `cameraState` (`mode`, `modeTime`, `shot`, `rise` 0..1, `mapReady`, `podiumReady`, `frame` = cadre visible au sol) et l'émetteur `cameraBeats` :
-`riseStart` (fin de la pause de nuit) · `illuminate` (vague d'illumination lancée) · `mapReady` (carte cadrée : **moment conseillé pour `setScreenState('roundResults')`**, ≈ 4 s après `night`) · `podiumReady` (2,2 s après l'entrée) · `cut`.
+**Retour vers le runner** : `cameraState` (`mode`, `modeTime`, `shot`, `rise` 0..1, `mapReady`, `podiumReady`, `frame` = cadre visible au sol ; ajouts polish : `mapRect` = boîte écran de l'arène sur la carte des résultats (fractions, suit la poussée lente), `punch` / `punchCount` (punch-in en cours, cumul), `towerCover` (part d'écran bouchée par les tours au-dessus de 20 m), `arena` (boîte écran de l'arène en manche), `shotFault` (défaut de composition du titre, debug)) et l'émetteur `cameraBeats` :
+`riseStart` (fin de la pause de nuit) · `illuminate` (vague d'illumination lancée) · `mapReady` (carte cadrée, avec `rect` = boîte écran de l'arène : **moment conseillé pour `setScreenState('roundResults')`**, ≈ 4 s après `night`) · `podiumReady` (2,2 s après l'entrée) · `cut` · `punchIn` (hunter, target : punch-in sur une touche qui compte).
 
 ## 2. Ce que fait chaque mode (détails)
 
 **Manche** (`framingRig.ts`, `framing.ts`) — GDD §13.1 à la lettre, avec trois ajouts justifiés :
-- Points cadrés : centres d'ombre (poids 1, **ramenés dans l'arène** à ρ ≤ 1,04 : au couchant une ombre peut tomber 100 m au-delà du bord, où elle ne peint pas) et oiseaux tirés vers leur ombre (poids 0,7), **plus leur position dans 0,7 s** (anticipation : un ressort critique à ω 1,8 traîne de 2v/ω ≈ 23 m ; sans elle, un oiseau qui fonce vers le bord sortait du cadre). Marges 12 % / 15 %, largeur 110 m → 1,1 × l'arène ; si les oiseaux débordent le dézoom maximal, on cadre l'ellipse entière de l'arène.
+- (Polish : voir §8 — boîtes des oiseaux réels en contrainte dure dans le rectangle utile.) Points cadrés : centres d'ombre (poids 1, **ramenés dans l'arène** à ρ ≤ 1,04 : au couchant une ombre peut tomber 100 m au-delà du bord, où elle ne peint pas) et oiseaux tirés vers leur ombre (poids 0,7), **plus leur position dans 0,7 s** (anticipation : un ressort critique à ω 1,8 traîne de 2v/ω ≈ 23 m ; sans elle, un oiseau qui fonce vers le bord sortait du cadre). Marges 12 % / 15 %, largeur 110 m → 1,1 × l'arène ; si les oiseaux débordent le dézoom maximal, on cadre l'ellipse entière de l'arène.
 - **Résolution exacte en perspective** (`fitPoints`) : chaque bord du rectangle d'écran est un plan passant par la caméra ; position au plus près sous ces 4 contraintes (testé : `framing.test.ts`, 49 cas).
 - Ressorts critiques (exacts, stables) : position ω 1,8, zoom ω 1,2 (**dézoom ω 1,2 × 1,6** : on ne perd jamais un oiseau), zone morte 4 m (cible et largeur). Lacet fixe (nord en haut), tangage 58° → 42° linéaire sur la manche. Pas de ciel en jeu (haut du cadre ≥ 22° sous l'horizon).
 - Compte à rebours : le cadre reste celui de l'anneau de départ (les oiseaux bouclent sur place) ; **travelling d'ouverture** : recul de 32 % et +10° de plongée qui se referment en douceur à « Envol ».
-- Piqué engagé (`diveCommit`, chasseur et cible dans le champ) : zoom de `camDiveZoom` (8 %) vers la paire, montée 0,36 s, tenu pendant le ralenti après une touche, relâché en 0,9 s.
+- Piqué engagé (`diveCommit`, chasseur et cible dans le champ, aucun des deux sous un disque) : zoom de `camDiveZoom` (8 %) vers la paire, montée 0,36 s, tenu pendant le ralenti après une touche, relâché en 0,9 s (effacé par le punch-in, §8).
 - Touche (`diveHit` dans le champ, réglage tremblement actif) : tremblement de 0,42 s, amplitude `camShakeAmp` par tranche de 26 m cadrés (≈ 11 px en 1080p quel que soit le zoom ; 0,15 m brut ferait moins d'un pixel à 300 m).
-- Grande Ombre : le front de nuit (à la hauteur de chaque oiseau) est cadré, la cible glisse de 6 % vers l'est sans pousser le cadre au-delà du bord est de l'arène.
+- Grande Ombre : le front de nuit (à la hauteur de chaque oiseau, borné à 40 m à l'ouest de l'oiseau le plus à l'ouest) est cadré, poussée lente et tangage −3°, la cible glisse de 6 % vers l'est sans pousser le cadre au-delà du bord est de l'arène ni sortir un oiseau du rectangle utile.
 
-**Résultats de manche** (`director.ts`) : pause de nuit de 1,5 s (le gel ; le cadrage suit encore les oiseaux qui planent), puis montée de 2,5 s (interpolation du rig : cible, tangage 42° → 90°, distance en log ; lissage à dérivées nulles) jusqu'à la vue verticale nord en haut, l'arène dans x 0,035 → bord du panneau − 2 % (0,515 en 16:9 ; `resultsMapRect(aspect)` suit le zoom de l'UI, vérifié en 4:3) × y 0,085-0,915, puis poussée imperceptible (3,5 % sur 14 s).
+**Résultats de manche** (`director.ts`) : pause de nuit de 1,5 s (le gel ; le cadrage suit encore les oiseaux qui planent), puis montée de 2,5 s (interpolation du rig : cible, tangage 42° → 90°, focale 40° → 18°, largeur cadrée en log ; lissage à dérivées nulles) jusqu'à la vue verticale nord en haut, l'arène dans x 0,035 → bord du panneau − 2 % (0,515 en 16:9 ; `resultsMapRect(aspect)` suit le zoom de l'UI, vérifié en 4:3) × y 0,085-0,915, puis poussée imperceptible (3,5 % sur 14 s).
 
-**Podium** (`podium.ts`, `PodiumStage.tsx`) : scène synthétique clonée de la dernière manche (territoire peint gardé au sol, tours de la carte retirées) ; trois tours « colonne » à plateau plat placées **par lancer de rayon** pour que le point de perche tombe 26 px (1080p) au-dessus de chaque plaque (`PODIUM_X` = 0,30 / 0,50 / 0,70, haut des plaques 37 % + 40/0/70 px) ; oiseaux en mode `'perch'`, couronne sur le vainqueur, les autres tournent au loin à l'ouest. Caméra à 5,5 m, 46 m des tours, regard relevé de 6° (horizon au tiers bas). Ciel : `sunOverride` 12° plein ouest (disque derrière le vainqueur), palette KF1,6, pas de nuit (`nightAll` 0), Simoun masqué. Entrée : montée de 2 m en 2,2 s puis respiration de ±0,12 m.
+**Podium** (`podium.ts`, `PodiumStage.tsx`) : scène synthétique clonée de la dernière manche (territoire peint gardé au sol, tours de la carte retirées) ; trois tours « Pile » (crème, disque ocre, plateau turquoise) placées **par lancer de rayon** pour que le point de perche tombe 84 px (1080p) au-dessus de chaque plaque (`PODIUM_X` = 0,30 / 0,50 / 0,70, haut des plaques 37 % + 40/0/70 px) ; oiseaux en mode `'perch'`, couronne sur le vainqueur, les autres tournent au loin à l'ouest. Caméra à 5,5 m, 46 m des tours, regard relevé de 6° (horizon au tiers bas). Ciel : `sunOverride` 12° plein ouest (disque derrière le vainqueur), palette KF1,6, pas de nuit (`nightAll` 0), Simoun masqué. Entrée : poussée de 4,5 s (focale × 1,16 → 1, montée de 1,6 m) puis respiration de focale ± 2 % et de ±0,12 m.
 
-**Titre** (`cine.ts`) : plans calés sur le soleil de la démo (u = t/T), coupes franches, reprise au rebouclage :
+**Titre** (`cine.ts`) : plans calés sur le soleil de la démo (u = t/T), coupes franches, reprise au rebouclage (polish : séquence révisée crane 0 → track 0,16 → group 0,32 → track 0,46 → orbit 0,6 → sunset 0,72 → sunset 0,9, voir §8 ; description d'origine ci-dessous) :
 `crane` (u 0 : serré sur un oiseau — sur le ciel s'il vole haut — puis grue qui révèle l'arène dans la zone bas-gauche) → `track` (0,17 : travelling ; oiseau haut en contre-plongée posé à (0,75 ; 0,33), oiseau bas en plongée à (0,33 ; 0,66), bascule douce quand il change d'étage) → `group` (0,34 : plan bas d'un groupe, lacet choisi pour qu'aucune tour ne barre l'image) → `track` (0,50) → `sunset` (0,66 : face au soleil posé à x 0,78 en haut à droite, oiseau en silhouette, choisi parmi ceux dont le contrechamp est dégagé) → `orbit` (0,86 : vue large qui tourne, l'arène peinte et la Grande Ombre dans le bas du cadre, jusqu'à la nuit et au rebouclage ; le runner change de carte à chaque boucle → coupe).
 Évitement des tours : `towerClutter` mesure la part de la largeur de l'écran masquée par les tours proches (rayon max, disques et gnomon incliné compris) ; au-delà de 30 % le suivi change de côté (3 fois → autre oiseau), le groupe dérive son lacet puis reprend un autre groupe, le couchant reprend un autre oiseau (nouvelle prise, coupe franche).
 Le logo (haut gauche) et le menu (bas droite) restent libres. Les suivis compensent le retard des ressorts (avance 2v/ω).
@@ -100,4 +100,62 @@ Vérifié en images (captures regardées) : manche entière en accéléré (×5)
 
 ## 7. Modifications hors périmètre
 
-Aucune.
+Aucune (polish vague 1 compris : les plaques de `results.css` n'ont pas bougé, les oiseaux tiennent au-dessus).
+
+## 8. Polish vague 1 (correcteur staging, ordres S1-S7 ; détail et mesures : `docs/polish/fix-staging.md`)
+
+**Cadrage de manche (S1)** — `framing.ts` gagne `fitSets` : cadrage conjoint de plusieurs ensembles de
+points, chacun dans son rectangle, avec des demi-étendues par point (`ext` : côtés, haut, bas, le long
+des axes de la caméra, exact en perspective). Le premier ensemble est le sujet (centré, `alignY`
+pour le poser contre le bas), les autres sont des contraintes dures ; `slackRight/Left` = glissement
+latéral admis. `clampRigToSets` ramène un rig au plus près pour que les ensembles tiennent (garde-fou
+derrière les ressorts) ; `projectRig` projette sans three. `fitPoints` est devenu un cas particulier.
+Dans `framingRig.ts` : sujet = ombres (1) + oiseaux tirés vers elles (0,7), marges du GDD ; **boîte de
+chaque oiseau réel** (± W/2, W/2 au-dessus, 0,74 W dessous pour l'étiquette, couronne du meneur via
+`crownLift`, W = envergure × `birdAnchors.scale` : suit l'échelle × 1,6 de B1) **dans `USEFUL_RECT`**
+(x 0,06-0,94, y 0,21-0,87), maintenant et dans 0,7 s ; le garde-fou recale le cadre suivi à chaque
+frame. Si ces boîtes forcent le cadre, les ombres au-delà de ρ = 1,0 sont lâchées d'abord. Au-delà de
+8 oiseaux : arène dans `ARENA_RECT_CROWDED` (y 0,21-0,96, posée contre le bas), oiseaux jusqu'à 0,975.
+Compte à rebours : cadre fixe calculé sur les cercles des boucles (centre + rayon).
+
+**Grande Ombre (S2)** — front cadré au plus 40 m à l'ouest de l'oiseau le plus à l'ouest ; poussée
+lente (le sujet peut occuper 10 % de plus de l'écran) et tangage −3° sur la phase ; décalage vers l'est
+borné par le glissement admis (`slackRight`).
+
+**Tours (S3)** — `towerCover.ts` : rastérisation (48 × 27) de la silhouette des tours (troncs de cône
+et disques, ellipses selon l'angle de vue) pour un projecteur quelconque ; `towerCoverage(sim, rig)`
+pour la manche. Au-delà de 15 % d'écran (parties > 20 m, cadre courant et cadre visé), tangage +5 puis
++8°, puis recul × 1,2 / 1,45 / 1,8 (hystérésis à 11 %). Pas de zoom de piqué si la paire est sous un
+disque (`birdUnderDisc`).
+
+**Punch-in (S6)** — sur un `diveHit` dans le champ qui vole la couronne, implique un humain
+(`gameView.players[slot].kind` phone/keyboard) ou vole ≥ 1 % de l'arène (au-delà de 8 oiseaux :
+couronne ou humain) : la paire au centre du rectangle utile, largeur × 0,75 **ou moins** (jusqu'à
+× 0,5) pour que l'envergure gagne × 1,3 malgré l'échelle cosmétique, montée 0,3 s, tenue ralenti +
+0,5 s, retour en ressort. Les oiseaux humains restent à l'écran ; plan refusé s'il n'est pas assez
+serré ou si la paire n'y est pas près du centre (après trois essais moins serrés). Au plus un toutes les
+6 s de sim, jamais dans les 3 dernières secondes. Seuls des bots peuvent sortir du cadre pendant un
+punch-in.
+
+**Titre (S4)** — `cine.ts` : `shotFault` (tour < 45 m à l'image > 5 % de large, tour de premier plan
+> 12 % de la largeur, Simoun < 120 m vu d'une caméra basse, tour de premier plan dans la case du logo
+ou du pied de page), suivis choisis parmi 6 oiseaux × 2 côtés × 4 angles (première prise propre, sinon
+la moins mauvaise), nouvelle prise en coupe franche avec anticipation de 0,8 s, oiseaux en piqué exclus,
+grue qui garde son sujet, vue large de 4,8 s à 22° sur un groupe d'oiseaux, la boucle finit sur deux
+prises de couchant ; le Simoun proche est masqué pour tout le plan (décidé à la coupe).
+`TITLE_LAYOUT.uiRects` décrit les cases de l'UI du titre.
+
+**Podium (S5)** — tours en archétype Pile (fût crème, disque ocre sous les plaques, plateau turquoise),
+`PERCH_ABOVE_PLATE_PX` 26 → 84 : oiseaux entiers au-dessus des plaques. Entrée : poussée de 4,5 s
+(focale × 1,16 → 1, caméra qui s'élève) jusqu'à l'entrée de l'UI, puis respiration de focale ± 2 %
+(17 s) et balancement : l'image n'est jamais figée. `podiumReady` reste à 2,2 s.
+
+**Résultats (S7)** — vue carte à `MAP_FOV` = 18° (même emprise, 2,3 × plus loin) : rayon le plus oblique
+≈ 15°. La focale se resserre pendant la montée. `cameraState.mapRect` et `mapReady.rect` donnent la
+boîte écran de l'arène (planche imprimée de l'UI, H14).
+
+Outils : `tools/polish/staging/` — `framing-sim.ts` (banc headless du cadrage : vraie sim, vrais bots,
+vrai réalisateur, mêmes critères que `read-stats.mjs`), `match.mjs` + `read-stats.mjs` + `punch-stats.mjs`
+(partie réelle avec sonde qui importe les modules par leur URL réelle — la sonde de `feel/lib.mjs`
+lisait une deuxième instance de `viewModel.ts` quand Vite ajoute `?t=`), `title-probe.mjs` (défauts du
+titre), `nohmr.mjs` (préchargement qui coupe le HMR : les autres correcteurs rechargeaient la page).

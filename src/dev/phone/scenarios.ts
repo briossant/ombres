@@ -19,6 +19,8 @@ export interface Scenario {
   touched?: boolean
   localGoals?: { fly: boolean; dive: boolean }
   troubleAgoMs?: number
+  /** Messages courts poussés au chargement (indications du directeur). */
+  toasts?: { key: string; params?: Record<string, string | number>; tone?: 'info' | 'good' | 'bad' | 'hint' }[]
 }
 
 export const SCENARIO_NAMES = [
@@ -32,11 +34,14 @@ export const SCENARIO_NAMES = [
   'lobby',
   'lobby-guest',
   'lobby-done',
+  'lobby-toast',
   'settings',
   'intro',
   'countdown',
   'play',
   'play-target',
+  'play-hit',
+  'play-toast',
   'play-hunted',
   'play-stunned',
   'play-hidden',
@@ -112,6 +117,17 @@ export function buildScenario(name: string, lang: Lang, color: number, colorblin
       return { conn: 'online', view: base('lobby', { you: { ...you, leader: false }, lobby: { ...lobby, leaderName: 'Maëlle', goals: { fly: false, dive: false, strike: false } } }), touched: false }
     case 'lobby-done':
       return { conn: 'online', view: base('lobby', { lobby: { ...lobby, goals: { fly: true, dive: true, strike: true } } }), touched: true }
+    case 'lobby-toast':
+      // Indication du directeur + tampon « Raté… » au salon : jamais sous la case des objectifs.
+      return {
+        conn: 'online',
+        view: base('lobby', { lobby }),
+        touched: true,
+        toasts: [{ key: 'hints.dodge', params: { color: 1 }, tone: 'hint' }],
+        cues: [{ cue: 'planted', every: 3000 }],
+      }
+    case 'play-toast':
+      return { conn: 'online', view: base('play', { play }), status, toasts: [{ key: 'hints.firstLock', params: { color: 5 }, tone: 'hint' }] }
     case 'settings':
       return { conn: 'online', view: base('lobby', { lobby }), sheet: 'settings', touched: true }
     case 'intro':
@@ -125,6 +141,8 @@ export function buildScenario(name: string, lang: Lang, color: number, colorblin
       return { conn: 'online', view: base('play', { play }), status }
     case 'play-target':
       return { conn: 'online', view: base('play', { play }), status: { ...status, target: 5, crown: true, rank: 1, share: 0.312 } }
+    case 'play-hit':
+      return { conn: 'online', view: base('play', { play }), status: { ...status, target: 5, rank: 1, share: 0.312 }, cues: [{ cue: 'hit', every: 2500 }] }
     case 'play-hunted':
       return {
         conn: 'online',
@@ -176,7 +194,7 @@ export function buildScenario(name: string, lang: Lang, color: number, colorblin
             of: 5,
             suns: win ? 14 : 11,
             winners: win ? [{ name: you.name, color }] : [{ name: 'Maëlle', color: 1 }],
-            title: { key: 'titles.rapace', label: lang === 'fr' ? 'Le Rapace' : 'The Raptor', value: lang === 'fr' ? '4 piqués réussis' : '4 successful dives' },
+            title: { key: 'titles.rapace', label: lang === 'fr' ? 'Le Rapace' : 'The Raptor', value: lang === 'fr' ? '4 piqués réussis' : '4 strikes landed' },
             podium: [
               { name: win ? you.name : 'Maëlle', color: win ? color : 1, suns: 14 },
               { name: win ? 'Maëlle' : you.name, color: win ? 1 : color, suns: 11 },

@@ -22,6 +22,11 @@ export const OBJ_ID = {
   fxBase: 220,
   /** Couronne du meneur (agent birds). */
   crown: 221,
+  /**
+   * Pixels gardés d'une dissolution en trame (tours proches ou devant un oiseau, polish W9) :
+   * l'encre ne les cerne pas et ignore leurs frontières (sinon la trame deviendrait des points noirs).
+   */
+  screenDoor: 254,
 } as const
 
 export const birdId = (slot: number): number => OBJ_ID.birdBase + slot

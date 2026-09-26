@@ -12,6 +12,12 @@ import { usePhone } from '../store.ts'
 import { TiltPad } from './TiltPad.tsx'
 
 const R = PHONE_RULES.joystickRadiusPx
+/** Étoile de PIQUER : boîte (.act__star, inset −6 %) et rayons, en fraction du diamètre du bouton. */
+const STAR_BOX = 1.12
+const STAR_RAY_FROM = 0.38
+const STAR_RAY_TO = 0.47
+/** Place sous le socle pour « Pouce ici » (px au-delà du rayon) : l'étiquette chevauche le bas de l'anneau. */
+const HINT_BELOW = 28
 
 export interface ControllerProps {
   /** Salon : indications d'apprentissage et détection locale des micro-objectifs. */
@@ -24,15 +30,11 @@ export interface ControllerProps {
 
 export function Controller({ practice = false, disabled = false, restX = 0.5 }: ControllerProps) {
   const scheme = usePhone(s => s.prefs.scheme)
-  const style = {
-    '--stick-r': `${R}px`,
-    '--dive-frac': PHONE_RULES.buttonDiveHeightFrac,
-    '--flap-frac': PHONE_RULES.buttonFlapHeightFrac,
-  } as CSSProperties
+  // Tailles (--stick-r, --dive, --flap) : variables posées sur .app (App.tsx, phone.css).
   // Quitter l'écran (ou la page) relâche tout : l'oiseau ne reste pas bloqué en piqué.
   useEffect(() => () => getClient()?.releaseAll(), [])
   return (
-    <div className={`ctl ${disabled ? 'is-stunned' : ''}`} style={style}>
+    <div className={`ctl ${disabled ? 'is-stunned' : ''}`}>
       {scheme === 'tilt' ? <TiltPad /> : <Joystick relative={scheme === 'relative'} practice={practice} restX={restX} />}
       <FlapButton />
       <DiveButton practice={practice} />
@@ -52,20 +54,23 @@ function Joystick({ relative, practice, restX }: { relative: boolean; practice: 
   const vec = useRef({ x: 0, y: 0 })
   const [rest, setRest] = useState({ x: 0, y: 0 })
 
-  // Position de repos : au centre de la zone (affichée en fantôme).
+  // Position de repos (affichée en fantôme). Au salon, un peu plus bas : les objectifs sont au-dessus,
+  // et « Pouce ici », posé à cheval sur le bas du socle, doit rester dans l'écran (paysage de 320 px).
   useLayoutEffect(() => {
     const el = zone.current
     if (!el) return
     const update = () => {
+      const h = el.clientHeight
       const x = Math.max(R + 16, el.clientWidth * restX)
-      const y = Math.min(el.clientHeight - R - 16, Math.max(R + 16, el.clientHeight * 0.56))
+      const low = practice ? h - R - HINT_BELOW : h - R - 16
+      const y = Math.min(low, Math.max(R + 16, h * (practice ? 0.6 : 0.56)))
       setRest({ x, y })
     }
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [restX])
+  }, [restX, practice])
 
   const place = (cx: number, cy: number, kx: number, ky: number) => {
     if (stick.current) stick.current.style.transform = `translate(${cx}px, ${cy}px)`
@@ -193,24 +198,34 @@ function usePressable(onChange: (down: boolean) => void) {
   }
 }
 
-/** Étoile d'encre à 8 rayons derrière « PIQUER » (ART_BIBLE §8.7). */
+/**
+ * Étoile d'encre à 8 rayons derrière « PIQUER » (ART_BIBLE §8.7). Les rayons vont de 38 à 47 % du diamètre
+ * du bouton : ils restent dans le disque (la boîte, 112 %, ne sert qu'au trait). Tournés de 22,5° : aucun
+ * ne vise COUP D'AILE (en haut à gauche, à 225°). Ils battent sur place au lieu de tourner, pour que
+ * l'étoile reste dans l'écran (bouton à 24 px du bord).
+ */
 function InkStar() {
   const rays = []
+  // Rayons en fraction du diamètre du bouton, ramenés à la boîte de l'étoile (112 % du bouton).
+  const r0 = (STAR_RAY_FROM / STAR_BOX) * 100
+  const r1 = (STAR_RAY_TO / STAR_BOX) * 100
   for (let i = 0; i < 8; i++) {
-    const a = (i * Math.PI) / 4
+    const a = ((i + 0.5) * Math.PI) / 4
+    const c = Math.cos(a)
+    const s = Math.sin(a)
     rays.push(
       <path
         key={i}
-        d={`M${50 + Math.cos(a) * 36} ${50 + Math.sin(a) * 36} L${50 + Math.cos(a) * 49} ${50 + Math.sin(a) * 49}`}
+        d={`M${(50 + c * r0).toFixed(2)} ${(50 + s * r0).toFixed(2)} L${(50 + c * r1).toFixed(2)} ${(50 + s * r1).toFixed(2)}`}
         stroke="currentColor"
-        strokeWidth={i % 2 ? 2.5 : 4}
+        strokeWidth={i % 2 ? 2.6 : 3.8}
         strokeLinecap="round"
       />,
     )
   }
   return (
     <svg className="act__star" viewBox="0 0 100 100" aria-hidden="true">
-      {rays}
+      <g className="act__rays">{rays}</g>
     </svg>
   )
 }

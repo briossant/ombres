@@ -6,7 +6,7 @@ import type { PhoneClientEvents, PhoneConnState, PhoneFatal } from '../../net/ph
 import type { PhoneToHost } from '../../shared/messages.ts'
 import type { Lang } from '../../shared/protocol.ts'
 import { attachClient, type ClientLike } from '../../phone/link.ts'
-import { setPhoneLang, setPrefs, usePhone } from '../../phone/store.ts'
+import { pushToast, setPhoneLang, setPrefs, usePhone } from '../../phone/store.ts'
 import { PhoneApp } from '../../phone/App.tsx'
 import { fx } from '../../phone/fx.ts'
 import { SCENARIO_NAMES, buildScenario } from './scenarios.ts'
@@ -17,6 +17,8 @@ const name = params.get('s')
 const lang: Lang = params.get('lang') === 'en' ? 'en' : 'fr'
 const color = Number(params.get('color') ?? 0)
 const colorblind = params.get('cb') === '1'
+/** « Réduire les flashs » du PC (rf=1). */
+const reduceFlashes = params.get('rf') === '1'
 
 /** Faux client : même interface que PhoneClient, journalise ce que la manette envoie. */
 class FakeClient implements ClientLike {
@@ -88,6 +90,7 @@ function mountIndex(): void {
 
 function mountScenario(s: string): void {
   const sc = buildScenario(s, lang, color, colorblind)
+  if (sc.view && reduceFlashes) sc.view.reduceFlashes = true
   const scheme = params.get('scheme')
   if (scheme === 'absolute' || scheme === 'relative' || scheme === 'tilt') setPrefs({ scheme })
   setPhoneLang(lang)
@@ -113,6 +116,7 @@ function mountScenario(s: string): void {
     touchedStick: sc.touched ?? false,
     localGoals: sc.localGoals ?? { fly: false, dive: false },
   })
+  for (const m of sc.toasts ?? []) setTimeout(() => pushToast(m.key, m.params, m.tone ?? 'info'), 300)
   for (const c of sc.cues ?? []) {
     const fire = () => fx.cue(c.cue, c.n)
     setTimeout(() => {

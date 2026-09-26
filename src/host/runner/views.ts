@@ -8,7 +8,8 @@ import { matchStandings } from '../../sim/index.ts'
 import type { Lang } from '../../shared/protocol.ts'
 import { t } from '../../shared/i18n.ts'
 import { fmtPct, titleStat } from '../ui/format.ts'
-import { displayName, titleDisplayValue, type Player, type Roster } from './players.ts'
+import { getSettings } from '../settings.ts'
+import { displayName, titleDisplayValue, uiTitleId, type Player, type Roster } from './players.ts'
 
 /** Ce que les vues lisent du runner. */
 export interface ViewContext {
@@ -29,6 +30,11 @@ export interface ViewContext {
   deadline: number | null
   paused: boolean
   pausedBy: number
+  /**
+   * Pause que seul l'écran peut lever : le PC se recharge (vue de l'écran sauvegardé) ou son
+   * onglet est en arrière-plan. Les téléphones affichent la pause sans « Reprendre ».
+   */
+  resuming?: boolean
   goals(slot: number): LobbyGoals
   titles: TitleAward[] | null
   winners: number[] | null
@@ -60,7 +66,9 @@ export function phoneView(ctx: ViewContext, phone: PhoneInfo): PhoneViewInput | 
   if (!p) return null
   const lang = ctx.lang
   const roster = ctx.roster
-  const leader = roster.leader()
+  // hors du salon (PC au titre, aux crédits, en chargement), personne ne lance : les téléphones
+  // attendent l'écran (« La partie se lance depuis l'écran ») au lieu d'un « Lancer » inerte (G7)
+  const leader = ctx.phase === 'boot' || ctx.phase === 'title' || ctx.phase === 'credits' ? undefined : roster.leader()
   const byP = ctx.pausedBy >= 0 ? roster.bySlot(ctx.pausedBy) : undefined
   const base: PhoneViewInput = {
     screen: 'lobby',
@@ -75,8 +83,10 @@ export function phoneView(ctx: ViewContext, phone: PhoneInfo): PhoneViewInput | 
       assist: p.assist,
       scheme: phone.scheme,
     },
-    paused: ctx.paused ? { by: byP ? tag(byP, lang) : null, canResume: true } : null,
+    paused: ctx.resuming ? { by: null, canResume: false } : ctx.paused ? { by: byP ? tag(byP, lang) : null, canResume: true } : null,
     colorblind: ctx.colorblind,
+    // « Réduire les flashs » vaut aussi pour les téléphones (polish P4) : lu ici, pas besoin d'un champ du runner.
+    reduceFlashes: getSettings().reduceFlashes,
   }
   const phones = roster.phones().filter(x => !x.pending)
   const inMatch = ctx.phase === 'rules' || ctx.phase === 'round' || ctx.phase === 'roundResults' || ctx.phase === 'matchResults'
@@ -179,7 +189,7 @@ export function phoneView(ctx: ViewContext, phone: PhoneInfo): PhoneViewInput | 
         of: standings.length,
         suns: mine?.suns ?? 0,
         winners,
-        title: award ? { key: `titles.${award.title}.name`, value: titleStat(award.title, ctx.match ? titleDisplayValue(award, ctx.match) : award.value, lang), label: t(`titles.${award.title}.name`, undefined, lang) } : null,
+        title: award ? { key: `titles.${award.title}.name`, value: titleStat(uiTitleId(award), ctx.match ? titleDisplayValue(award, ctx.match) : award.value, lang), label: t(`titles.${award.title}.name`, undefined, lang) } : null,
         podium: standings.slice(0, 3).flatMap(s => {
           const tg = tag(roster.bySlot(s.slot), lang)
           return tg ? [{ ...tg, suns: s.suns }] : []

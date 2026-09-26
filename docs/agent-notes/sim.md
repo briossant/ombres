@@ -198,3 +198,32 @@ Autres tailles (12 manches, bruit ±15 pts) : 4 oiseaux 37 % neutre à 45 s, 42/
 - Les métriques §18 sont à refaire avec les vrais bots (`runBatch` accepte des fabriques de politiques) ; voir §5 pour le temps passé en bas.
 - La simulation ne connaît pas les humains/bots : l'équité « 2 bots au plus par cible » est au module bots.
 - Les micro-objectifs du lobby (« Vole », « Plonge », « Pique ») se déduisent des entrées et des événements (`diveHit` sur le mannequin) : au runner ou au director.
+
+## 7. Polish vague 1 (correcteur game, ordres G4, G9, G10) — détail : docs/polish/fix-game.md
+
+### G9 · Essai A/B « le piqué doit payer » : NON retenu (valeurs d'origine gardées)
+
+Essai : `trailStealSeconds` 1,5 → 2,5 et `trailStealCrownSeconds` 3 → 4, avec les bots du polish G1-G2. Critère de maintien : profil « chasseur » à moins de 10 points du « mixte » (solo-sweep) et aucun caractère au-dessus de 35 % à 6 Voyageurs (bots-arena). Mesures (24 manches par case pour `tools/polish/feel/solo-sweep.ts`, 56 manches pour `tools/bots-arena.ts --suite=voyageurs6`) :
+
+| mesure | 1,5 / 3 s (actuel) | 2,5 / 4 s (essai) |
+|---|---|---|
+| solo Oisillon : mixte / chasseur | 83 % / 25 % | 83 % / 33 % |
+| solo Voyageur : mixte / chasseur | 50 % / 0 % | 58 % / 13 % |
+| solo Seigneur : mixte / chasseur | 50 % / 21 % | 38 % / — |
+| 6 Voyageurs : meilleur caractère | Pie 27 % | Guetteur 33 % |
+| 6 Voyageurs : Faucon | 8 % | 2 % |
+| 6 Voyageurs : touches, piqués / manche | 52 %, 8,1 | 52 %, 8,3 |
+
+L'écart chasseur-mixte reste de 45 à 50 points (critère : < 10) et le Faucon perd encore du terrain (le vol profite aux bons peintres qui piquent par occasion, pas aux chasseurs) : essai rejeté, `rules.ts` revenu à 1,5 / 3 s. Le chasseur scripté perd surtout parce qu'il ne peint pas pendant qu'il chasse ; allonger le vol ne compense pas.
+
+### Ajouts à `rules.ts` (compatibles)
+
+- `plancheFlashMinStealFrac` 0,01, `plancheFlashMinGap` 6, `plancheFlashMaxPerRound` 4, `plancheFlashMinorMaxPerRound` 2, `plancheFlashMinorGap` 12, `dodgeSlowmoScale` 0,6, `dodgeSlowmoSeconds` 0,2 : hiérarchie des impacts (G4, lue par le runner).
+- `titleRapaceDominance` 2 : le Rapace revient d'office à qui fait au moins 2 × la moyenne des touches (G10).
+
+### G10 · Titres et faits marquants
+
+- `assignTitles` : passes successives — Rapace au chasseur dominant, puis titres flatteurs (Rapace, Anguille, Pilleur, Bâtisseur, Notaire, Dernier Rayon, Lézard, Revenant), neutres (Rase-Mottes, Nuage), enfin moqueurs (Gibier, Kamikaze), jamais à qui domine leur domaine (meilleur chasseur ≠ Kamikaze, meilleure anguille ≠ Gibier). Le z-score départage toujours à l'intérieur d'une passe.
+- Nouveau `TitleId` `souverain` (hors z-score) : `withSovereign(awards, winners)` donne « Le Souverain » (total de soleils) au vainqueur de la partie sans autre titre ; `matchTitles` l'applique. Clés `titles.souverain.*` (FR/EN) ajoutées dans `src/shared/strings/titles.ts`.
+- `finishRound` : `highlight` = le premier fait dont le genre n'a pas déjà été le fait marquant d'une manche précédente de la partie (plus de « Raz-de-marée » trois fois).
+- Tests : `src/sim/match.test.ts` (Kamikaze/Rapace, domaine du Gibier, Souverain, faits jamais répétés). `npx vitest run src/sim` vert.

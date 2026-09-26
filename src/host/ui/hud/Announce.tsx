@@ -6,7 +6,7 @@ import { colorName, PLAYER_COLORS } from '../../../shared/players.ts'
 import { RULES } from '../../../sim/rules.ts'
 import { useSettings } from '../../settings.ts'
 import { Glyph, glyphKeyForColor } from '../glyphs.tsx'
-import { useHud } from '../viewModel.ts'
+import { useHud, type BannerArrow, type BannerVM } from '../viewModel.ts'
 
 export function Countdown() {
   const n = useHud(s => s.countdown)
@@ -38,16 +38,39 @@ export function LastSeconds() {
   )
 }
 
-export function Banner() {
+/**
+ * Bannière de phase. `layout` : la case centrale (défaut) ou le bandeau fin sous
+ * la bande de sable (Grande Ombre : hors de l'arène, la nuit reste le sujet).
+ */
+export function Banner({ layout = 'case' }: { layout?: NonNullable<BannerVM['layout']> }) {
   const b = useHud(s => s.banner)
-  if (!b) return null
+  if (!b || (b.layout ?? 'case') !== layout) return null
+  const cls = ['banner', b.tone === 'alert' ? 'banner--alert' : '', layout === 'strip' ? 'banner--strip' : '', 'wipe'].filter(Boolean).join(' ')
   return (
-    <div className="banner-wrap" key={b.id}>
-      <div className={b.tone === 'alert' ? 'banner banner--alert wipe' : 'banner wipe'}>
+    <div className={layout === 'strip' ? 'banner-wrap banner-wrap--strip' : 'banner-wrap'} key={b.id}>
+      <div className={cls}>
         <div className="banner__title t-title">{t(b.key, b.params)}</div>
-        {b.subKey ? <div className="banner__sub">{t(b.subKey, b.params)}</div> : null}
+        {b.subKey ? (
+          <div className="banner__sub">
+            {b.arrow ? <BannerArrowMark arrow={b.arrow} /> : null}
+            <span>{t(b.subKey, b.params)}</span>
+          </div>
+        ) : null}
       </div>
     </div>
+  )
+}
+
+/** Flèche d'indication de la bannière : ↕ (voler nord-sud, en travers des ombres) ou → (vers l'est). */
+function BannerArrowMark({ arrow }: { arrow: BannerArrow }) {
+  return (
+    <svg className={`banner__arrow banner__arrow--${arrow}`} width={34} height={34} viewBox="0 0 34 34" aria-hidden>
+      {arrow === 'northSouth' ? (
+        <path d="M17 4V30M9.5 11.5L17 4L24.5 11.5M9.5 22.5L17 30L24.5 22.5" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
+      ) : (
+        <path d="M4 17H29M21 9L29 17L21 25" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
+      )}
+    </svg>
   )
 }
 

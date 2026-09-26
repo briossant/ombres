@@ -169,3 +169,25 @@
   background: #e8c48a;
   transform-origin: left center;
 }
+
+/* ─── Nom de joueur (SlotName) : bot « Lagon · Faucon », caractère en petit ─── */
+.sname {
+  white-space: nowrap;
+}
+.sname__dot,
+.sname__char {
+  font-size: 0.74em;
+}
+.sname__dot {
+  color: var(--ink-60);
+}
+.sname--stacked {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.sname--stacked .sname__char {
+  margin-top: 0.12em;
+  font-size: 0.5em;
+  letter-spacing: 0.08em;
+}

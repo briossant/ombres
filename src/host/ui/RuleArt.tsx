@@ -5,8 +5,9 @@
 //     pâle d'un oiseau haut glisse sur du fort sans l'entamer (petits ✕).
 //  3. Un oiseau haut replie ses ailes et fond sur un oiseau bas : sa traînée
 //     change de couleur. Puis le couchant, et la nuit qui avance.
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { PLAYER_COLORS } from '../../shared/players.ts'
+import { RULE_BIRD, RULE_BIRD_MIRROR, ruleBirdShapes } from '../../shared/ruleBird.ts'
 import { mixHex } from './color.ts'
 import './styles/ruleart.css'
 
@@ -25,38 +26,49 @@ const wash = (hex: string, strong: boolean) => mixHex(SAND, hex, strong ? 0.62 :
 const edge = (hex: string) => mixHex(hex, INK, 0.25)
 const shadowTint = (hex: string) => mixHex(CAST, hex, 0.22)
 
-// Aile droite (vers y négatif), ligne claire : bord d'attaque droit, bout arrondi.
-// Oiseau tourné vers +x ; envergure ≈ 92, corde à l'emplanture ≈ 19.
-const WING = 'M6 -4L-5 -44Q-8.5 -49 -11.5 -44Q-13.5 -24 -13 -4Z'
-const leX = (y: number) => 6 - (11 * (-y - 4)) / 40
-const WING_BAND = `M${leX(-29)} -29L${leX(-36)} -36L-12.6 -36L-12.9 -29Z`
-const WING_ROOT = `M${leX(-8)} -8L${leX(-12)} -12L-13 -12L-13 -8Z`
-
-/** Oiseau vu de dessus, tourné vers +x, centré sur (0,0). `folded` : ailes repliées (piqué). */
+/**
+ * Oiseau vu de dessus, tourné vers +x, centré sur (0,0), envergure ≈ 95 : le
+ * pictogramme partagé avec le téléphone (src/shared/ruleBird.ts, ptérosaure du jeu).
+ * `folded` : ailes repliées (piqué).
+ */
 function Bird({ color, folded = false }: { color: string; folded?: boolean }) {
-  const wings = (
-    <>
-      <path d={WING} />
-      <path d={WING} transform="scale(1 -1)" />
-    </>
-  )
+  const id = useId()
+  const clip = (mirror?: boolean) => `${id}${mirror ? 'b' : 't'}`
   return (
-    <g stroke={INK} strokeWidth={1.7} strokeLinejoin="round" strokeLinecap="round">
-      <g fill={BONE} transform={folded ? 'scale(1 0.36) skewX(-30)' : undefined}>
-        {wings}
-        <g fill={color} stroke="none">
-          <path d={WING_BAND} />
-          <path d={WING_BAND} transform="scale(1 -1)" />
-          <path d={WING_ROOT} />
-          <path d={WING_ROOT} transform="scale(1 -1)" />
+    <g transform="translate(-50 -50)" stroke={INK} strokeWidth={1.7} strokeLinejoin="round" strokeLinecap="round">
+      <defs>
+        <clipPath id={clip()}>
+          <path d={RULE_BIRD.wing} />
+        </clipPath>
+        <clipPath id={clip(true)}>
+          <path d={RULE_BIRD.wing} transform={RULE_BIRD_MIRROR} />
+        </clipPath>
+      </defs>
+      {ruleBirdShapes(folded).map((sh, k) => {
+        const tr = sh.mirror ? RULE_BIRD_MIRROR : undefined
+        switch (sh.role) {
+          case 'wing':
+          case 'body':
+            return <path key={k} d={sh.d} transform={tr} fill={BONE} />
+          case 'band':
+            return (
+              <g key={k} clipPath={`url(#${clip(sh.mirror)})`}>
+                <path d={sh.d} transform={tr} fill={color} stroke="none" />
+              </g>
+            )
+          case 'saddle':
+            return <circle key={k} {...sh.circle} fill={color} strokeWidth={1.2} />
+          case 'eye':
+            return <circle key={k} {...sh.circle} fill={INK} stroke="none" />
+        }
+      })}
+      {/* trait des ailes par-dessus la bande (la bande reste cernée) */}
+      {folded ? null : (
+        <g fill="none">
+          <path d={RULE_BIRD.wing} />
+          <path d={RULE_BIRD.wing} transform={RULE_BIRD_MIRROR} />
         </g>
-        <g fill="none">{wings}</g>
-      </g>
-      <path d="M-12 0L-24 -6L-21 0L-24 6Z" fill={BONE} />
-      <ellipse cx={-2} cy={0} rx={13.5} ry={6.6} fill={BONE} />
-      <circle cx={14} cy={0} r={5} fill={BONE} />
-      <path d="M18.4 -1.6L25.5 0L18.4 1.6Z" fill={BONE} />
-      <circle cx={-2.5} cy={0} r={4.4} fill={color} />
+      )}
     </g>
   )
 }

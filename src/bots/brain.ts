@@ -30,7 +30,7 @@ import { coordinatorFor, type BotCoordinator } from './coordinator.ts'
 import { isTargetableSeen, makeSeen, type Seen } from './perception.ts'
 import { evaluateHeadings, headingOf, HEADINGS, type EvalInput } from './evaluate.ts'
 import type { HideSpot } from './shade.ts'
-import { decideStyle } from './styles.ts'
+import { decideStyle, FALCON_FULL_APPETITE_AT } from './styles.ts'
 
 const DT = 1 / RULES.tickHz
 const TAU = Math.PI * 2
@@ -47,6 +47,21 @@ const MERCY_SECONDS = 8
 const DODGE_BY_LEVEL = [0.5, 0.15, 0.45, 0.75] as const
 /** Démo de l'écran titre (GDD §15.1) : goût du piqué en plus, pour le spectacle. */
 const DEMO_FLAIR = 0.35
+/**
+ * Feinte lisible (GDD §8.3-5) : relâcher PLONGER pendant la chute guidée, 0,35 à 0,55 s
+ * après la prise d'élan, juste avant le clac. Jamais avant FEINT_MIN_SECONDS : la cible
+ * doit avoir le temps de voir le « ! » (réflexe ≈ 0,25 s), sinon la feinte n'appâte
+ * personne et l'alerte (bordure rouge, vibration) tombe pour rien.
+ */
+const FEINT_MIN_SECONDS = 0.3
+const FEINT_WINDOW = [0.35, 0.55] as const
+/** Après une feinte, le chasseur se redresse franchement (remontée visible). */
+const FEINT_RECOVER_SECONDS = 1.1
+/** Cercle du Faucon avant un piqué : arc minimal, ou durée qui le remplace (signature, GDD §14.2). */
+const FALCON_CIRCLE_ARC = 80 * DEG
+const FALCON_CIRCLE_SECONDS = 1.2
+/** Marge (ticks) pour relâcher avant que la sim ne déclenche le clac au tick suivant. */
+const FEINT_CLAC_MARGIN_TICKS = 2
 /** Erreurs typiques du débutant (GDD §14.3 : tempête, hésitation, oubli). */
 const BEGINNER_BLUNDERS: readonly (readonly [BlunderKind, number])[] = [
   ['storm', 1],
@@ -206,7 +221,19 @@ export class BotBrain implements Bot {
   private lockSince = 0
   private lockRoll = 1
   private badRoll = 1
+  /** Tirage de la feinte, un par épisode de verrouillage (bluff : piqué lancé pour être relâché). */
+  private bluffRoll = 1
   private feintAt = -1
+  /** Instant où PLONGER a lancé le piqué en cours (feinte : délai depuis la prise d'élan). */
+  private diveLaunchedAt = -1
+  /** Piqués lancés et feintes faites depuis la création du bot (rythme des feintes du niveau). */
+  private divesLaunched = 0
+  private feintsDone = 0
+  /** Dernière cible verrouillée vue par writeInput (détecte un verrouillage tout neuf). */
+  private lockSeen = -1
+  /** Tick où PLONGER a été relâché pour laisser passer un verrouillage non voulu (−1 sinon). */
+  private letPassTick = -1
+  private readonly icTmp = { x: 0, y: 0, t: 0 }
   /** Le piqué en cours a été vu (lancé par nous ou « tombé dessus ») et jugé. */
   private diveJudged = false
   /** Fin de la pause de peinture après un piqué (Faucon). */
@@ -407,6 +434,7 @@ export class BotBrain implements Bot {
       switch (e.type) {
         case 'diveWindup':
           if (e.target === this.slot) this.onWindup(e.hunter)
+          if (e.hunter === this.slot) this.divesLaunched++
           break
         case 'diveCommit':
           if (e.target === this.slot) this.onClac(e.hunter, me)
@@ -419,7 +447,13 @@ export class BotBrain implements Bot {
           break
         case 'diveMiss':
         case 'diveCancel':
-          if (e.hunter === this.slot) this.onDiveOver()
+          if (e.hunter === this.slot) {
+            if (e.type === 'diveCancel' && e.reason === 'feint') {
+              this.feintsDone++
+              this.onFeintOver()
+            }
+            else this.onDiveOver()
+          }
           // ce piqué-là est fini : le coup d'aile prévu contre lui n'a plus lieu d'être
           if (e.target === this.slot && e.hunter === this.dodgeHunter) {
             this.dodgeAt = -1
@@ -437,9 +471,34 @@ export class BotBrain implements Bot {
     this.feintAt = -1
     this.diveJudged = false
     this.circleSince = -1
-    // le Faucon peint pâle entre deux attaques
-    if (this.personality === 'falcon') this.postDiveUntil = this.now + (this.t110 < RULES.phaseGoldenAt ? this.rng.range(4, 7) : this.rng.range(2, 3.5))
+    // le Faucon peint pâle entre deux attaques (longues pauses tant que son appétit est réduit)
+    if (this.personality === 'falcon') {
+      const rest = this.t110 < FALCON_FULL_APPETITE_AT ? this.rng.range(6, 9) : this.t110 < RULES.phaseGoldenAt ? this.rng.range(4, 7) : this.rng.range(2, 3.5)
+      this.postDiveUntil = this.now + rest
+    }
     if (this.plan.kind === 'circle' || this.plan.kind === 'hunt' || this.plan.kind === 'ambush') this.clearPlan()
+    this.nextDecision = this.now
+  }
+
+  /**
+   * Après une feinte, le chasseur ne se repose pas : il garde sa proie et reprend son
+   * cercle ; si elle a gaspillé son coup d'aile, la vraie attaque suit (GDD §8.5).
+   */
+  private onFeintOver(): void {
+    this.diveHold = false
+    this.feintAt = -1
+    this.diveJudged = false
+    const p = this.plan
+    if (p.kind === 'circle') {
+      p.since = this.now
+      p.until = this.now + 3.6
+      p.turned = 0
+      p.lastHeading = this.me?.heading ?? p.lastHeading
+      this.circleSince = this.now
+    } else {
+      this.circleSince = -1
+      if (p.kind === 'hunt' || p.kind === 'ambush') this.clearPlan()
+    }
     this.nextDecision = this.now
   }
 
@@ -585,11 +644,15 @@ export class BotBrain implements Bot {
       // piqué en cours : PLONGER maintenu jusqu'au clac, sauf feinte
       if (!this.diveJudged) {
         // lancé tout seul en « tombant » sur quelqu'un (PLONGER maintenu) : le veut-on ?
+        // Sinon, on ne relâche pas aussitôt (l'alerte de la cible tomberait pour rien) :
+        // le piqué devient une feinte lisible. Un Oisillon, lui, ne feinte jamais : il y va.
         this.diveJudged = true
-        this.diveHold = this.acceptDive(me, me.diveTarget, true)
-        if (this.diveHold) this.co.engage(this.slot, me.diveTarget, this.now)
+        this.diveHold = true
+        this.diveLaunchedAt = this.now
+        this.co.engage(this.slot, me.diveTarget, this.now)
+        if (this.level > 0 && !this.acceptDive(me, me.diveTarget, true)) this.feintAt = this.now + FEINT_MIN_SECONDS
       }
-      if (me.dive !== 'committed' && this.feintAt > 0 && this.now >= this.feintAt) this.diveHold = false
+      if (me.dive !== 'committed' && this.feintAt > 0) this.feintTick(me)
       this.setIntent('dive', me.diveTarget)
       return
     }
@@ -605,11 +668,76 @@ export class BotBrain implements Bot {
       this.lockSince = this.now
       this.lockRoll = this.rng.next()
       this.badRoll = this.rng.next()
+      this.bluffRoll = this.rng.next()
     }
     const hold = this.personality === 'fool' ? Math.min(this.lp.lockHold, 0.1) : this.lp.lockHold
     if (this.now - this.lockSince < hold) return
+    // feinte (GDD §14.3 : Voyageur 15 %, Seigneur 35 %) : un bluff lancé d'assez loin pour
+    // que la chute guidée se voie, relâché juste avant le clac. Le bluffeur attend ce
+    // moment (il ne se rabat pas sur une vraie attaque pendant cet épisode de verrouillage).
+    if (this.bluffRoll < this.bluffChance()) {
+      const feintAt = this.bluffTime(me.lockTarget)
+      if (feintAt > 0) {
+        this.launchDive(me, me.lockTarget)
+        this.feintAt = feintAt
+      }
+      return
+    }
     if (!this.acceptDive(me, me.lockTarget, false)) return
     this.launchDive(me, me.lockTarget)
+  }
+
+  /**
+   * Probabilité de bluffer sur ce verrouillage. Un bluff n'est possible que d'assez loin :
+   * pour que la part de feintes parmi SES piqués reste celle du niveau (GDD §14.3), le bot
+   * bluffe plus volontiers quand il est en retard sur ce rythme, moins quand il est en avance.
+   */
+  private bluffChance(): number {
+    const f = this.lp.feintChance
+    if (f <= 0) return 0
+    const due = f * this.divesLaunched
+    return this.feintsDone < due ? Math.min(0.9, 1.8 * f) : this.feintsDone > due ? 0.6 * f : f
+  }
+
+  /**
+   * Instant de relâchement d'un bluff sur cette cible, ou −1 s'il ne serait pas lisible :
+   * la cible doit avoir son coup d'aile (c'est lui qu'on veut faire gaspiller) et le clac
+   * prévu doit laisser au moins FEINT_MIN_SECONDS de chute guidée.
+   */
+  private bluffTime(target: number): number {
+    const t = this.see(target)
+    if (!t || !t.flapReady || t.stunned || t.immune || t.hidden) return -1
+    if (!this.co.canEngage(this.slot, target, this.now) || !this.victimAllowed(t)) return -1
+    if (!t.crown && this.co.sinceHit(target, this.now) < MERCY_SECONDS) return -1
+    // le Faucon garde sa signature : un cercle au-dessus de la proie avant tout piqué
+    if (this.personality === 'falcon' && (this.circleSince < 0 || this.now - this.circleSince < RULES.botCircleBeforeDiveSeconds)) return -1
+    // clac prévu (depuis maintenant) : interception (prise d'élan comprise) moins l'engagement
+    const clacIn = predictInterception(this.state, this.slot, target, this.icTmp).t - RULES.diveCommitLead
+    const latest = clacIn - FEINT_CLAC_MARGIN_TICKS * DT
+    if (latest < FEINT_MIN_SECONDS) return -1
+    return this.now + Math.min(this.rng.range(FEINT_WINDOW[0], FEINT_WINDOW[1]), latest)
+  }
+
+  /** Feinte en cours : relâcher à l'heure prévue, ou juste avant le clac s'il arrive plus tôt. */
+  private feintTick(me: BirdState): void {
+    const since = this.now - this.diveLaunchedAt
+    let release = this.now >= this.feintAt
+    if (!release && me.dive === 'guided') {
+      const tau = predictInterception(this.state, this.slot, me.diveTarget, this.icTmp).t
+      if (tau <= RULES.diveCommitLead + FEINT_CLAC_MARGIN_TICKS * DT) {
+        if (since >= FEINT_MIN_SECONDS) release = true
+        else {
+          // trop tôt pour une feinte lisible : le piqué devient une vraie attaque
+          this.feintAt = -1
+          return
+        }
+      }
+    }
+    if (!release || since < FEINT_MIN_SECONDS) return
+    this.diveHold = false
+    this.feintAt = -1
+    // redressement visible : il remonte au lieu de replonger aussitôt
+    this.forceHighUntil = this.now + FEINT_RECOVER_SECONDS
   }
 
   private launchDive(me: BirdState, target: number): void {
@@ -617,12 +745,10 @@ export class BotBrain implements Bot {
     this.held = true
     this.diveHold = true
     this.diveJudged = true
+    this.diveLaunchedAt = this.now
+    this.feintAt = -1
     this.lockTarget = target
     this.co.engage(this.slot, target, this.now)
-    // feinte : relâcher PLONGER pendant la prise d'élan, pour faire gaspiller le coup d'aile
-    const t = this.see(target)
-    const feint = t !== null && t.flapReady && this.rng.chance(this.lp.feintChance)
-    this.feintAt = feint ? this.now + this.rng.range(0.05, 0.13) : -1
     void me
   }
 
@@ -638,16 +764,21 @@ export class BotBrain implements Bot {
     if (!this.victimAllowed(t)) return false
     // pas d'acharnement : un oiseau qui vient de se faire piquer souffle un peu
     if (!t.crown && this.co.sinceHit(target, this.now) < MERCY_SECONDS) return false
+    // Oisillon : le piqué « offert » à un humain oublié depuis longtemps part quelle que soit
+    // la géométrie (lent, mal engagé : de quoi voir venir et esquiver)
+    const gift = this.isGiftTarget(t)
     const isPrey = this.plan.target === target && (this.plan.kind === 'hunt' || this.plan.kind === 'circle' || this.plan.kind === 'ambush')
     // Faucon : un cercle au-dessus de la proie avant de piquer (sa signature)
     if (this.personality === 'falcon' && !falling) {
       if (this.circleSince < 0) return false
       const circling = this.now - this.circleSince
-      // un vrai cercle, lisible : au moins 0,8 s (GDD) et un arc d'au moins 110°, ou 1,6 s
+      // un vrai cercle, lisible : au moins 0,8 s (GDD) et un arc d'au moins 80°, ou 1,2 s
+      // (polish G1 : 110° / 1,6 s le faisaient passer au-dessus de sa proie et perdre le
+      // verrouillage avant d'avoir « le droit » de piquer ; premier piqué vers 35 s)
       if (circling < RULES.botCircleBeforeDiveSeconds) return false
-      if (this.plan.kind === 'circle' && this.plan.turned < 110 * DEG && circling < 1.6) return false
+      if (this.plan.kind === 'circle' && this.plan.turned < FALCON_CIRCLE_ARC && circling < FALCON_CIRCLE_SECONDS) return false
     }
-    if (!falling && !isPrey) {
+    if (!falling && !isPrey && !gift) {
       // écran titre : une démo doit montrer des piqués, les bots y sont plus joueurs
       let chance = this.traits.opportunism + (this.state.config.mode === 'demo' ? DEMO_FLAIR : 0)
       // au couchant, une traînée vaut cher : les meilleurs piquent davantage
@@ -660,7 +791,7 @@ export class BotBrain implements Bot {
     const ic = predictInterception(this.state, this.slot, target)
     let good = ic.t <= RULES.diveWindup + 0.95 && me.z - t.z >= RULES.diveLockDz
     if (good && this.lp.towers !== 'ignore' && wouldBeHidden(this.state, ic.x, ic.y, t.z)) good = false
-    if (!good && this.personality !== 'fool' && this.badRoll >= this.lp.badDiveChance) return false
+    if (!good && !gift && this.personality !== 'fool' && this.badRoll >= this.lp.badDiveChance) return false
     if (this.lp.victims === 'optimal' && !t.crown) {
       // espérance : traînée volée contre le temps perdu si l'on plante
       const sun = this.state.sun
@@ -677,10 +808,20 @@ export class BotBrain implements Bot {
   victimAllowed(t: Seen): boolean {
     switch (this.lp.victims) {
       case 'botsOrCrown':
-        return !t.assist && (t.crown || this.co.isBot(t.slot))
+        return !t.assist && (t.crown || this.co.isBot(t.slot) || this.isGiftTarget(t))
       default:
         return true
     }
+  }
+
+  /**
+   * Oisillon : un humain que personne n'a piqué depuis `giftDiveEvery` s redevient une
+   * victime (sinon, seul contre des Oisillons, on ne voit jamais un piqué arriver sur soi).
+   * Jamais un joueur en aide au vol (GDD §14.3).
+   */
+  isGiftTarget(t: Seen): boolean {
+    const every = this.lp.giftDiveEvery
+    return every > 0 && !t.assist && !t.crown && !this.co.isBot(t.slot) && this.co.sinceDivedOn(t.slot, this.now) >= every
   }
 
   // ─── Décision ─────────────────────────────────────────────────────────────
@@ -956,8 +1097,12 @@ export class BotBrain implements Bot {
       if (!this.victimAllowed(t) || !this.co.canEngage(this.slot, t.slot, this.now)) continue
       if (!t.crown && this.co.sinceHit(t.slot, this.now) < MERCY_SECONDS) continue
       const d = Math.hypot(t.x - me.x, t.y - me.y)
-      if (d > maxDist) continue
+      // Oisillon : l'humain oublié depuis longtemps est cherché plus loin, et préféré
+      const gift = this.isGiftTarget(t)
+      if (d > maxDist * (gift ? 2 : 1)) continue
       let score = d + 15
+      if (gift) score /= 3
+      if (!this.co.isBot(t.slot)) score /= this.lp.humanPreyBias
       if (t.crown) score /= 1 + RULES.botLeaderBias * (this.lp.victims === 'crownThenClosest' ? 2 : 1)
       if (this.lp.victims === 'optimal') {
         // grosse traînée (bas, étiré, en travers des ombres), coup d'aile en recharge
@@ -1085,7 +1230,7 @@ export class BotBrain implements Bot {
         const ty = t.y + t.vy * lead
         const d = Math.hypot(tx - me.x, ty - me.y)
         const bearing = Math.atan2(ty - me.y, tx - me.x)
-        const offset = d > 22 ? 35 : d < 12 ? 85 : 60
+        const offset = d > 22 ? 25 : d < 12 ? 80 : 50
         p.turned += Math.abs(angDiff(me.heading, p.lastHeading))
         p.lastHeading = me.heading
         return bearing - p.turn * offset * DEG
@@ -1164,12 +1309,26 @@ export class BotBrain implements Bot {
     }
     // PLONGER : maintenu en piqué (et seulement si on le veut), ou pour voler bas
     let hold = me.dive !== 'none' ? this.diveHold : this.diveHold || this.wantLow
-    if (hold && !this.held && !this.diveHold && me.lockTarget >= 0 && me.dive === 'none' && me.diveCooldown <= 0) {
+    const newLock = me.lockTarget >= 0 && me.lockTarget !== this.lockSeen
+    this.lockSeen = me.lockTarget
+    const canLaunch = !this.diveHold && me.lockTarget >= 0 && me.dive === 'none' && me.diveCooldown <= 0
+    if (hold && !this.held && this.letPassTick === this.state.tick - 1 && me.dive === 'none') {
+      // reprise de la descente juste après avoir laissé passer un verrouillage : pas un nouvel appui
+    } else if (hold && !this.held && canLaunch) {
       // appuyer avec une cible verrouillée, c'est piquer : on attend si on n'en veut pas
       if (this.acceptDive(me, me.lockTarget, true)) {
         this.launchDive(me, me.lockTarget)
         hold = true
       } else hold = false
+    } else if (hold && this.held && canLaunch && newLock) {
+      // PLONGER tenu quand une cible devient verrouillable : la sim va la piquer (« tomber
+      // dessus », GDD §8.2). Si on n'en veut pas, on relâche le temps d'un tick, puis on
+      // reprend la descente (aucun piqué lancé pour rien, aucune alerte pour rien).
+      if (this.acceptDive(me, me.lockTarget, true)) this.launchDive(me, me.lockTarget)
+      else {
+        hold = false
+        this.letPassTick = this.state.tick
+      }
     } else if (hold && !this.held) input.divePresses++
     input.dive = hold
     this.held = hold

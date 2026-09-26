@@ -56,6 +56,17 @@ export const cameraState = {
   podiumReady: false,
   /** Cadre visible au sol (m, repère sim) : centre et demi-dimensions (audio). */
   frame: { x: 0, y: 0, halfWidth: 100, halfHeight: 70 },
+  /** round : enveloppe du punch-in en cours (0..1) et nombre de punch-ins lancés (cumulé). */
+  punch: 0,
+  punchCount: 0,
+  /** round : part de l'écran couverte par les tours au-dessus de 20 m (estimation, 0..1). */
+  towerCover: 0,
+  /** title : défaut de composition de l'image (''= propre, 'near', 'wide', 'storm', 'ui' ; 4 Hz, debug). */
+  shotFault: '' as string,
+  /** round : boîte écran de l'ellipse de l'arène (fractions, origine en haut à gauche ; debug et scripts). */
+  arena: { x0: 0, x1: 0, y0: 0, y1: 0 },
+  /** roundResults : rectangle écran de la carte (fractions, origine en haut à gauche), une fois cadrée. */
+  mapRect: { x0: 0, x1: 0, y0: 0, y1: 0 },
 }
 
 export type CameraBeat =
@@ -63,12 +74,18 @@ export type CameraBeat =
   | { type: 'riseStart' }
   /** roundResults : l'illumination du territoire vient d'être lancée (illuminateTerritory). */
   | { type: 'illuminate'; winnerSlot: number }
-  /** roundResults : la carte est cadrée (fin de la montée) ; moment conseillé pour le décompte. */
-  | { type: 'mapReady' }
+  /**
+   * roundResults : la carte est cadrée (fin de la montée) ; moment conseillé pour le décompte.
+   * `rect` : boîte écran de l'arène à cet instant (fractions) ; elle suit ensuite une poussée très
+   * lente (3,5 % sur 14 s), lisible à chaque frame dans cameraState.mapRect.
+   */
+  | { type: 'mapReady'; rect?: { x0: number; x1: number; y0: number; y1: number } }
   /** podium : le plan est installé. */
   | { type: 'podiumReady' }
   /** Coupe sèche appliquée (changement de plan instantané). */
   | { type: 'cut'; mode: CameraMode }
+  /** round : « punch-in » sur une touche qui compte (couronne, humain, gros vol). */
+  | { type: 'punchIn'; hunter: number; target: number }
 
 /** Temps forts de la mise en scène (le runner, l'UI ou l'audio peuvent s'y abonner). */
 export const cameraBeats = new Emitter<CameraBeat>()

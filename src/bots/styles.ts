@@ -125,6 +125,25 @@ function bestBlock(bot: BotBrain, me: BirdState, field: Float32Array, radius: nu
 
 // ─── Faucon : chasse d'en haut, cercle avant le piqué ──────────────────────
 
+/**
+ * Début de la chasse (s, T = 110) : l'après-midi, comme les premiers piqués du GDD §3.
+ * Jusqu'à FALCON_FULL_APPETITE_AT, appétit réduit : longues pauses de peinture entre
+ * deux attaques (brain.onDiveOver).
+ */
+export const FALCON_HUNT_FROM = 15
+export const FALCON_FULL_APPETITE_AT = 40
+/** Portée de la quête d'une proie quand aucune n'est proche (m). */
+const FALCON_QUEST_RANGE = 110
+/** Avant le début de la chasse, secondes pendant lesquelles il se rapproche d'une proie. */
+const FALCON_STALK_SECONDS = 5
+/** Proie gardée (acharnement) tant qu'elle est à moins de … m ; au-delà, on rechoisit. */
+const FALCON_KEEP_RANGE = 60
+/**
+ * Approche lointaine : force du penchant vers la proie (fraction de l'échelle des valeurs).
+ * 0,6 le laissait peindre à 70 m de sa proie pendant 25 s (polish G1).
+ */
+const FALCON_APPROACH_GAIN = 1.0
+
 function falcon(bot: BotBrain, me: BirdState): void {
   const p = bot.plan
   // entre deux attaques, il peint pâle (haut)
@@ -132,19 +151,30 @@ function falcon(bot: BotBrain, me: BirdState): void {
     bot.setPaint(bot.paintChoice({ lowBias: bot.t110 >= RULES.phaseGoldenAt ? 1 : bot.traits.lowBias }))
     return
   }
-  // jusqu'au milieu de l'après-midi, il rafle le sable neutre : la chasse commence quand les traînées grossissent
-  const huntFrom = bot.state.config.mode === 'demo' ? 12 : 40
+  // à midi, il rafle le sable neutre ; la chasse commence l'après-midi
+  const huntFrom = bot.state.config.mode === 'demo' ? 12 : FALCON_HUNT_FROM
   if (bot.t110 < huntFrom && p.kind !== 'hunt' && p.kind !== 'circle') {
-    bot.setPaint(bot.paintChoice({ forceHigh: true }))
+    // les dernières secondes de midi, il se rapproche déjà d'une proie en peignant
+    const soon = bot.t110 >= huntFrom - FALCON_STALK_SECONDS ? bot.choosePrey(FALCON_QUEST_RANGE) : -1
+    const s = soon >= 0 ? bot.see(soon) : null
+    bot.setPaint(bot.paintChoice(s ? { forceHigh: true, goal: Math.atan2(s.y - me.y, s.x - me.x), goalGain: 0.4 } : { forceHigh: true }))
     return
   }
   // s'acharne : garde sa proie tant qu'elle reste ciblable
   let prey = -1
   if ((p.kind === 'hunt' || p.kind === 'circle') && p.target >= 0) {
     const t = bot.see(p.target)
-    if (t && !t.stunned && !t.hidden && !t.inNight && t.z <= RULES.altHigh - RULES.diveLockDz && bot.co.canEngage(bot.slot, p.target, bot.now)) prey = p.target
+    // (au-delà de FALCON_KEEP_RANGE, une proie plus proche peut la remplacer)
+    if (t && !t.stunned && !t.hidden && !t.inNight && t.z <= RULES.altHigh - RULES.diveLockDz && bot.co.canEngage(bot.slot, p.target, bot.now) && Math.hypot(t.x - me.x, t.y - me.y) < FALCON_KEEP_RANGE) prey = p.target
+  }
+  // Oisillon : l'humain que personne n'a piqué depuis longtemps passe avant la proie du moment
+  if (prey >= 0 && bot.lp.giftDiveEvery > 0) {
+    const g = bot.choosePrey(65)
+    if (g >= 0 && g !== prey && bot.isGiftTarget(bot.see(g)!)) prey = g
   }
   if (prey < 0) prey = bot.choosePrey(bot.state.sun.stretch > 3 ? 65 : 50)
+  // personne à portée : il part en quête (approche lointaine en peignant, voir plus bas)
+  if (prey < 0) prey = bot.choosePrey(FALCON_QUEST_RANGE)
   if (prey < 0) {
     bot.setPaint(bot.paintChoice())
     return
@@ -176,7 +206,7 @@ function falcon(bot: BotBrain, me: BirdState): void {
   }
   if (d > 45) {
     // approche lointaine : il peint en route, en penchant vers la proie
-    bot.setPaint(bot.paintChoice({ forceHigh: true, goal: Math.atan2(ic.y - me.y, ic.x - me.x), goalGain: 0.6 }), 'hunt')
+    bot.setPaint(bot.paintChoice({ forceHigh: true, goal: Math.atan2(ic.y - me.y, ic.x - me.x), goalGain: FALCON_APPROACH_GAIN }), 'hunt')
   } else bot.goTo('hunt', ic.x, ic.y, false, 3)
   bot.plan.target = prey
   bot.circleSince = -1

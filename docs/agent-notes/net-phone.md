@@ -108,3 +108,16 @@ Manette : joystick flottant (moitié gauche, rayon `RULES.joystickRadiusPx`, zon
 - iOS réel non testé (pas d'appareil) : Wake Lock natif ≥ 16.4, repli vidéo ; pas de plein écran sur iPhone ; paysage non verrouillable hors plein écran → mise en page portrait prévue. Inclinaison iOS : autorisation demandée depuis « Activer l'inclinaison » ou le choix du mode dans les réglages.
 - `RULES` ne contient pas encore les constantes du mode Relatif (demande).
 - Le téléphone n'affiche pas la liste des joueurs du salon (la TV le fait).
+
+## 8. Polish vague 1 (correcteur phone) — détail : docs/polish/fix-phone.md
+
+- **API** : `PhoneView.reduceFlashes?: boolean` (réglage « Réduire les flashs » du PC, rempli par `phoneView()` dans `src/host/runner/views.ts`). Optionnel : pas de changement de `PROTOCOL_VERSION`. Le téléphone pose `.reduce-flash` sur `.app` : ni éclair du clac, ni flash de bordure / de bandeau (remplaçants iOS), bordure rouge tenue sans pulsation, anneau de COUP D'AILE fixe, gloire de fin immobile.
+- **Géométrie des commandes** sur `.app` (`App.tsx` : `--stick-r`, `--dive-frac`, `--flap-frac` ; `phone.css` : `--dive`, `--flap`, `--flap-reserve`) : la manette et les cases du salon partagent les mêmes réserves. `Controller` ne pose plus ces variables.
+- **Salon** : colonne flex (`.ctl-overlay`) : objectifs bornés avant l'anneau de COUP D'AILE ; carte des règles dans `.lobby-mid` (colonne centrale entre le socle au repos et COUP D'AILE, taille selon la hauteur, `container-type: size`) ; carte à opacité 0 tant qu'un pouce est posé. Message « qui lance » dans le bandeau (`.band__wait`) en paysage, sous la carte en portrait. Socle au repos à 60 % de la hauteur au salon, « Pouce ici » à cheval sur le bas du socle.
+- **Messages** (`.toasts`) posés sur le bandeau, au-dessus de tout ; entrée / sortie par essuyage (pas de fondu). **Tampons** (`.fx__stamp`) sous le bandeau, au centre de la zone libre (44 %), sortie par essuyage.
+- **PIQUER** : rayons dans le disque (38 → 47 % du diamètre, tournés de 22,5°), battement au lieu de rotation.
+- **Petits paysages (≤ 360 px de haut)** : bandeau 50 px, boutons d'interface et textes resserrés ; les disques gardent les fractions RULES. Cartes avant la manche : « Compris » toujours visible, la grille cède / défile.
+- **Textes** : `NumText` / `splitNumbers` (chiffres en Averia dans un texte déjà formaté), `pluralOne` (« 0 soleil »), `sentenceLines` (copie de la règle TV) dans `src/phone/format.tsx` ; glossaire EN (strike / DIVE) dans `phone.ts`.
+- **Cartes des règles** : `rulePalette(color)` (RulesCards.tsx) peint la règle à la couleur du joueur (lavis fort KF16 / pâle KF80, bible §3.3) face à un rival contrasté.
+- **Fin de partie** (`src/phone/ui/Celebrate.tsx`) : `WinnerFlood` (lavis du vainqueur en 1,5 s, front mouillé), `InkGlory`, `DRUM_ROLL` (vibration) ; les autres voient leurs chiffres s'écrire à la plume (`.ink-write`).
+- **Page de dev** : scénarios `play-hit`, `play-toast`, `lobby-toast` ; `rf=1` = réduire les flashs. Outils : `tools/polish/phone/{gallery,phonegallery,one,frames}.mjs`.

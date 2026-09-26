@@ -120,3 +120,16 @@ describe('routeur', () => {
     expect(r.collect(state, [])[3]).toBeUndefined()
   })
 })
+
+describe('libellés des touches (polish G7)', () => {
+  it('joueur 2 : noms lisibles, jamais « ; » ni « AltGr » hors AZERTY', async () => {
+    const { localButtonLabels } = await import('./labels.ts')
+    const { setLang } = await import('../shared/i18n.ts')
+    setLang('en')
+    expect(localButtonLabels(2)).toEqual({ dive: 'Right Alt', flap: 'Semicolon' })
+    setLang('fr')
+    // sans disposition connue, le français suppose l'AZERTY : AltGr et la touche M
+    expect(localButtonLabels(2)).toEqual({ dive: 'AltGr', flap: 'M' })
+    expect(localButtonLabels(1)).toEqual({ dive: 'Espace', flap: 'Maj' })
+  })
+})

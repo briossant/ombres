@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { t } from '../../../shared/i18n.ts'
 import { Btn, HandFrame, Key } from '../components.tsx'
-import { CREDIT_GROUPS, TECH_CREDITS } from '../credits.ts'
+import { CREDIT_GROUPS, localizeCreditLine, TECH_CREDITS } from '../credits.ts'
 import { Logo } from '../Logo.tsx'
 import { useNavScope } from '../nav.ts'
 import { uiActions } from '../viewModel.ts'
@@ -82,7 +82,7 @@ export function Credits() {
             {CREDIT_GROUPS.map(g => (
               <section key={g.kind} className="credits__sec">
                 <h3 className="credits__h t-title">{t(`host.credits.${g.kind}`)}</h3>
-                {g.lines.map((l, k) => (
+                {g.lines.map(l0 => localizeCreditLine(l0)).map((l, k) => (
                   <p key={k} className="credits__line">
                     <span className="credits__main">{l.main}</span>
                     {l.sub ? <span className="credits__sub">{l.sub}</span> : null}

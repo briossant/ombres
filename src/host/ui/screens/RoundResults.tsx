@@ -6,14 +6,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { t } from '../../../shared/i18n.ts'
 import { PLAYER_COLORS } from '../../../shared/players.ts'
 import { RULES } from '../../../sim/rules.ts'
-import { Btn, HandFrame, Key, SandTimer } from '../components.tsx'
+import { Btn, HandFrame, Key, SandTimer, SlotName } from '../components.tsx'
 import { fmtNum, fmtPct, ordinal, slotDisplayName } from '../format.ts'
 import { Token } from '../glyphs.tsx'
 import { Icon } from '../icons.tsx'
-import { useNavScope } from '../nav.ts'
+import { uiSound, useNavScope } from '../nav.ts'
 import { currentScale } from '../scale.ts'
 import { uiActions, useRoster, useRoundResults, type RoundFactVM, type SlotVM } from '../viewModel.ts'
 import { withColor } from '../hud/Announce.tsx'
+import { MapPlate } from './MapPlate.tsx'
 import './results.css'
 
 /** Durée du décompte des parts (GDD §11.3 : 3 s). */
@@ -22,6 +23,10 @@ const REVEAL_MS = COUNT_MS + 250
 const SUNS_START_MS = REVEAL_MS + 500
 const SUN_STAGGER_MS = 240
 const SUN_FLIGHT_MS = 720
+/** Cadence du tic de décompte (≈ 11 Hz). */
+const COUNT_TICK_MS = 90
+/** Détail du calcul des soleils (première manche) : durée d'affichage. */
+const CALC_MS = 4200
 /** Durée pleine du sablier : l'entracte dure au plus RULES.interludeMaxSeconds. */
 const AUTO_TOTAL_S = RULES.interludeMaxSeconds
 
@@ -58,12 +63,29 @@ export function RoundResults() {
   const winners = r.rows.filter(x => x.rank === 1)
   const maxShare = Math.max(0.0001, ...r.rows.map(x => x.share))
   const dense = r.rows.length > 7
+  const mult = r.double ? RULES.lastRoundMultiplier : 1
+  // Première manche : le calcul des soleils s'anime sur la ligne du meilleur humain (sinon du premier).
+  const calcRow = r.round === 1 ? (r.rows.find(x => { const s = bySlot.get(x.slot); return s && (s.kind !== 'bot' || s.substitute) }) ?? r.rows[0]) : undefined
+
+  // Le décompte s'entend : un tic par ~90 ms, de plus en plus aigu.
+  useEffect(() => {
+    const t0 = performance.now()
+    const id = setInterval(() => {
+      const e = performance.now() - t0
+      if (e >= COUNT_MS) {
+        clearInterval(id)
+        return
+      }
+      uiSound('count', easeOut(e / COUNT_MS))
+    }, COUNT_TICK_MS)
+    return () => clearInterval(id)
+  }, [])
 
   // ─── Soleils qui volent vers les noms ───
   const panelRef = useRef<HTMLDivElement>(null)
   const sunRef = useRef<HTMLSpanElement>(null)
   const totalRefs = useRef<(HTMLSpanElement | null)[]>([])
-  const [flights, setFlights] = useState<{ id: number; x0: number; y0: number; x1: number; y1: number; delay: number }[]>([])
+  const [flights, setFlights] = useState<{ id: number; rank: number; x0: number; y0: number; x1: number; y1: number; delay: number }[]>([])
   useLayoutEffect(() => {
     const timer = setTimeout(() => {
       const panel = panelRef.current?.getBoundingClientRect()
@@ -78,6 +100,7 @@ export function RoundResults() {
         for (let j = 0; j < n; j++)
           list.push({
             id: i * 10 + j,
+            rank: row.rank - 1,
             x0: (src.left + src.width / 2 - panel.left) / s,
             y0: (src.top + src.height / 2 - panel.top) / s,
             x1: (dst.left + dst.width / 2 - panel.left) / s,
@@ -95,6 +118,12 @@ export function RoundResults() {
 
   return (
     <div className="screen round" ref={ref}>
+      <MapPlate
+        mapName={t(`host.map.${r.mapId}`)}
+        round={r.round}
+        winnerColor={!r.tie && winners[0] ? (bySlot.get(winners[0].slot)?.colorIndex ?? null) : null}
+        stamped={revealed}
+      />
       <HandFrame className={dense ? 'round__panel round__panel--dense enter' : 'round__panel enter'} seed={21}>
         <div className="round__inner" ref={panelRef}>
           <header className="round__head">
@@ -119,7 +148,9 @@ export function RoundResults() {
                 <span className="round__winner-pre">{t('host.round.winner')}</span>
                 <span className="round__winner-name">
                   <Token colorIndex={bySlot.get(winners[0].slot)?.colorIndex ?? 0} size={58} />
-                  <span className="t-title">{slotDisplayName(bySlot.get(winners[0].slot))}</span>
+                  <span className="t-title">
+                    <SlotName s={bySlot.get(winners[0].slot)} />
+                  </span>
                 </span>
               </>
             ) : null}
@@ -129,6 +160,9 @@ export function RoundResults() {
             <div className="round__thead">
               <span />
               <span />
+              <span className="round__sun-rule">
+                {t(r.double ? 'host.round.sunRuleDouble' : 'host.round.sunRule', { bonus: RULES.winnerBonusSuns, mult: RULES.lastRoundMultiplier })}
+              </span>
               <span className="round__th-suns">
                 <span className="round__sun-src" ref={sunRef}>
                   <Icon name="sun" size={34} stroke={2} />
@@ -144,13 +178,18 @@ export function RoundResults() {
                   <span className="rrow__rank t-num">{ordinal(row.rank)}</span>
                   <span className="rrow__who">
                     <Token colorIndex={s?.colorIndex ?? row.slot} size={dense ? 32 : 40} />
-                    <span className="rrow__name">{slotDisplayName(s)}</span>
+                    <span className="rrow__name">
+                      <SlotName s={s} />
+                    </span>
                     <span className="rrow__bar">
                       <span className="rrow__fill" style={{ width: `${(row.share / maxShare) * 100 * k}%`, background: PLAYER_COLORS[s?.colorIndex ?? 0]?.hex }} />
                     </span>
                     <span className="rrow__pct t-num">{fmtPct(row.share * k, 1)}</span>
                   </span>
                   <span className="rrow__suns">
+                    {row === calcRow && arrived ? (
+                      <SunCalc beaten={r.rows.filter(o => o.cells < row.cells).length} bonus={row.rank === 1 ? RULES.winnerBonusSuns : 0} mult={mult} total={row.suns} />
+                    ) : null}
                     <span className={arrived && row.suns > 0 ? 'rrow__gain t-num is-on' : 'rrow__gain t-num'}>+{row.suns}</span>
                     <span className="rrow__total t-num" ref={el => void (totalRefs.current[i] = el)}>
                       {arrived ? row.totalSuns : row.totalSuns - row.suns}
@@ -185,13 +224,49 @@ export function RoundResults() {
 }
 
 function Fact({ fact, s, show }: { fact: RoundFactVM; s: SlotVM | undefined; show: boolean }) {
-  const value = fact.kind === 'hunter' || fact.kind === 'dodger' ? fmtNum(fact.value) : fmtPct(fact.value, 1)
+  // écarts entre deux parts : des points, pas des pourcentages (« 14,8 pts d'avance »)
+  const pts = (frac: number) => t(frac * 100 < 2 ? 'host.fact.pt' : 'host.fact.pts', { n: fmtNum(frac * 100, 1) })
+  const value =
+    fact.kind === 'hunter' || fact.kind === 'dodger' ? fmtNum(fact.value) : fact.kind === 'landslide' || fact.kind === 'photoFinish' ? pts(fact.value) : fmtPct(fact.value, 1)
   const text = t(`host.fact.${fact.kind}`, { name: '{color}', value })
   return <p className={show ? 'round__fact recitatif wipe' : 'round__fact recitatif is-off'}>{withColor(text, s ? s.colorIndex : null, slotDisplayName(s))}</p>
 }
 
-function FlyingSun({ x0, y0, x1, y1, delay }: { x0: number; y0: number; x1: number; y1: number; delay: number }) {
+/**
+ * Le calcul des soleils, posé à côté du gain la première fois (GDD §11.1) :
+ * « 4 devancés + 1 = 5 » (« (4 + 1) × 2 = 10 » à la manche double), terme à terme.
+ */
+function SunCalc({ beaten, bonus, mult, total }: { beaten: number; bonus: number; mult: number; total: number }) {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const ids = [1, 2, 3].map(k => setTimeout(() => setStep(k), k * 380))
+    const end = setTimeout(() => setStep(4), CALC_MS)
+    return () => {
+      ids.forEach(clearTimeout)
+      clearTimeout(end)
+    }
+  }, [])
+  if (step >= 4) return null
+  const beatenTxt = t(beaten <= 1 ? 'host.round.calcBeaten1' : 'host.round.calcBeatenN', { n: beaten })
+  return (
+    <span className="sun-calc t-num" aria-hidden>
+      {mult > 1 && bonus ? <span>(</span> : null}
+      <span className="sun-calc__term">{beatenTxt}</span>
+      {bonus && step >= 1 ? <span className="sun-calc__term">+ {bonus}</span> : null}
+      {mult > 1 && bonus && step >= 1 ? <span>)</span> : null}
+      {mult > 1 && step >= 2 ? <span className="sun-calc__term">× {mult}</span> : null}
+      {step >= 3 ? <span className="sun-calc__term sun-calc__eq">= {total}</span> : null}
+    </span>
+  )
+}
+
+function FlyingSun({ x0, y0, x1, y1, delay, rank }: { x0: number; y0: number; x1: number; y1: number; delay: number; rank: number }) {
   const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    // le soleil tinte en arrivant sur le total (hauteur selon le rang)
+    const ding = setTimeout(() => uiSound('sun', rank), delay + SUN_FLIGHT_MS * 0.93)
+    return () => clearTimeout(ding)
+  }, [delay, rank])
   useEffect(() => {
     const el = ref.current
     if (!el) return

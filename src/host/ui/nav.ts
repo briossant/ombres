@@ -34,8 +34,12 @@ interface Scope {
 
 const stack: Scope[] = []
 
-/** Sons de navigation (ajout qa, phase 3) : le runner branche l'audio (`playUi`). Défaut : muet. */
-export type NavSound = 'hover' | 'toggle' | 'slider'
+/**
+ * Sons d'interface (ajout qa, phase 3) : le runner branche l'audio (`playUi`). Défaut : muet.
+ * 'count' : décompte des parts aux résultats (value 0..1 → hauteur) ; 'sun' : un soleil arrive
+ * sur un total (value = rang, 0 = premier).
+ */
+export type NavSound = 'hover' | 'toggle' | 'slider' | 'count' | 'sun'
 let navSound: (name: NavSound, value?: number) => void = () => undefined
 export function setNavSound(fn: (name: NavSound, value?: number) => void): void {
   navSound = fn

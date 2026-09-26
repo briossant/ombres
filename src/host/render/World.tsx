@@ -10,6 +10,8 @@ import { gameView } from '../view.ts'
 import { BirdFootprints } from './npr/footprints.ts'
 import { useNprFrame } from './npr/NprPipeline.tsx'
 import { QUALITY_PRESETS, type QualityLevel } from './quality.ts'
+import { updateBirdScreen } from './world/birdScreen.ts'
+import { updateCountdownSketch } from './world/countdownSketch.ts'
 import { applyWorldFrame, type WorldFrameResult } from './world/frame.ts'
 import { Ground } from './world/Ground.tsx'
 import { Horizon } from './world/Horizon.tsx'
@@ -55,6 +57,8 @@ export function World({ quality }: WorldProps) {
       if (key !== map.key) setMap({ key, arena: { a: sim.arena.a, b: sim.arena.b }, towers: sim.towers })
     }
     frame.current = applyWorldFrame(gameView, worldView, state.camera)
+    updateBirdScreen(gameView, state.camera, state.gl.domElement.width, state.gl.domElement.height)
+    updateCountdownSketch(gameView)
     if (sim) footprints.updateFromSim(sim, gameView.prevBirds, gameView.alpha)
     else footprints.update([], 0, 1, 0)
   }, -100)

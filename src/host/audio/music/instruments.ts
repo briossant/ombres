@@ -52,6 +52,8 @@ type ChordLayer = 'pad' | 'strings' | 'braam'
 
 export class Instruments {
   readonly out: GainNode
+  /** Relief du son direct de la partition (midi, après-midi), après `out`, avant le bus. */
+  private readonly lift: GainNode
   readonly layers = {} as Record<LayerName, GainNode>
   /** Oscillateur du trémolo des cordes (fréquence automatisée). */
   readonly stringsTremolo: OscillatorNode
@@ -87,6 +89,8 @@ export class Instruments {
     // Le graphe n'est relié au bus musique que pendant une manche (attach/detach) : hors
     // manche, rien n'y est calculé.
     this.out = ctx.createGain()
+    this.lift = ctx.createGain()
+    this.out.connect(this.lift)
     const groups = {} as Record<Group, GainNode>
     for (const gname of Object.keys(GROUP_VERB) as Group[]) {
       const g = ctx.createGain()
@@ -193,7 +197,7 @@ export class Instruments {
     if (this.detachTimer) clearTimeout(this.detachTimer)
     this.detachTimer = null
     if (this.attached) return
-    this.out.connect(this.engine.buses.music)
+    this.lift.connect(this.engine.buses.music)
     this.attached = true
   }
 
@@ -202,7 +206,7 @@ export class Instruments {
     if (!this.attached || this.engine.offline) return
     if (this.detachTimer) clearTimeout(this.detachTimer)
     this.detachTimer = setTimeout(() => {
-      this.out.disconnect()
+      this.lift.disconnect()
       this.attached = false
       this.detachTimer = null
     }, seconds * 1000)
@@ -365,6 +369,17 @@ export class Instruments {
     }
   }
 
+  /** Relief du son direct (dB) à l'instant `when`, en rampe de `seconds` (0 : immédiat). */
+  setLift(db: number, when: number, seconds: number): void {
+    const p = this.lift.gain
+    p.cancelScheduledValues(when)
+    if (seconds <= 0) p.setValueAtTime(dbToGain(db), when)
+    else {
+      p.setValueAtTime(p.value, when)
+      p.linearRampToValueAtTime(dbToGain(db), when + seconds)
+    }
+  }
+
   /** Réglage fin d'une couche (dB ajoutés au mixage ; −Infinity = muette). */
   setTrim(name: LayerName, db: number, when = this.engine.now): void {
     const g = db === -Infinity ? 0 : dbToGain(MIX[name].db + db)
@@ -402,5 +417,6 @@ export class Instruments {
       // déjà arrêté
     }
     this.out.disconnect()
+    this.lift.disconnect()
   }
 }

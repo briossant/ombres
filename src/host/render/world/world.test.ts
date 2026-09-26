@@ -94,6 +94,33 @@ describe('tours', () => {
       expect(zm).toBeGreaterThan(0)
     }
   })
+  it('cavité exacte sous les surplombs : anneaux 2 et 6 m sous chaque disque, creux < 0,25 seulement tout près', () => {
+    // polish W7 : la cavité (couche croisée des hachures) n'est plus interpolée sur tout un fût
+    const map = getMap('parasols', 6)
+    for (const t of map.towers) {
+      const { body } = buildTowerGeometries([t])
+      const pos = body.getAttribute('position') as THREE.BufferAttribute
+      const deco = body.getAttribute('tdeco') as THREE.BufferAttribute
+      const overhangs = t.segments.filter((s) => s.z1 - s.z0 < 1e-4 && s.r1 - s.r0 > 2.5).map((s) => s.z0)
+      for (const oz of overhangs) {
+        for (const d of [2, 6]) {
+          const z = oz - d
+          if (z <= 0.5) continue
+          let ring = 0
+          let cav = 1
+          for (let i = 0; i < pos.count; i++) {
+            if (Math.abs(pos.getY(i) - z) < 1e-4) {
+              ring++
+              cav = Math.min(cav, deco.getW(i))
+            }
+          }
+          expect(ring).toBeGreaterThan(0)
+          // 2 m sous le disque : cavité ≈ 0,38 (> 0,25 : pas de couche croisée) ; 6 m : aucune
+          expect(cav).toBeGreaterThan(d === 2 ? 0.3 : 0.95)
+        }
+      }
+    }
+  })
 })
 
 function fakeGrid(cols = 64, rows = 48): TerritoryGrid {

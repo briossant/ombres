@@ -5,7 +5,7 @@ import type { GameView } from '../../view.ts'
 import type { AudioEngine } from '../engine.ts'
 import type { AssetId } from '../manifest.gen.ts'
 import type { RoundMusic } from './round.ts'
-import { createTrack, type Track } from './tracks.ts'
+import { createTrack, RESULTS_STARTS, type Track } from './tracks.ts'
 
 /** Écrans du jeu vus par l'audio (l'UI appelle setScreen à chaque transition). */
 export type AudioScreen =
@@ -32,10 +32,14 @@ export class MusicDirector {
   private track: Track | null = null
   private round: RoundMusic | null = null
   private roundLoading: Promise<RoundMusic> | null = null
+  /** Écrans de résultats depuis le salon : chacun repart d'une autre section du morceau. */
+  private resultsShown = 0
 
   constructor(
     readonly engine: AudioEngine,
     private readonly getView: () => GameView,
+    /** Coup de bois d'une des 5 dernières secondes, joué par la partition sur le battement. */
+    private readonly onLastSecond?: (n: number, when: number) => void,
   ) {
     // avant le premier geste, le navigateur refuse de lancer les <audio> : on relance ensuite
     engine.onUnlock(() => this.track?.resume())
@@ -46,6 +50,7 @@ export class MusicDirector {
     const prev = this.screen
     this.screen = screen
     const wanted = TRACKS[screen]
+    if (screen === 'lobby' || screen === 'title') this.resultsShown = 0
     // même piste (lobby → intro) : on garde, juste un peu plus bas pendant les règles
     if (wanted && this.track?.id === wanted) {
       this.track.setDb(screen === 'intro' ? -4 : 0, 1.5)
@@ -57,7 +62,8 @@ export class MusicDirector {
         // après une manche, on laisse le gong respirer avant les résultats
         const delay = prev === 'round' ? 1.2 : 0.3
         const fade = screen === 'title' ? 3 : screen === 'roundResults' || screen === 'gameResults' ? 4 : 2.5
-        this.track?.start(fade, delay)
+        const startAt = screen === 'roundResults' ? RESULTS_STARTS[this.resultsShown++ % RESULTS_STARTS.length] : undefined
+        this.track?.start(fade, delay, startAt)
       }
     }
     if (screen === 'round') void this.loadRound()
@@ -70,7 +76,7 @@ export class MusicDirector {
   loadRound(): Promise<RoundMusic> {
     if (!this.roundLoading) {
       this.roundLoading = import('./round.ts').then(async m => {
-        const r = new m.RoundMusic(this.engine)
+        const r = new m.RoundMusic(this.engine, this.onLastSecond)
         await r.prepare()
         this.round = r
         return r

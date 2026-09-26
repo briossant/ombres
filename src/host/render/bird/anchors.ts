@@ -37,19 +37,31 @@ export const birdAnchors = {
   scale: new Float32Array(MAX_PLAYERS).fill(1),
   /** Compteur de frames de <Birds />. */
   counter: 0,
+  /** Couronne affichée : slot porteur (−1 = aucune), centre et haut (three, monde), frame d'écriture. */
+  crown: { slot: -1, frame: -1, cx: 0, cy: 0, cz: 0, tx: 0, ty: 0, tz: 0 },
 }
 
 export const anchorOffset = (slot: number, name: AnchorName): number => slot * STRIDE + ANCHOR_NAMES.indexOf(name) * 3
 
 /**
- * Hauteur (m, avant échelle) de la couronne au-dessus du cavalier, le long du
- * « haut » de l'écran : 3,5 m caméra à l'horizontale (ART_BIBLE : 3 m au-dessus
- * du cavalier), jusqu'à 5,7 m en plongée, pour dégager le bec de l'oiseau quand
- * il vole vers le haut de l'écran. `downness` = |composante verticale de la visée|.
+ * Hauteur (m) de la base de la couronne au-dessus du cavalier, le long du « haut »
+ * de l'écran (ART_BIBLE §6.7 : ≈ 3 m) : 2,5 m caméra à l'horizontale, 3,5 m en
+ * plongée. `downness` = |composante verticale de la visée|. Jamais multipliée par
+ * l'échelle cosmétique au-delà de 1 (polish B4 : la couronne flottait 80 à 340 px
+ * au-dessus du meneur).
  */
-export const crownLift = (downness: number): number => 3.5 + 2.2 * Math.min(1, Math.abs(downness))
+export const crownLift = (downness: number): number => 2.5 + 1.0 * Math.min(1, Math.abs(downness))
 
-/** Hauteur (m, avant échelle) de la pile d'icônes (chevron, « ! »…) : au-dessus de la couronne s'il y en a une. */
-export const iconLift = (downness: number, crowned: boolean): number => (crowned ? crownLift(downness) + 2.8 : 2.4 + 1.8 * Math.min(1, Math.abs(downness)))
+/**
+ * Podium (mode perch) : la couronne est posée juste au-dessus de la tête de l'oiseau.
+ * Hauteur (m, × échelle de l'oiseau, 1 au podium) du HAUT de la couronne au-dessus de
+ * l'ancre `head` : la mise en scène doit garder cette hauteur libre sous le bandeau.
+ */
+export const PERCH_CROWN_TOP_M = 1.1
+/** Podium : écart (m) entre l'ancre `head` et la base de la couronne. */
+export const PERCH_CROWN_LIFT_M = 0.32
+
+/** Hauteur (m, avant échelle) de la pile d'icônes (chevron, « ! »…) sans couronne ; avec couronne, la pile part du haut de la couronne (`birdAnchors.crown`). */
+export const iconLift = (downness: number, crowned: boolean): number => (crowned ? crownLift(downness) + 1.6 : 2.4 + 1.8 * Math.min(1, Math.abs(downness)))
 
 export const ANCHOR_STRIDE = STRIDE

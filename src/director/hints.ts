@@ -94,6 +94,11 @@ interface PendingHint {
   colorIndex?: number
   /** L'indication est-elle encore d'actualité ? */
   valid: (s: SimState) => boolean
+  /**
+   * « dodge » : chasseur dont on attend le clac (diveCommit) avant d'afficher, −1 sinon.
+   * Une feinte annule le piqué avant le clac : l'indication tombe sans être marquée vue.
+   */
+  awaitClacFrom?: number
 }
 
 interface PlayerTrack {
@@ -113,6 +118,11 @@ const PALE_EVENT_HOLD = 0.5
 const PALE_ON_STRONG_FRAC = 0.5
 /** Au-delà, une indication d'événement (verrouillage, piqué) qui n'a pas pu s'afficher est oubliée (s). */
 const EVENT_HINT_MAX_AGE = 3
+/**
+ * Plus aucune bulle individuelle à partir de la Grande Ombre (tout le monde fuit vers l'est ;
+ * seul le bandeau parle), ni dans les … s qui la précèdent (T = 110) : une bulle dure 2,5 à 6 s.
+ */
+const QUIET_BEFORE_GREAT_SHADOW = 1.5
 const NO_CUES: readonly HintCue[] = Object.freeze([])
 
 // ─── Mémoires fournies ──────────────────────────────────────────────────────
@@ -250,7 +260,13 @@ export class HintsDirector {
     const now = state.time
     let out: HintCue[] | null = null // appelé à 30 Hz : on n'alloue que s'il y a quelque chose à montrer
     const emit = (cue: HintCue) => void (out ??= []).push(cue)
-    for (const e of events) this.onEvent(e, now, emit)
+    const quiet = sun.phase === 'greatShadow' || sun.t >= (RULES.greatShadowAt - QUIET_BEFORE_GREAT_SHADOW) * (sun.T / RULES.roundSunSeconds)
+    for (const e of events) this.onEvent(e, now, emit, quiet)
+    if (quiet) {
+      // la fin de manche appartient au bandeau de la Grande Ombre : les bulles en attente tombent
+      this.clear()
+      return out ?? NO_CUES
+    }
     for (const b of state.birds) {
       if (this.players[b.slot]?.human) this.watchBird(state, b, now, inputs?.[b.slot])
     }
@@ -268,13 +284,14 @@ export class HintsDirector {
 
   // ─── Événements ───────────────────────────────────────────────────────────
 
-  private onEvent(e: SimEvent, now: number, out: (cue: HintCue) => void): void {
+  private onEvent(e: SimEvent, now: number, out: (cue: HintCue) => void, quiet: boolean): void {
     switch (e.type) {
       case 'phase':
         if (e.phase === 'golden' || e.phase === 'greatShadow') this.broadcast(e.phase, -1, now, out)
         break
       case 'crown':
-        if (e.slot >= 0 && !this.crownSeenThisMatch) {
+        // bulle sur le couronné : pas pendant la fuite de la Grande Ombre (elle attendra une autre couronne)
+        if (e.slot >= 0 && !this.crownSeenThisMatch && !quiet) {
           this.crownSeenThisMatch = true
           this.broadcast('crown', e.slot, now, out)
         }
@@ -291,16 +308,23 @@ export class HintsDirector {
         break
       }
       case 'diveWindup':
-        if (!this.players[e.target]?.human) break
+        // mise en file à la prise d'élan, montrée seulement au clac (« Au clac : COUP D'AILE ! »)
+        if (!this.players[e.target]?.human || quiet) break
         this.queue(e.target, {
           hintId: 'dodge',
           since: now,
+          awaitClacFrom: e.hunter,
           valid: s => {
             const h = s.bySlot[e.hunter]
             return !!h && h.dive !== 'none' && h.diveTarget === e.target && s.time - now <= EVENT_HINT_MAX_AGE
           },
         })
         break
+      case 'diveCommit': {
+        const tr = this.tracks[e.target]
+        if (tr) for (const q of tr.pending) if (q.hintId === 'dodge' && q.awaitClacFrom === e.hunter) q.awaitClacFrom = -1
+        break
+      }
       case 'paleOnStrong':
         this.track(e.slot).lastPaleEventAt = now
         break
@@ -398,9 +422,15 @@ export class HintsDirector {
     if (!tr?.pending.length) return null
     // Tri sur place des indications encore d'actualité (30 Hz : pas d'allocation).
     let n = 0
-    for (const h of tr.pending) if (this.eligible(slot, h.hintId) && h.valid(state)) tr.pending[n++] = h
+    let awaiting = false
+    for (const h of tr.pending) {
+      if (!this.eligible(slot, h.hintId) || !h.valid(state)) continue
+      tr.pending[n++] = h
+      if ((h.awaitClacFrom ?? -1) >= 0) awaiting = true
+    }
     tr.pending.length = n
-    if (!n || now - tr.lastHintAt < RULES.hintMinGap) return null
+    // un piqué arrive sur lui : rien d'autre avant son clac (l'indication du coup d'aile passe alors devant)
+    if (!n || awaiting || now - tr.lastHintAt < RULES.hintMinGap) return null
     tr.pending.sort((a, b) => HINT_DEFS[a.hintId].urgency - HINT_DEFS[b.hintId].urgency || a.since - b.since)
     const h = tr.pending.shift()!
     return this.emit(slot, h.hintId, slot, now, h.colorIndex)

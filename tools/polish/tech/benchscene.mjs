@@ -1,0 +1,26 @@
+// QA technique : coût GPU de la scène sur laquelle tourne le banc de qualité (titre, 6 oiseaux de démo,
+// preset High) comparé à une manche à 12 oiseaux ; niveau retenu par le vrai banc (réglage « auto »).
+import { launch, newContext } from '../../lib/browser.mjs'
+import { ORIGIN, PROBE, sleep, waitFor, presetSettings, frameStats, pageNow } from './common.mjs'
+const browser = await launch()
+const ctx = await newContext(browser)
+const pc = await ctx.newPage()
+await pc.addInitScript(PROBE)
+await presetSettings(pc, { lang: 'fr', quality: 'high', narrator: 'off' })
+await pc.goto(`${ORIGIN}/?debug=nosave`, { waitUntil: 'load' })
+await waitFor(pc, () => window.__ombres?.useUi.getState().screen === 'title', null, 120000, 'titre')
+await sleep(2000)
+await pc.evaluate(() => (window.__probeGpu = true))
+const t0 = await pageNow(pc)
+await sleep(12000)
+console.log('titre High (scène du banc) :', JSON.stringify(await frameStats(pc, t0)))
+await ctx.close()
+// vrai banc, réglage auto, premier lancement (aucun résultat mémorisé)
+const ctx2 = await newContext(browser)
+const p2 = await ctx2.newPage()
+await presetSettings(p2, { lang: 'fr', quality: 'auto', narrator: 'off' })
+await p2.goto(`${ORIGIN}/?debug=nosave`, { waitUntil: 'load' })
+await waitFor(p2, () => window.__ombres?.useUi.getState().screen === 'title', null, 120000, 'titre')
+await sleep(8000)
+console.log('banc auto :', await p2.evaluate(() => ({ bench: localStorage.getItem('ombres.qualityBench.v1'), level: window.__ombres.useRenderQuality.getState().level })))
+await browser.close()

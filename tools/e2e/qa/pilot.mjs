@@ -72,10 +72,20 @@ export class PhonePilot {
     const cdp = this.ph.cdp
     let pts = new Map()
     let lastFlap = 0
-    // CDP : touchEnd ne porte aucun point (relâche tout) ; relâcher UN doigt = touchMove sans lui.
-    const send = type => {
-      if (type === 'touchEnd' && pts.size) type = 'touchMove'
-      return cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [...pts.values()] })
+    // Base du joystick (flottant : son centre se pose là où le pouce touche).
+    let stickBase = null
+    // CDP : un touchMove qui ne porte plus un doigt ne le relâche PAS (le bouton reste enfoncé),
+    // un touchEnd avec les points restants non plus (vérifié : tools/polish/lead/release-check.mjs).
+    // Relâcher UN doigt = touchEnd vide (tout est relâché) puis touchStart des doigts restants,
+    // le joystick reposé à sa base puis ramené à sa position.
+    const send = async type => {
+      if (type !== 'touchEnd') return cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [...pts.values()] })
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+      if (!pts.size) return
+      const cur = [...pts.values()]
+      const stick = pts.get(1)
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: stick && stickBase ? cur.map(p => (p.id === 1 ? tp(1, stickBase.x, stickBase.y) : p)) : cur })
+      if (stick) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: cur })
     }
     while (this.on) {
       const b = await birdState(this.pc, this.getSlot()).catch(() => null)
@@ -93,6 +103,7 @@ export class PhonePilot {
       const sx = zone.x + zone.width * 0.45
       const sy = zone.y + zone.height * 0.55
       const R = 60
+      stickBase = { x: sx, y: sy }
       if (!pts.has(1)) {
         pts.set(1, tp(1, sx, sy))
         await send('touchStart')

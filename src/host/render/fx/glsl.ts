@@ -17,6 +17,7 @@ export const SHAPE = {
   cross4: 8,
   dot: 9,
   clod: 10,
+  arc: 11,
 } as const
 
 export type ShapeId = (typeof SHAPE)[keyof typeof SHAPE]
@@ -81,6 +82,17 @@ void fxShape(int k, vec2 p, vec4 prm, out float dBody, out float dInk){
     dBody = length(p) - 0.8;
   } else if (k == ${SHAPE.clod}) {
     dInk = length(p / vec2(1.0, 0.55)) * 0.55 - 0.5;
+  } else if (k == ${SHAPE.arc}) {
+    // Arc de souffle (esquive) : deux arcs concentriques centrés sur +x, épais au milieu,
+    // effilés aux extrémités ; prm.x = demi-ouverture (rad), prm.y = épaisseur relative.
+    float a = atan(p.y, p.x);
+    float t = clamp(1.0 - abs(a) / max(prm.x, 1e-3), 0.0, 1.0);
+    float w = prm.y * sqrt(t);
+    float r = length(p);
+    float d1 = abs(r - 0.86) - w;
+    float d2 = abs(r - 0.64) - w * 0.7;
+    float cut = (abs(a) - prm.x) * r;
+    dInk = max(min(d1, d2), cut);
   }
 }
 `

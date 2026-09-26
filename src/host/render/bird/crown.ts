@@ -1,81 +1,48 @@
-// Couronne du meneur (ART_BIBLE §6.7) : petite couronne à 3 pointes, remplie
-// d'or pâle #FFF2C3, cernée d'encre (coque inversée), qui flotte au-dessus du
-// cavalier. Maillage procédural (bande évasée à profil biseauté).
-import { BackSide, BufferGeometry, Float32BufferAttribute, Group, Mesh, ShaderMaterial, Uint16BufferAttribute } from 'three'
+// Couronne du meneur (ART_BIBLE §6.7) : silhouette plate à 3 pointes plus larges
+// que hautes (perles aux pointes), présentée de face, remplie d'or pâle #FFF2C3 en
+// aplat NON éclairé (un signe, jamais grisé par le contre-jour ni par la nuit) et
+// cernée d'encre (coque inversée de 1,5 px + ID d'encre propre). Le contrôleur la
+// pose au-dessus du cavalier (jeu), sur sa capuche (gros plans) ou 1 m au-dessus
+// (podium). Largeur de référence : 2,4 m ; origine au milieu de la base.
+import { BackSide, ExtrudeGeometry, Group, Mesh, ShaderMaterial, Shape, type BufferGeometry } from 'three'
 import { GLSL_PRELUDE, GLSL_VERTEX_PRELUDE, OUTLINE_ID, nprUniforms } from './npr.ts'
 
-/** Hauteur totale de la couronne (m) ; son diamètre est ~2,4 m. */
-export const CROWN_HEIGHT = 1.15
+/** Largeur de référence de la couronne (m, échelle 1). */
+export const CROWN_WIDTH = 2.4
+/** Hauteur totale (m, perles comprises). */
+export const CROWN_HEIGHT = 1.3
 
 function crownGeometry(): BufferGeometry {
-  const N = 96
-  const pos: number[] = []
-  const idx: number[] = []
-  const R = 0.95
-  const T = 0.11
-  const b = 0.035
-  const top = (th: number): number => {
-    let pk = 0
-    for (let k = 0; k < 3; k++) {
-      let d = Math.abs(th - (k * Math.PI * 2) / 3)
-      d = Math.min(d, Math.PI * 2 - d)
-      pk = Math.max(pk, Math.max(0, 1 - d / (Math.PI / 3)) ** 1.35)
-    }
-    return 0.42 + 0.73 * pk
+  // Bandeau + trois pointes (celle du milieu plus haute), tracé dans le plan XY, y vers le haut.
+  const s = new Shape()
+  s.moveTo(-1.0, 0)
+  s.lineTo(1.0, 0)
+  s.lineTo(1.02, 0.36)
+  s.lineTo(1.2, 1.0)
+  s.lineTo(0.52, 0.6)
+  s.lineTo(0, 1.12)
+  s.lineTo(-0.52, 0.6)
+  s.lineTo(-1.2, 1.0)
+  s.lineTo(-1.02, 0.36)
+  s.closePath()
+  const pearl = (x: number, y: number, r: number): Shape => {
+    const p = new Shape()
+    p.absarc(x, y, r, 0, Math.PI * 2, false)
+    return p
   }
-  // Profil (dans le demi-plan r, y) : extérieur bas → extérieur haut → intérieur haut → intérieur bas, biseautés.
-  const prof = (th: number): Array<[number, number]> => {
-    const yt = top(th)
-    const fl = (y: number) => 0.12 * y
-    return [
-      [R + b, 0],
-      [R + b + fl(b), b],
-      [R + b + fl(yt - b), yt - b],
-      [R + fl(yt), yt],
-      [R - T + fl(yt), yt],
-      [R - T - b + fl(yt - b), yt - b],
-      [R - T - b + fl(b), b],
-      [R - T, 0],
-    ]
-  }
-  const M = 8
-  for (let i = 0; i < N; i++) {
-    const th = (i / N) * Math.PI * 2
-    const c = Math.cos(th)
-    const s = Math.sin(th)
-    for (const [r, y] of prof(th)) pos.push(r * s, y, r * c)
-  }
-  for (let i = 0; i < N; i++) {
-    const i2 = (i + 1) % N
-    for (let j = 0; j < M; j++) {
-      const j2 = (j + 1) % M
-      const a = i * M + j
-      const bb = i * M + j2
-      const cc = i2 * M + j
-      const d = i2 * M + j2
-      idx.push(a, cc, bb, bb, cc, d)
-    }
-  }
-  const g = new BufferGeometry()
-  g.setAttribute('position', new Float32BufferAttribute(pos, 3))
-  g.setIndex(new Uint16BufferAttribute(idx, 1))
-  g.computeVertexNormals()
+  const shapes = [s, pearl(-1.2, 1.03, 0.14), pearl(0, 1.16, 0.14), pearl(1.2, 1.03, 0.14)]
+  const g = new ExtrudeGeometry(shapes, { depth: 0.22, bevelEnabled: false, curveSegments: 10 })
+  g.translate(0, 0, -0.11)
+  g.computeBoundingSphere()
   return g
 }
 
 const VERT = /* glsl */ `
-varying vec3 vWorld;
-varying vec3 vNormalW;
 varying vec3 vViewN;
 varying float vDist;
-varying vec3 vObj;
 void main(){
-  vec4 wp = modelMatrix * vec4(position, 1.0);
-  vWorld = wp.xyz;
-  vNormalW = normalize(mat3(modelMatrix) * normal);
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
   vViewN = normalize(normalMatrix * normal);
-  vObj = position;
-  vec4 mv = viewMatrix * wp;
   vDist = length(mv.xyz);
   gl_Position = projectionMatrix * mv;
 }
@@ -83,23 +50,11 @@ void main(){
 
 const FRAG = /* glsl */ `
 ${GLSL_PRELUDE}
-varying vec3 vWorld;
-varying vec3 vNormalW;
 varying vec3 vViewN;
 varying float vDist;
-varying vec3 vObj;
 void main(){
-  float nd = nightDist(vWorld.xz);
-  float n = nightMask(nd, max(fwidth(nd), 1e-3));
-  vec3 N = normalize(vNormalW);
-  float ndl = dot(N, uSunDir);
-  float lit = nprTerminator(ndl, max(fwidth(ndl), 1e-4));
-  // L'or reste lumineux (c'est un signe), à peine teinté par la lumière.
-  vec3 litC = mix(uCrownGold, birdLitOf(uCrownGold, n), 0.5);
-  vec3 l = lin2oklab(litC), s = lin2oklab(palCast(n));
-  vec3 shadeC = oklab2lin(vec3(l.x * 0.82, mix(l.yz, s.yz, 0.3)));
-  vec3 col = mix(shadeC, litC, lit);
-  col = applyFog(col, fogAt(vDist), n);
+  // Aplat d'or pâle, à peine brumé au loin (le signe reste lisible).
+  vec3 col = mix(uCrownGold, fogColor(fogAt(vDist), 0.0), fogAt(vDist) * 0.3);
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
   writeGBuffer(vViewN, ${OUTLINE_ID.crown}.0);
@@ -111,9 +66,7 @@ ${GLSL_VERTEX_PRELUDE}
 uniform float uWidth;
 varying vec3 vViewN;
 varying float vDist;
-varying vec3 vWorld;
 void main(){
-  vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   vec4 clip = projectionMatrix * mv;
   vec3 nV = normalize(normalMatrix * normal);
@@ -130,12 +83,9 @@ const HULL_FRAG = /* glsl */ `
 ${GLSL_PRELUDE}
 varying vec3 vViewN;
 varying float vDist;
-varying vec3 vWorld;
 void main(){
-  float nd = nightDist(vWorld.xz);
-  float n = nightMask(nd, max(fwidth(nd), 1e-3));
   float f = fogAt(vDist);
-  gl_FragColor = vec4(mix(palInk(n), fogColor(f, n), f * 0.8), 1.0);
+  gl_FragColor = vec4(mix(uInk, fogColor(f, 0.0), f * 0.5), 1.0);
   #include <colorspace_fragment>
   writeGBuffer(vViewN, ${OUTLINE_ID.crown}.0);
 }

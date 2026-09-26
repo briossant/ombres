@@ -75,6 +75,7 @@ export const RULES = {
   stickDeadzone: 0.2,
   wingspan: 11,
   birdRenderScaleMax: 1.3,
+  birdRenderScaleMaxCrowded: 1.6,
   bumpDist: 6,
   bumpDz: 3,
   bumpImpulse: 5,
@@ -139,6 +140,8 @@ export const RULES = {
   crownHysteresis: 2,
   bigStealFrac: 0.03,
   titleRapaceMin: 3,
+  /** Polish G10 : le Rapace revient d'office à qui fait au moins … × la moyenne des touches. */
+  titleRapaceDominance: 2,
   titleGibierMin: 3,
   titleAnguilleMin: 2,
   titleKamikazeMin: 3,
@@ -170,6 +173,19 @@ export const RULES = {
   hitSlowmoSeconds: 0.35,
   hitSlowmoRampSeconds: 0.2,
   hitSlowmoMinGap: 6,
+  // Polish vague 1 (G4) : hiérarchie des impacts. Le flash « planche » (bible §6.8) est réservé
+  // aux touches qui comptent : couronne, humain impliqué, ou vol d'au moins cette part de l'arène ;
+  // au plus un toutes les plancheFlashMinGap s (temps réel). Esquive d'un humain : court ralenti.
+  plancheFlashMinStealFrac: 0.01,
+  plancheFlashMinGap: 6,
+  // Au plus … flashs par manche ; les touches « mineures » (humain impliqué, hors couronne,
+  // vol < 1 %) n'en prennent que … et attendent … s depuis le flash précédent (mesuré avec un
+  // pilote clavier très actif à 12 oiseaux : 5 flashs par manche sans ces bornes).
+  plancheFlashMaxPerRound: 4,
+  plancheFlashMinorMaxPerRound: 2,
+  plancheFlashMinorGap: 12,
+  dodgeSlowmoScale: 0.6,
+  dodgeSlowmoSeconds: 0.2,
   noSlowmoLastSeconds: 3,
   hudDialHeightFrac: 0.18,
   hudBarWidthFrac: 0.46,

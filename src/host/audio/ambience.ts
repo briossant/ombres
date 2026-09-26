@@ -10,6 +10,7 @@ import type { SimState } from '../../sim/types.ts'
 import type { GameView } from '../view.ts'
 import type { AudioEngine } from './engine.ts'
 import { AUDIO_ASSETS, type AssetId } from './manifest.gen.ts'
+import { fmBell } from './music/synth.ts'
 import { noiseBuffer, sandGrainBuffer } from './procedural.ts'
 import type { SfxSystem } from './sfx.ts'
 import { clamp, dbToGain, glide, lerp, Rng, smoothstep, stepTo } from './util.ts'
@@ -112,9 +113,19 @@ const LOOPS = {
   howl: 'amb_wind_howl_loop',
   storm: 'amb_wind_dark_loop',
   crickets: 'amb_night_crickets_loop',
-  chimes: 'amb_chimes_loop',
   sand: 'sand_paint_loop',
 } as const satisfies Record<string, AssetId>
+
+/**
+ * Carillon du salon : lames accordées en sol majeur pentatonique (sol, la, si, ré, mi), comme la
+ * boucle du salon. Le carillon enregistré (amb_chimes_loop) sonnait en fa −24 cents : un quart de
+ * ton faux sous la musique.
+ */
+const LOBBY_CHIMES = [79, 81, 83, 86, 88, 91]
+/** Niveau du carillon (dB appliqués aux cloches FM, bus ambiance). */
+const CHIME_DB = -17
+/** Gel de la nuit : toutes les couches se taisent, puis le vent revient et les grillons montent. */
+const NIGHT_FREEZE_S = 1.3
 type LoopName = keyof typeof LOOPS
 
 /**
@@ -139,6 +150,9 @@ export class Ambience {
   private rng = new Rng(4242)
   private nextGust = 8
   private nextCry = 12
+  private nextChime = 3
+  /** Sorties du carillon : gauche, centre, droite (pas un panoramique par note). */
+  private chimeOuts: AudioNode[] = []
   private clock = 0
   private lastApply = -1
   private applyDt = 0
@@ -210,6 +224,18 @@ export class Ambience {
     {
       let b: AudioBuffer | undefined
       this.grains = new LoopLayer(e, () => (b ??= sandGrainBuffer(ctx, 4, 700, 17)), bq('highpass', 1400, 0.7), out, PROC_REF.grains, this.rng)
+    }
+    // carillon du salon : trois sorties fixes (gauche, centre, droite)
+    {
+      const g = ctx.createGain()
+      g.gain.value = dbToGain(CHIME_DB)
+      g.connect(out)
+      this.chimeOuts = [-0.6, 0, 0.6].map(pan => {
+        const p = ctx.createStereoPanner()
+        p.pan.value = pan
+        p.connect(g)
+        return p
+      })
     }
     // front de nuit : grondement très grave, panoramique suivant le front
     {
@@ -303,7 +329,9 @@ export class Ambience {
     const s = this.scene
     const world = s === 'round' || s === 'lobby' || s === 'title'
     const inRound = s === 'round' && mode === 'round'
-    const target: Record<LoopName, number> = { base: OFF, high: OFF, eerie: OFF, howl: OFF, storm: OFF, crickets: OFF, chimes: OFF, sand: OFF }
+    const target: Record<LoopName, number> = { base: OFF, high: OFF, eerie: OFF, howl: OFF, storm: OFF, crickets: OFF, sand: OFF }
+    // gel de la nuit : un vrai silence (le gong arrive à 1,5 s), puis le vent revient doucement
+    const frozen = m.night && this.nightAge < NIGHT_FREEZE_S
     // vent de base
     // nuit : le vent tombe presque à rien pendant le gel, puis revient doucement
     const nightDip = m.night ? lerp(-14, -7, clamp((this.nightAge - 1.5) / 4, 0, 1)) : 0
@@ -316,13 +344,12 @@ export class Ambience {
       // hurlement : monte pendant la Grande Ombre, retombe après la nuit
       // nuit : le vent tombe d'un coup (le « silence » du gel), puis les grillons montent
       if (m.greatShadow > 0 || m.night) target.howl = m.night ? lerp(-40, -48, clamp(this.nightAge / 5, 0, 1)) : lerp(-40, -24, m.greatShadow)
-      if (m.night) target.crickets = lerp(-55, -31, clamp((this.nightAge - 1.2) / 3, 0, 1))
+      if (m.night) target.crickets = lerp(-55, -31, clamp((this.nightAge - 1.5) / 3, 0, 1))
     } else if (s === 'title') {
       target.eerie = -38
       target.crickets = -40
     }
     if (s === 'results') target.crickets = -30
-    if (s === 'lobby') target.chimes = -31
     // Simoun : grondement à la position des oiseaux dans la tempête
     if (world && m.stormCount > 0 && !m.night) {
       target.storm = -26 + 3 * Math.log2(Math.min(4, m.stormCount))
@@ -332,14 +359,15 @@ export class Ambience {
     // midi 1 900 m²/s, heure dorée 1 500, couchant 2 600, Grande Ombre 3 150.
     const paint = world && !m.night ? clamp(Math.log10(Math.max(this.smoothPaint, 1) / 400) / Math.log10(5000 / 400), 0, 1) : 0
     if (paint > 0.02) target.sand = lerp(-44, -25, paint)
-    for (const k of Object.keys(this.loops) as LoopName[]) this.loops[k].set(target[k], when, dt)
+    if (frozen) for (const k of Object.keys(target) as LoopName[]) target[k] = OFF
+    for (const k of Object.keys(this.loops) as LoopName[]) this.loops[k].set(target[k], when, dt, frozen ? 0.04 : 0.25)
     this.lastTargets = target
     const sand = this.loops.sand.running
     if (sand) glide(sand.playbackRate, 0.9 + 0.3 * paint, when, 0.3, 0.02)
 
     // ─ vent procédural
     const titleDb = s === 'title' ? -6 : 0
-    this.body.layer.set(world && !(m.night && this.nightAge < 1.5) ? lerp(-40, -31, clamp(m.speed, 0, 1)) + titleDb + (m.night ? -12 : 0) : OFF, when, dt, m.night ? 0.08 : 0.3)
+    this.body.layer.set(world && !(m.night && this.nightAge < 1.5) ? lerp(-40, -31, clamp(m.speed, 0, 1)) + titleDb + (m.night ? -12 : 0) : OFF, when, dt, m.night ? 0.04 : 0.3)
     // le corps « respire » : centre du passe-bande sur deux sinus lents incommensurables
     stepTo(this.body.filter.frequency, 420 + 260 * Math.sin(this.clock * 0.23) * Math.sin(this.clock * 0.071 + 1.3), when, 0.015)
     this.whistle.layer.set(world && !m.night ? lerp(-52, -33, clamp(m.highFrac * (0.4 + 0.6 * m.speed), 0, 1)) + titleDb : OFF, when, dt, 0.3)
@@ -357,10 +385,29 @@ export class Ambience {
     } else this.front.layer.set(OFF, when, dt, m.night ? 0.02 : 0.5)
   }
 
-  /** Rafales au hasard, cris lointains sur l'écran titre. */
+  /** Quelques lames du carillon, secouées par le vent (une à trois, en arpège lent). */
+  private chime(): void {
+    const e = this.engine
+    const r = this.rng
+    const n = r.chance(0.5) ? 1 : r.chance(0.6) ? 2 : 3
+    let t = e.now + 0.02
+    for (let i = 0; i < n; i++) {
+      fmBell(r.pick(this.chimeOuts), r.pick(LOBBY_CHIMES), t, r.range(0.18, 0.32), { ratio: 3.01, index: 1.6, decay: 3.2, indexDecay: 0.5 })
+      t += r.range(0.12, 0.45)
+    }
+  }
+
+  /** Rafales au hasard, cris lointains sur l'écran titre, carillon du salon. */
   private randomEvents(dt: number, mode: string | undefined): void {
     const s = this.scene
     if (s !== 'round' && s !== 'lobby' && s !== 'title') return
+    if (s === 'lobby') {
+      this.nextChime -= dt
+      if (this.nextChime <= 0) {
+        this.nextChime = this.rng.range(3, 8)
+        this.chime()
+      }
+    }
     this.nextGust -= dt
     if (this.nextGust <= 0) {
       this.nextGust = this.rng.range(12, 25)

@@ -9,8 +9,8 @@ import { dbToGain, rampTo } from '../util.ts'
 
 export interface Track {
   readonly id: AssetId
-  /** Démarre avec un fondu d'entrée. */
-  start(fadeIn: number, delay?: number): void
+  /** Démarre avec un fondu d'entrée ; `startAt` (s) : départ dans le fichier (défaut : START_AT). */
+  start(fadeIn: number, delay?: number, startAt?: number): void
   /** Relance la lecture si le navigateur l'avait refusée (avant le premier geste). */
   resume(): void
   /** Fondu de sortie puis libération. */
@@ -21,8 +21,20 @@ export interface Track {
 
 /** Sonie visée des pistes (LUFS intégrés, bus musique à 1) : fichiers normalisés à −18. */
 const TRACK_DB = -2
+/**
+ * Correction par piste (dB). Titre : +2 dB, et départ à 13 s (voir START_AT) : la piste ouvre
+ * sur 13 s à −33/−38 LUFS, on n'entendait presque rien au premier clic.
+ */
+const TRACK_TRIM: Partial<Record<AssetId, number>> = { title_zhelanov_ambient_1: 2 }
 /** Début de lecture (s) : on saute les introductions presque muettes. */
-const START_AT: Partial<Record<AssetId, number>> = { podium_cynicmusic_lifewave2k: 4.6 }
+const START_AT: Partial<Record<AssetId, number>> = { podium_cynicmusic_lifewave2k: 4.6, title_zhelanov_ambient_1: 13 }
+/**
+ * Résultats de manche : départs successifs sur des débuts de section du morceau (mesurés : nouveauté
+ * spectrale et attaques, sections toutes les ~23 s), pour ne pas réentendre cinq fois la même intro.
+ */
+export const RESULTS_STARTS = [0, 43.95, 90.4, 21.85, 67.3] as const
+
+const trackDb = (id: AssetId, db = 0): number => dbToGain(TRACK_DB + (TRACK_TRIM[id] ?? 0) + db)
 
 class StreamTrack implements Track {
   private readonly out: GainNode
@@ -54,10 +66,10 @@ class StreamTrack implements Track {
     }
   }
 
-  start(fadeIn: number, delay = 0): void {
+  start(fadeIn: number, delay = 0, startAt?: number): void {
     const e = this.engine
     const t = e.now + delay
-    const target = dbToGain(TRACK_DB)
+    const target = trackDb(this.id)
     this.out.gain.cancelScheduledValues(e.now)
     this.out.gain.setValueAtTime(0, e.now)
     this.out.gain.setValueAtTime(0, t)
@@ -65,7 +77,7 @@ class StreamTrack implements Track {
     const go = () => {
       if (this.stopped) return
       const el = this.els[0]!
-      el.currentTime = START_AT[this.id] ?? 0
+      el.currentTime = startAt ?? START_AT[this.id] ?? 0
       void el.play().catch(() => {
         // lecture refusée (pas encore de geste) : resume() la relancera au déverrouillage
       })
@@ -84,7 +96,7 @@ class StreamTrack implements Track {
     const t = this.engine.now
     this.out.gain.cancelScheduledValues(t)
     this.out.gain.setValueAtTime(0, t)
-    this.out.gain.linearRampToValueAtTime(dbToGain(TRACK_DB), t + 2.5)
+    this.out.gain.linearRampToValueAtTime(trackDb(this.id), t + 2.5)
     void el.play().catch(() => {})
   }
 
@@ -132,25 +144,43 @@ class StreamTrack implements Track {
   }
 
   setDb(db: number, seconds = 1): void {
-    rampTo(this.out.gain, dbToGain(TRACK_DB + db), this.engine.now, seconds)
+    rampTo(this.out.gain, trackDb(this.id, db), this.engine.now, seconds)
   }
 }
 
+/**
+ * Variation d'une boucle courte : un passage sur deux est « B » (un peu plus sourd et plus bas),
+ * transitions lentes. La boucle du salon (24,5 s) devient un cycle de 49 s qui respire.
+ */
+const LOOP_B = { lowpassHz: 1900, db: -2.5, fade: 3 }
+
 class BufferTrack implements Track {
   private readonly out: GainNode
+  /** Variation A/B (passage sur deux) : passe-bas et gain automatisés aux coutures de la boucle. */
+  private readonly varFilter: BiquadFilterNode
+  private readonly varGain: GainNode
   private src: AudioBufferSourceNode | null = null
   private stopped = false
+  private varTimer: ReturnType<typeof setInterval> | null = null
+  private varNext = 0
 
   constructor(
     private readonly engine: AudioEngine,
     readonly id: AssetId,
   ) {
-    this.out = engine.ctx.createGain()
+    const ctx = engine.ctx
+    this.out = ctx.createGain()
     this.out.gain.value = 0
+    this.varFilter = ctx.createBiquadFilter()
+    this.varFilter.type = 'lowpass'
+    this.varFilter.frequency.value = 20000
+    this.varFilter.Q.value = 0.5
+    this.varGain = ctx.createGain()
+    this.varFilter.connect(this.varGain).connect(this.out)
     this.out.connect(engine.buses.music)
   }
 
-  start(fadeIn: number, delay = 0): void {
+  start(fadeIn: number, delay = 0, startAt = 0): void {
     const e = this.engine
     void e.assets.load(this.id).then(buf => {
       if (!buf || this.stopped) return
@@ -158,11 +188,32 @@ class BufferTrack implements Track {
       const src = e.ctx.createBufferSource()
       src.buffer = buf
       src.loop = true
-      src.connect(this.out)
-      src.start(t)
+      src.connect(this.varFilter)
+      const offset = startAt % buf.duration
+      src.start(t, offset)
       this.src = src
       this.out.gain.setValueAtTime(0, t)
-      this.out.gain.linearRampToValueAtTime(dbToGain(TRACK_DB), t + Math.max(0.05, fadeIn))
+      this.out.gain.linearRampToValueAtTime(trackDb(this.id), t + Math.max(0.05, fadeIn))
+      // coutures de la boucle : A, B, A, B… (programmées un passage à l'avance)
+      if (buf.duration < 60) {
+        const firstSeam = t + (buf.duration - offset)
+        this.varNext = 0
+        const plan = () => {
+          while (!this.stopped && firstSeam + this.varNext * buf.duration < e.now + buf.duration * 1.5) {
+            const seam = firstSeam + this.varNext * buf.duration
+            const b = this.varNext % 2 === 0 // premier passage complet : B
+            const f = this.varFilter.frequency, g = this.varGain.gain
+            const t0 = Math.max(e.now, seam - LOOP_B.fade / 2)
+            f.setValueAtTime(b ? 20000 : LOOP_B.lowpassHz, t0)
+            f.exponentialRampToValueAtTime(b ? LOOP_B.lowpassHz : 20000, t0 + LOOP_B.fade)
+            g.setValueAtTime(b ? 1 : dbToGain(LOOP_B.db), t0)
+            g.linearRampToValueAtTime(b ? dbToGain(LOOP_B.db) : 1, t0 + LOOP_B.fade)
+            this.varNext++
+          }
+        }
+        plan()
+        if (!e.offline) this.varTimer = setInterval(plan, 5000)
+      }
     })
   }
 
@@ -179,11 +230,12 @@ class BufferTrack implements Track {
     } catch {
       // pas encore démarrée
     }
+    if (this.varTimer) clearInterval(this.varTimer)
     setTimeout(() => this.out.disconnect(), (fadeOut + 0.5) * 1000)
   }
 
   setDb(db: number, seconds = 1): void {
-    rampTo(this.out.gain, dbToGain(TRACK_DB + db), this.engine.now, seconds)
+    rampTo(this.out.gain, trackDb(this.id, db), this.engine.now, seconds)
   }
 
   resume(): void {

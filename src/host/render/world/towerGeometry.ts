@@ -39,6 +39,8 @@ const RADIAL = 48
 const RULES_WIDE_MIN_Z = RULES.towerWideMinZ
 const WIDE = 5.3
 const SMOOTH_DEG = 38
+/** Profondeurs (m) des anneaux de cavité ajoutés sous chaque surplomb large (polish W7). */
+const CAVITY_RINGS = [2, 6] as const
 
 /** Parties d'une tour : décalage d'ID (encre aux frontières) et couleur. */
 const PART = { body: 0, crown: 1, disc: 2, tip: 3 } as const
@@ -65,6 +67,11 @@ interface Seg {
   cavityA: number
   cavityB: number
   zone: [number, number]
+  /**
+   * Anneaux intermédiaires (altitude, cavité) : 2 et 6 m sous chaque surplomb, pour que la
+   * cavité (couche croisée des hachures) ne soit pas interpolée sur des fûts de 20 m (polish W7).
+   */
+  inner?: Array<[number, number]>
 }
 
 function rng(seed: number): () => number {
@@ -252,6 +259,11 @@ function analyseBody(t: TowerDef, pts: Pt[]): Seg[] {
     } else {
       s.cavityA = cav(s.a.z)
       s.cavityB = cav(s.b.z)
+      if (s.b.z - s.a.z > 1) {
+        const zs = new Set<number>()
+        for (const oz of overhangs) for (const d of CAVITY_RINGS) if (oz - d > s.a.z + 0.25 && oz - d < s.b.z - 0.25) zs.add(oz - d)
+        if (zs.size) s.inner = [...zs].sort((x, y) => x - y).map((z) => [z, cav(z)])
+      }
     }
   }
   return segs
@@ -313,7 +325,17 @@ function buildBody(ctx: Ctx, segs: Seg[]): void {
     const canSmooth = (q: Seg | undefined): q is Seg => !!q && q.part === s.part && !flat(q) && !flat(s)
     const nA = (canSmooth(prev) && smoothNormal(prev.n, s.n)) || s.n
     const nB = (canSmooth(next) && smoothNormal(s.n, next.n)) || s.n
-    const lo = ring(ctx, s.a, nA, s, s.cavityA)
+    let lo = ring(ctx, s.a, nA, s, s.cavityA)
+    // anneaux intermédiaires (cavité exacte sous les surplombs) : même normale de segment droit
+    for (const [z, c] of s.inner ?? []) {
+      const k = (z - s.a.z) / (s.b.z - s.a.z)
+      const p: Pt = { r: s.a.r + (s.b.r - s.a.r) * k, z, ox: s.a.ox + (s.b.ox - s.a.ox) * k, oy: s.a.oy + (s.b.oy - s.a.oy) * k }
+      const n: [number, number] = [nA[0] + (nB[0] - nA[0]) * k, nA[1] + (nB[1] - nA[1]) * k]
+      const l = Math.hypot(n[0], n[1]) || 1
+      const mid = ring(ctx, p, [n[0] / l, n[1] / l], s, c)
+      bandFaces(ctx.b, lo, mid)
+      lo = mid
+    }
     const hi = ring(ctx, s.b, nB, s, s.cavityB)
     bandFaces(ctx.b, lo, hi)
   }

@@ -153,3 +153,28 @@ Transitions : entrée des panneaux (12 px + fondu, 220 ms, cascade de 45 ms), so
 `dev/ui.html?screen=loading|title|title-menu|lobby|lobby-empty|rules|hud|pause|settings|round|match|credits|reconnect|icons`
 `&lang=fr|en&n=1..12` ; HUD : `&phase=countdown|noon|afternoon|golden|sunset|great|last` ; `&cb=1` (daltonien) ; `&p=0..1` (chargement).
 Fond : captures de `docs/art/img`. `window.__ui` expose stores, aides et `simEvents` pour les scripts.
+
+---
+
+## Polish vague 1 (correcteur hostui, ordres H1-H15 de docs/polish/ORDERS.md)
+
+Compte rendu détaillé et preuves : `docs/polish/fix-hostui.md`. Changements d'API (tous compatibles) :
+
+| Où | Changement |
+|---|---|
+| `viewModel.ts` `HintVM` | + `slots: number[]` (joueurs concernés, `slot` = celui qui porte la bulle), `at`, `until` (performance.now). |
+| `showHint(slot, key, params, s)` | une bulle par joueur ; même texte (clé + params) affiché, ou apparu il y a < `HINT_MERGE_MS` (2 s) → le joueur rejoint la bulle (jetons) ; au plus `HINT_MAX_BUBBLES` (2) : la plus ancienne cède sa place si elle a vécu 1,2 s, sinon la nouvelle ne va qu'au téléphone. Expiration par balayage unique (`until`). |
+| `dismissHint(slot, key?)` (nouveau) | retire un joueur d'une bulle. `connectHudEvents` retire `hints.dodge` de la cible sur `diveHit`, `diveMiss`, `diveCancel`. |
+| `pulseTag(slot, s)` + `HudState.tagPulseUntil[]` | étiquette qui pulse ; `connectHudEvents` : COUP D'AILE (`flap`) dans les `FLAP_FIND_MS` (5 s) après « Envol ! ». |
+| `BannerVM` / `showBanner` | + `layout: 'case' \| 'strip'` (bandeau fin sous la bande de sable) et `arrow: 'northSouth' \| 'east'` (effet `HintEffect` du directeur). Heure dorée : flèche ↕ ; Grande Ombre : bandeau, flèche →, 2,5 s. |
+| `nav.ts` `NavSound` | + `'count'` (value 0..1) et `'sun'` (value = rang, 0 = premier) : `RoundResults` les joue (le runner les route vers `playUi`). |
+| `hud/WorldLayer.tsx` | prop `mode: 'round' \| 'lobby'`. Passe d'évitement (voir en tête du fichier), bulles hors des ancres (`.bubble` > `.hint`), étiquettes décalées avec trait de rappel, jeton humain 18 px au-delà de 6 oiseaux (`.world--crowded`), mannequin du salon (oiseau actif hors roster) : anneau-cible + étiquette. Au salon : pas de « +x % ». |
+| `components.tsx` | + `SlotName` (bot « Lagon · Faucon », caractère en petit ; `stacked` : sur deux lignes) ; `rng`, `wobblySide` exportés. |
+| `keys.ts` | `keyLabel` : ponctuation en toutes lettres (« Point-virgule »), touches nommées (`AltRight` → « AltGr » en AZERTY, « Alt droit » sinon), `isAzerty()`. |
+| `credits.ts` | + kind `'samples'` (« Instruments échantillonnés », une ligne par instrument), `normalizeLicense` (« CC BY 4.0 », « CC0 1.0 »), `localizeCreditLine` (voix du narrateur traduite). |
+| `src/shared/ruleBird.ts` (nouveau, pur) | pictogramme du ptérosaure des cartes de règles (TV `RuleArt.tsx` et téléphone `RulesCards.tsx`). |
+| `screens/MapPlate.tsx` (nouveau) | planche imprimée autour de la carte des résultats ; géométrie tirée de `resultsMapRect` (camera/director.ts) et de `gameView.sim.arena`. |
+| `MatchResults.tsx` | 2,5 s de plan pur (`--intro-ms`, drapeau `data-podium-intro` sur `.ui-root` qui masque aussi le récitatif), `--titles-h` mesurée pour poser le récitatif au-dessus des titres, ligne de départage. |
+| `format.ts` `sentenceLines` | une seule phrase longue se coupe après les deux-points. |
+
+Décisions : bulles et étiquettes n'ont plus de transition de position (une étiquette qui glisse chevauche celle qui prend sa place) ; les étiquettes masquées sortent de la mise en page (`display: none`, fondu d'entrée par `@starting-style`). `.veil` = papier calque (#F7F0E3 à 55 %). `font-variant-ligatures: no-common-ligatures` sur `.ui-root` (Patrick Hand SC dessine « fi », « ffl » en bas de casse).

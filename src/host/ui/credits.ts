@@ -2,8 +2,10 @@
 // qui copie un asset dans public/). Format d'une ligne de tableau :
 //   fichier servi | source (URL) | auteur | licence | attribution requise
 import creditsMd from '../../../docs/CREDITS-sources.md?raw'
+import { getLang, t } from '../../shared/i18n.ts'
 
-export type CreditKind = 'music' | 'sfx' | 'voice' | 'fonts' | 'models' | 'textures' | 'other'
+/** 'samples' : instruments échantillonnés de la musique générative (pas des morceaux). */
+export type CreditKind = 'music' | 'samples' | 'sfx' | 'voice' | 'fonts' | 'models' | 'textures' | 'other'
 
 export interface CreditEntry {
   kind: CreditKind
@@ -19,6 +21,7 @@ export interface CreditEntry {
 function kindOf(file: string): CreditKind {
   const f = file.toLowerCase()
   if (/narrat|voice|voix|tts/.test(f)) return 'voice'
+  if (/\/samples\//.test(f)) return 'samples'
   if (/music|musique/.test(f)) return 'music'
   if (/sfx|audio/.test(f)) return 'sfx'
   if (/font|\.woff2?$|\.ttf$|ofl/.test(f)) return 'fonts'
@@ -57,7 +60,7 @@ export function parseCredits(md: string): CreditEntry[] {
     // « tanpura_A2.ogg (réaccordé, bouclé) » : la note entre parenthèses ne fait pas partie du titre
     const file = (rawFile ?? '').replace(/^(\S.*?)\s+\(.*\)\s*$/, '$1')
     // « SIL OFL 1.1 (fonts/OFL-x.txt, …) » → « SIL OFL 1.1 » : les détails restent dans le fichier.
-    const license = (rawLicense ?? '').replace(/\*\*/g, '').replace(/\s*\(.*$/, '').trim()
+    const license = normalizeLicense((rawLicense ?? '').replace(/\*\*/g, '').replace(/\s*\(.*$/, '').trim())
     // Textes de licence et créations propres au projet (créditées en tête) : ignorés.
     if (!file || /\.txt$/i.test(file) || /propre au projet/i.test(rawLicense ?? '')) continue
     const attribution = rawAttribution?.match(/«\s*([^»]+?)\s*»/)?.[1]
@@ -67,13 +70,30 @@ export function parseCredits(md: string): CreditEntry[] {
   return out
 }
 
+/**
+ * Une seule écriture par licence : « CC BY 4.0 » (et non « CC-BY »), « CC0 1.0 », sans
+ * préfixe descriptif (« poids du modèle CC-BY 4.0 » → « CC BY 4.0 »).
+ */
+export function normalizeLicense(license: string): string {
+  let l = license.replace(/^.*?(?=\b(CC|SIL|MIT|OFL|Apache|GPL|LGPL|BSD)\b)/, '')
+  l = l.replace(/\bCC[-\s]?BY\b/g, 'CC BY').replace(/\bCC[-\s]?0(\s*1\.0)?\b/g, 'CC0 1.0')
+  return l.trim()
+}
+
+/** Nom d'instrument d'un échantillon : « tongue_A3.ogg » → « Tongue drum ». */
+const INSTRUMENTS: Record<string, string> = { tongue: 'Tongue drum' }
+function instrumentOf(file: string): string {
+  const base = (file.split('/').pop() ?? file).replace(/\.[a-z0-9]+$/i, '').split(/[_-]/)[0] ?? file
+  return INSTRUMENTS[base.toLowerCase()] ?? base[0]!.toUpperCase() + base.slice(1)
+}
+
 export interface CreditGroup {
   kind: CreditKind
   /** Lignes affichées : « titre — auteur · licence » ou « auteur · licence » (sons regroupés). */
   lines: { main: string; sub: string }[]
 }
 
-const ORDER: CreditKind[] = ['music', 'voice', 'sfx', 'fonts', 'models', 'textures', 'other']
+const ORDER: CreditKind[] = ['music', 'samples', 'voice', 'sfx', 'fonts', 'models', 'textures', 'other']
 
 /** Regroupe et dédoublonne pour l'affichage. */
 export function groupCredits(entries: CreditEntry[]): CreditGroup[] {
@@ -92,6 +112,17 @@ export function groupCredits(entries: CreditEntry[]): CreditGroup[] {
         byAuthor.get(key)!.add(e.license)
       }
       for (const [author, lic] of byAuthor) lines.push({ main: author, sub: [...lic].join(', ') })
+    } else if (kind === 'samples') {
+      // Une ligne par instrument : « Oud — hammondman · CC0 1.0 » (et non trois « morceaux » Oud A2, C3, G2).
+      const byInstrument = new Map<string, { authors: Set<string>; lic: Set<string> }>()
+      for (const e of list) {
+        const name = instrumentOf(e.file)
+        if (!byInstrument.has(name)) byInstrument.set(name, { authors: new Set(), lic: new Set() })
+        const g = byInstrument.get(name)!
+        if (e.author) g.authors.add(e.author)
+        g.lic.add(e.license)
+      }
+      for (const [name, g] of byInstrument) lines.push({ main: name, sub: [...g.authors, ...g.lic].join(' · ') })
     } else {
       // Plusieurs fichiers tirés d'une même source (les 9 notes d'un tongue drum) : une seule ligne,
       // au nom de la source (ajout qa : la liste des crédits commençait par « Tongue A3, Tongue C4… »).
@@ -123,6 +154,17 @@ export function groupCredits(entries: CreditEntry[]): CreditGroup[] {
 
 export const CREDIT_GROUPS: CreditGroup[] = groupCredits(parseCredits(creditsMd))
 
+/**
+ * Attributions de la voix du narrateur, écrites en français dans le Markdown : traduites
+ * à l'affichage (même sens, même licence), les autres lignes restent telles quelles.
+ */
+export function localizeCreditLine(line: { main: string; sub: string }, lang = getLang()): { main: string; sub: string } {
+  if (/Pocket TTS/i.test(line.main)) return { main: t('host.credits.voice.tts', undefined, lang), sub: line.sub }
+  const origin = line.main.match(/^Voix d[’']origine\s*:\s*(.+)$/i)
+  if (origin) return { main: t('host.credits.voice.origin', { name: origin[1]! }, lang), sub: line.sub }
+  return line
+}
+
 /** Bibliothèques libres du jeu (licences MIT sauf mention). */
 export const TECH_CREDITS: readonly string[] = [
   'three.js',
@@ -132,5 +174,5 @@ export const TECH_CREDITS: readonly string[] = [
   'Tone.js',
   'Vite · TypeScript',
   'ws · qrcode',
-  'Kyutai Pocket TTS (CC-BY 4.0)',
+  'Kyutai Pocket TTS (CC BY 4.0)',
 ]

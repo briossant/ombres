@@ -13,17 +13,32 @@ const PLATE_TOP = 0.37
 /** Même hauteur qu'en mode normal depuis que les cartes de titres denses se resserrent (qa). */
 const PLATE_TOP_DENSE = 0.37
 const PLATE_DY_PX: readonly [number, number, number] = [40, 0, 70]
-/** Les pieds de l'oiseau reposent à cette hauteur au-dessus du haut de la plaque (px 1080p). */
-const PERCH_ABOVE_PLATE_PX = 26
+/**
+ * Le plateau de la tour (pieds de l'oiseau) tombe à cette hauteur au-dessus du haut de la plaque
+ * (px 1080p) : l'oiseau perché, corps et tête, reste entier au-dessus de la plaque et de sa pastille
+ * de rang (polish S5 ; 26 px cachaient le bas du corps). Par colonne [2e, 1er, 3e] : le vainqueur, dont
+ * la plaque est la plus haute, un peu moins haut pour que sa couronne reste sous le bandeau du titre.
+ * Non-régression du polish (S5 × B3) : [84, 72, 84] et 46 m posaient la couronne du vainqueur (sur sa
+ * tête, `PERCH_CROWN_TOP_M`) SOUS le bandeau du champion à 4 joueurs ; 25 px plus bas et 48 m, elle
+ * reste ≈ 10 px sous le bandeau (1080p comme 4K), sans déplacer les plaques de l'UI.
+ */
+export const PERCH_ABOVE_PLATE_PX: readonly [number, number, number] = [59, 47, 59]
 
 /** Caméra du podium : basse, face à l'ouest, légère contre-plongée (horizon au tiers bas). */
 export const PODIUM_CAMERA = {
+  /** Entrée (s) : plan pur, poussée lente sur le vainqueur jusqu'à l'entrée de l'UI (podiumReady à 2,2 s + 2,5 s de délai de l'UI). */
+  introSeconds: 4.5,
+  /** Focale de départ de la poussée (× la focale posée). */
+  introFovScale: 1.16,
+  /** Ensuite, respiration lente de la focale (± 2 % du cadrage) : l'image n'est jamais figée. */
+  driftFov: 0.02,
+  driftPeriod: 17,
   height: 5.5,
   /** Regard relevé (°) : horizon vers 64 % de la hauteur. */
   lookUpDeg: 6,
   fov: 40,
   /** Distance caméra → ligne des tours (m) ; plus loin quand les plaques remontent (> 6 joueurs). */
-  towersDist: 46,
+  towersDist: 48,
   towersDistDense: 80,
   /** Azimut du soleil (°, depuis le nord) et élévation : bas sur la Falaise, en face, derrière le vainqueur. */
   sunAzDeg: 270,
@@ -63,7 +78,7 @@ export function podiumLayout(arena: { a: number; b: number }, aspect: number, de
     const col = columnOfRank[rank]!
     const sx = PODIUM_SCREEN_X[col]!
     // px de conception → fraction de hauteur (zoom de l'UI : min(h / 1080, l / 1600))
-    const sy = plate + (PLATE_DY_PX[col]! - PERCH_ABOVE_PLATE_PX) * Math.min(1 / 1080, aspect / 1600)
+    const sy = plate + (PLATE_DY_PX[col]! - PERCH_ABOVE_PLATE_PX[col]!) * Math.min(1 / 1080, aspect / 1600)
     // rayon caméra (repère caméra : x droite, y haut, −z avant), puis monde (regard vers l'ouest)
     const rx = (sx * 2 - 1) * tanH
     const ry = (1 - sy * 2) * tanV
@@ -86,19 +101,41 @@ export function podiumLayout(arena: { a: number; b: number }, aspect: number, de
   return { cam: { x: camX, y: 0, z: C.height, yaw: 90 * DEG, pitch, fov: C.fov }, spots, aspect }
 }
 
-/** Profil d'une tour de podium : fût crème légèrement évasé, plateau-disque plat au sommet. */
+/**
+ * Profil d'une tour de podium, archétype Pile (ART_BIBLE §6.6) : fût crème évasé au pied, disque
+ * ocre étagé sous le sommet, plateau turquoise où l'oiseau se perche (le monde colore la Pile ainsi :
+ * fût crème, disques ocre, couronne turquoise). Remplace les « troncs bruns » de l'archétype colonne.
+ */
 function podiumTower(id: number, x: number, y: number, top: number): TowerDef {
-  const th = 1.3
+  // plateau turquoise assez épais pour se lire sous l'oiseau perché
+  const th = 1.9
+  const R = 3.9
+  // disque étagé ocre sous la plaque de l'UI (qui couvre ≈ 3 à 8 m sous le plateau) : visible
+  // entre la plaque et la grille des titres
+  const zd = Math.max(3.5, top * 0.42)
+  const dth = 1.1
   const segments: TowerSegment[] = [
     { z0: 0, r0: 3.4, z1: 2.2, r1: 2.7 },
-    { z0: 2.2, r0: 2.7, z1: top - th - 1.2, r1: 2.2 },
-    { z0: top - th - 1.2, r0: 2.2, z1: top - th, r1: 2.7 },
-    { z0: top - th, r0: 2.7, z1: top - th, r1: 3.4 },
-    { z0: top - th, r0: 3.4, z1: top, r1: 3.4 },
-    { z0: top, r0: 3.4, z1: top, r1: 0 },
+    { z0: 2.2, r0: 2.7, z1: zd, r1: 2.45 },
+    { z0: zd, r0: 2.45, z1: zd, r1: 5.8 },
+    { z0: zd, r0: 5.8, z1: zd + dth, r1: 5.8 },
+    { z0: zd + dth, r0: 5.8, z1: zd + dth, r1: 2.35 },
+    { z0: zd + dth, r0: 2.35, z1: top - th - 1.2, r1: 2.2 },
+    { z0: top - th - 1.2, r0: 2.2, z1: top - th, r1: 2.9 },
+    { z0: top - th, r0: 2.9, z1: top - th, r1: R },
+    { z0: top - th, r0: R, z1: top, r1: R },
+    { z0: top, r0: R, z1: top, r1: 0 },
   ]
-  return { id, x, y, archetype: 'colonne', segments, height: top, trunkRadius: 3.4, outside: true, seed: 0x5eed00 + id }
+  return { id, x, y, archetype: 'pile', segments, height: top, trunkRadius: R, outside: true, seed: PODIUM_SEEDS[id - 900] ?? 0x5eed00 }
 }
+
+/**
+ * Graines du décor des tours de podium (regard final) : choisies pour que le décor du monde ne
+ * plante PAS de mât à fanion au sommet (towerGeometry.ts, étape 4, 85 % des Piles) : le mât
+ * passait derrière l'oiseau perché et semblait l'empaler, la couronne au bout du bâton.
+ * Vérifié hors ligne sur des plateaux de 12 à 30 m (le podium va de 14,8 à 24,3 m).
+ */
+const PODIUM_SEEDS: readonly number[] = [0x5eed00, 0x5eed02, 0x5eed05]
 
 function blankBird(slot: number, src?: BirdState): BirdState {
   const b: BirdState = {
