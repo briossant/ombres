@@ -7,6 +7,14 @@
 **Jouer maintenant : https://ombres-011e623351e7.deploy.breizhware.com**
 (ouvrir sur le PC, de préférence Chrome, Edge ou Firefox ; les téléphones scannent le QR code affiché dans le salon.)
 
+| | |
+|---|---|
+| ![Écran titre](docs/screenshots/1-titre.jpg) | ![Salon : QR code, joueurs, bots, réglages](docs/screenshots/2-salon.jpg) |
+| ![Heure dorée : les ombres des tours rayent la mosaïque](docs/screenshots/3-heure-doree.jpg) | ![La Grande Ombre : la nuit fige le désert d'ouest en est](docs/screenshots/4-grande-ombre.jpg) |
+| ![Résultats de manche en vue carte](docs/screenshots/5-resultats.jpg) | ![Podium et titres](docs/screenshots/6-podium.jpg) |
+
+![La manette sur le téléphone](docs/screenshots/7-manette.jpg)
+
 ---
 
 ## Comment on joue
