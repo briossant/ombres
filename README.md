@@ -4,7 +4,7 @@
 
 *Ombres* est un party game en multijoueur local, de 1 à 12 joueurs (idéal de 2 à 6). Le jeu tourne sur un PC branché à un écran ; chaque joueur scanne un QR code et pilote avec son téléphone un oiseau géant au-dessus d'un désert parsemé de tours. L'ombre de ton oiseau peint le sable à ta couleur. Pendant la manche, le soleil se couche : les ombres s'allongent, balaient des zones immenses, puis la nuit descend de la falaise et fige tout. Direction artistique inspirée de Moebius (ligne claire, aplats, lavis, désert pastel).
 
-**Jouer maintenant : https://ombres-011e623351e7.deploy.breizhware.com**
+**Jouer maintenant : https://ombres.deploy.breizhware.com**
 (ouvrir sur le PC, de préférence Chrome, Edge ou Firefox ; les téléphones scannent le QR code affiché dans le salon.)
 
 | | |
@@ -103,9 +103,11 @@ La VM est une machine NixOS (`deploy/configuration.nix`) : un service Node uniqu
 
 ```bash
 pnpm deploy:prepare                                   # build + deploy/server.mjs + jeton dans .secrets/
-# 1re fois : déployer deploy/ avec le MCP magic-deploy (volume /var/lib/ombres, secret UPLOAD_TOKEN = .secrets/upload-token)
-node tools/deploy-upload.mjs https://<machine>.deploy.breizhware.com   # n'envoie que les fichiers modifiés
-node tools/e2e/deploy/remote-smoke.mjs https://<machine>…             # PC + téléphone émulé sur l'URL publique
+# 1re fois : déployer deploy/ avec le MCP magic-deploy (hostname « ombres », volume /var/lib/ombres,
+#            secret UPLOAD_TOKEN = .secrets/upload-token) ; ensuite, redeploy seulement si le serveur change
+node tools/deploy-upload.mjs https://ombres.deploy.breizhware.com        # n'envoie que les fichiers modifiés
+node tools/e2e/deploy/remote-smoke.mjs https://ombres.deploy.breizhware.com   # PC + téléphone émulé
+node tools/e2e/deploy/remote-round.mjs https://ombres.deploy.breizhware.com   # une manche complète en ligne
 ```
 
 ---
