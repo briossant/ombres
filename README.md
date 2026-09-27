@@ -107,7 +107,7 @@ Open `http://localhost:8787` on the computer. Phones on the same network scan th
 | Command | What it does |
 |---|---|
 | `pnpm typecheck` | strict TypeScript (TS 7) |
-| `pnpm test` | 362 unit tests (vitest): simulation, bots, rendering, camera, UI, input, network, phone, audio, narrator |
+| `pnpm test` | 380 unit tests (vitest): simulation, bots, rendering, camera, UI, input, network, phone, audio, narrator |
 | `pnpm check:boundaries` | checks that the simulation and bots import neither React, three.js nor the DOM, and that the phone app does not import three.js |
 | `npx tsx tools/sim-run.ts` | full headless rounds, with the balance metrics of GDD §18 |
 | `npx tsx tools/bots-arena.ts` | bot matches in bulk, to balance personalities and levels |

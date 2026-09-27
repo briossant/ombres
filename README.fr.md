@@ -106,7 +106,7 @@ Le PC ouvre `http://localhost:8787`. Les téléphones du même réseau scannent 
 | Commande | Rôle |
 |---|---|
 | `pnpm typecheck` | TypeScript strict (TS 7) |
-| `pnpm test` | 362 tests unitaires (vitest) : simulation, bots, rendu, caméra, UI, entrées, réseau, téléphone, audio, narrateur |
+| `pnpm test` | 380 tests unitaires (vitest) : simulation, bots, rendu, caméra, UI, entrées, réseau, téléphone, audio, narrateur |
 | `pnpm check:boundaries` | la simulation et les bots n'importent ni React, ni three.js, ni le DOM ; la manette n'importe pas three.js |
 | `npx tsx tools/sim-run.ts` | manches complètes headless (métriques d'équilibrage du GDD §18) |
 | `npx tsx tools/bots-arena.ts` | parties de bots en masse, équilibrage des personnalités et des niveaux |
