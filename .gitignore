@@ -20,5 +20,5 @@ deploy/server.mjs
 .secrets/
 
 # Bande-annonce : vidéos lourdes et fichiers de travail (reproductibles : tools/trailer/)
-marketing/*.mp4
-marketing/work/
+# Matériel de lancement (bandes-annonces 1080p, rushes, textes des posts) : jamais versionné
+marketing/
