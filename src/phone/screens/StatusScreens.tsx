@@ -114,7 +114,16 @@ export function ErrorScreen({ error }: { error: PhoneFatal }) {
         </h1>
         <p className="lede">{t(`phone.error.${error}.body`)}</p>
         {error === 'room-not-found' ? (
-          <CodeForm initial={room} submitLabel={t('phone.join.go')} onSubmit={code => retry(code)} />
+          <>
+            <CodeForm initial={room} submitLabel={t('phone.join.go')} onSubmit={code => retry(code)} />
+            {/* QR périmé, vu dans une vidéo ou un post : on présente le jeu au lieu d'une impasse. */}
+            <p style={{ margin: 0, opacity: 0.85 }}>
+              {t('phone.error.room-not-found.discover')}{' '}
+              <a href="/m" style={{ color: 'inherit', textDecorationThickness: 2, textUnderlineOffset: 4 }}>
+                {t('phone.error.room-not-found.discoverLink')}
+              </a>
+            </p>
+          </>
         ) : error === 'kicked' ? (
           <button type="button" className="btn" onClick={() => retry()}>
             {t('phone.error.rejoin')}

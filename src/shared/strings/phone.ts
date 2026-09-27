@@ -27,6 +27,8 @@ export const phone: StringTable = {
     // Erreurs
     'phone.error.room-not-found.title': 'Salle introuvable',
     'phone.error.room-not-found.body': 'Vérifie le code affiché sur l’écran de jeu.',
+    'phone.error.room-not-found.discover': 'Pas de partie en cours ?',
+    'phone.error.room-not-found.discoverLink': 'Découvrir Ombres',
     'phone.error.room-full.title': 'La salle est pleine',
     'phone.error.room-full.body': 'Douze oiseaux volent déjà. Attends qu’une place se libère.',
     'phone.error.kicked.title': 'Tu as été retiré de la partie',
@@ -202,6 +204,8 @@ export const phone: StringTable = {
 
     'phone.error.room-not-found.title': 'Room not found',
     'phone.error.room-not-found.body': 'Check the code shown on the game screen.',
+    'phone.error.room-not-found.discover': 'No game running?',
+    'phone.error.room-not-found.discoverLink': 'Discover Ombres',
     'phone.error.room-full.title': 'The room is full',
     'phone.error.room-full.body': 'Twelve birds are already flying. Wait for a spot to open up.',
     'phone.error.kicked.title': 'You were removed from the game',
