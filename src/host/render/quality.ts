@@ -12,13 +12,24 @@ import { SMAAPreset } from 'postprocessing'
 import { create } from 'zustand'
 import type { QualityPreset as QualitySetting } from '../settings.ts'
 
-export type QualityLevel = 'low' | 'medium' | 'high'
-export const QUALITY_LEVELS: readonly QualityLevel[] = ['low', 'medium', 'high']
+export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra'
+export const QUALITY_LEVELS: readonly QualityLevel[] = ['low', 'medium', 'high', 'ultra']
 
 export interface QualityPreset {
   level: QualityLevel
   /** Hauteur de rendu visée (px) : le dpr est plafonné pour ne jamais la dépasser. */
   targetHeight: number
+  /**
+   * Suréchantillonnage permis (Ultra) : le dpr peut dépasser le dpr natif jusqu'à ce facteur tant que la
+   * hauteur visée n'est pas atteinte (écran 1080p : rendu 2160p réduit par le compositeur = SSAA 4×).
+   */
+  supersample?: number
+  /**
+   * Échelle du G-buffer par rapport au canevas (défaut 1). < 1 (Medium) : la géométrie et les matériaux sont
+   * rendus plus petit, mais l'encre (traits antialiasés), la couleur (reconstruction Catmull-Rom nette) et le
+   * SMAA sont calculés à la résolution de l'écran : pas d'agrandissement flou du canevas par le navigateur.
+   */
+  gbufferScale?: number
   smaa: SMAAPreset | null
   /** Seuil de détection des bords du SMAA (défaut : celui du preset SMAA). */
   smaaThreshold?: number
@@ -39,7 +50,7 @@ export interface QualityPreset {
   clouds: number
   groundSegments: number
   fxCap: number
-  /** Budget GPU cible (ms, Vega 6). */
+  /** Budget GPU cible (ms, Vega 6 ; Ultra : GPU de la machine qui l'a choisi). */
   budgetMs: number
 }
 
@@ -47,7 +58,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
   low: {
     level: 'low',
     targetHeight: 720,
-    smaa: null,
+    // correcteur AA : SMAA LOW (avant : aucun AA ; les traits d'encre sont en plus lissés dans le shader)
+    smaa: SMAAPreset.LOW,
     shadowRes: 1024,
     farShadowRes: 512,
     hatching: false,
@@ -61,16 +73,17 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
     clouds: 1,
     groundSegments: 128,
     fxCap: 300,
-    budgetMs: 5,
+    budgetMs: 6,
   },
   medium: {
     level: 'medium',
-    targetHeight: 900,
-    // SMAA LOW (polish 2, W3) : seuil 0,15 et 4 pas de recherche. Les traits d'encre (contraste > 0,3)
-    // restent lissés ; le grain et les liserés du lavis, les bords d'ombre (déjà antialiasés dans le shader)
-    // ne passent plus dans la passe de poids. Recadrages × 3 identiques à MEDIUM au couchant
-    // (shots/polish2/world/smaa3/cmp.png) ; A/B entrelacé ≈ −0,5 ms à 12 oiseaux (GPU partagé).
-    smaa: SMAAPreset.LOW,
+    // correcteur AA : canevas à la résolution de l'écran (plafond 1080p), G-buffer à 900p (0,833) ; encre et
+    // couleur reconstruites en natif. Avant : canevas 900p agrandi par le navigateur (flou + marches). Le 1080p
+    // natif coûte 1,3 à 1,5 × (p90 11,4 ms au climax à 4 oiseaux) ; pas de SMAA : les traits sont lissés dans
+    // l'encre et il coûterait 1,4 ms pour un gain à peine visible (docs/polish/fix-antialiasing.md).
+    targetHeight: 1080,
+    gbufferScale: 900 / 1080,
+    smaa: null,
     shadowRes: 2048,
     farShadowRes: 1024,
     hatching: true,
@@ -84,13 +97,16 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
     clouds: 3,
     groundSegments: 200,
     fxCap: 800,
-    budgetMs: 8,
+    // 8 → 8,5 ms (correcteur AA) : encre reconstruite à la définition de l'écran (+0,25 à +0,45 ms) ; mesuré au
+    // calme sur une manche entière : p50 6,3-7,5 ms, p90 7,0-8,7 ms (heure dorée, Grande Ombre) ; à 8 ms la
+    // surveillance (p90 > 8,8 ms) aurait fait descendre en Low au moindre à-coup du CPU
+    budgetMs: 8.5,
   },
   high: {
     level: 'high',
     targetHeight: 1080,
-    // SMAA LOW (polish W3 : MEDIUM, −0,3 ms à 1080p ; polish 2 : LOW, voir Medium)
-    smaa: SMAAPreset.LOW,
+    // correcteur AA : SMAA MEDIUM (polish W3 / 2 : baissé à LOW pour le budget)
+    smaa: SMAAPreset.MEDIUM,
     shadowRes: 2048,
     farShadowRes: 1024,
     hatching: true,
@@ -107,12 +123,37 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
     fxCap: 1500,
     budgetMs: 10,
   },
+  ultra: {
+    level: 'ultra',
+    // GPU puissants : résolution native jusqu'en 2160p (écran 4K ou HiDPI) ; sur un écran 1080p, rendu 2160p
+    // réduit par le compositeur (SSAA 4×). SMAA HIGH. Voir docs/polish/fix-antialiasing.md (MSAA écarté).
+    targetHeight: 2160,
+    supersample: 2,
+    smaa: SMAAPreset.HIGH,
+    shadowRes: 2048,
+    farShadowRes: 1024,
+    hatching: true,
+    granulation: true,
+    ripples: true,
+    wobble: 0.7,
+    paper: 0.04,
+    thick: 1.5,
+    pebbles: 2200,
+    pebbleShadows: true,
+    clouds: 4,
+    groundSegments: 200,
+    fxCap: 1500,
+    budgetMs: 10,
+  },
 }
 
-/** dpr effectif : jamais au-delà de la hauteur visée, jamais au-delà du dpr natif. */
+/**
+ * dpr effectif : jamais au-delà de la hauteur visée ; jamais au-delà du dpr natif, sauf suréchantillonnage
+ * (Ultra : jusqu'à `supersample` × le dpr natif).
+ */
 export function presetDpr(preset: QualityPreset, cssHeight: number, deviceDpr: number): number {
   if (cssHeight <= 0) return 1
-  return Math.max(0.25, Math.min(deviceDpr, preset.targetHeight / cssHeight))
+  return Math.max(0.25, Math.min(deviceDpr * (preset.supersample ?? 1), preset.targetHeight / cssHeight))
 }
 
 interface RenderQualityStore {
@@ -123,12 +164,13 @@ interface RenderQualityStore {
   setBenchLevel: (level: QualityLevel) => void
 }
 
-const BENCH_KEY = 'ombres.qualityBench.v1'
+// v2 (correcteur AA) : les presets ont changé (Medium natif, Ultra) : le banc repasse une fois
+const BENCH_KEY = 'ombres.qualityBench.v2'
 
 function loadBench(): QualityLevel | null {
   try {
     const v = localStorage.getItem(BENCH_KEY)
-    return v === 'low' || v === 'medium' || v === 'high' ? v : null
+    return (QUALITY_LEVELS as readonly string[]).includes(v ?? '') ? (v as QualityLevel) : null
   } catch {
     return null
   }
@@ -159,14 +201,32 @@ export function applyQualitySetting(setting: QualitySetting): void {
   else s.setLevel(setting)
 }
 
-/** Seuils du banc (médiane GPU en High, scène du titre) : High seulement avec 15 % de marge. */
-export const BENCH_HIGH_MAX_MS = 8.5
-export const BENCH_MEDIUM_MAX_MS = 12
+/**
+ * Seuils du banc (médiane GPU en High, scène du titre) : High seulement avec de la marge. 8,5 → 8 ms (correcteur
+ * AA) : High coûte ~0,6 ms de plus (traits antialiasés, SMAA MEDIUM) ; sur Renoir le titre en High mesure
+ * 8,3-8,7 ms au banc (High une fois sur trois à 8,5 ms) pour un p90 de 9,6 à 10,6 ms au climax.
+ */
+export const BENCH_HIGH_MAX_MS = 8
+/**
+ * Medium coûte ≈ 0,74 × High au titre (mesuré : 7,1 contre 9,6 ms) : un titre High ≤ 11 ms garde Medium vers
+ * 8 ms (avant le correcteur AA : 12 ms, pour un Medium à ≈ 0,75 × High mais un High moins cher).
+ */
+export const BENCH_MEDIUM_MAX_MS = 11
+/** Titre High ≤ 3 ms : machine assez rapide pour essayer Ultra (≈ 4 × les pixels de High) par un 2e banc. */
+export const BENCH_ULTRA_TRY_MS = 3
+/** Ultra retenu si sa médiane au titre (2e banc, en Ultra) reste ≤ 8,5 ms (15 % sous son budget de 10 ms). */
+export const BENCH_ULTRA_MAX_MS = 8.5
+
+/** Niveau d'après la médiane du banc en High. */
+export function benchLevelFromHigh(medianMs: number): QualityLevel {
+  return medianMs <= BENCH_HIGH_MAX_MS ? 'high' : medianMs <= BENCH_MEDIUM_MAX_MS ? 'medium' : 'low'
+}
 
 /**
  * Banc court : on rend en 'high' pendant `frames` frames et on mesure le temps
  * GPU (timer queries si disponibles, sinon temps de frame). Choix : high si la
- * médiane est ≤ 8,5 ms, medium si ≤ 12 ms (900p ≈ 0,75 × High), sinon low.
+ * médiane est ≤ 8 ms, medium si ≤ 11 ms, sinon low ; si elle est ≤ 3 ms, un 2e banc
+ * en Ultra décide entre ultra (≤ 8,5 ms) et high (voir `startQualityBench`).
  * Polish 3 (mesuré sur Renoir, High) : la scène du titre (6 oiseaux, plans rapprochés,
  * territoire lissé partout) coûte maintenant à peu près la médiane d'une manche à 12 au
  * climax (9,1 ms contre 8,8-9,2 ms), et non plus ~10 % de moins : un titre ≤ 8,5 ms
@@ -175,20 +235,28 @@ export const BENCH_MEDIUM_MAX_MS = 12
 export class QualityBench {
   private samples: number[] = []
   done = false
+  /** Médiane mesurée (NaN tant que le banc n'est pas fini). */
+  median = Number.NaN
   constructor(
     private readonly frames = 120,
     private readonly skip = 20,
   ) {}
 
-  /** Ajoute la mesure d'une frame (ms GPU, ou ms de frame à défaut). */
-  push(ms: number): QualityLevel | null {
+  /** Ajoute la mesure d'une frame (ms GPU, ou ms de frame à défaut) ; renvoie la médiane à la fin. */
+  pushMs(ms: number): number | null {
     if (this.done) return null
     this.samples.push(ms)
     if (this.samples.length < this.frames + this.skip) return null
     const s = this.samples.slice(this.skip).sort((a, b) => a - b)
-    const median = s[Math.floor(s.length / 2)]!
+    this.median = s[Math.floor(s.length / 2)]!
     this.done = true
-    return median <= BENCH_HIGH_MAX_MS ? 'high' : median <= BENCH_MEDIUM_MAX_MS ? 'medium' : 'low'
+    return this.median
+  }
+
+  /** Ajoute la mesure d'une frame ; à la fin, le niveau d'après la médiane (banc en High). */
+  push(ms: number): QualityLevel | null {
+    const m = this.pushMs(ms)
+    return m === null ? null : benchLevelFromHigh(m)
   }
 }
 
@@ -288,6 +356,8 @@ export class QualityMonitor {
 
 interface ActiveBench {
   bench: QualityBench
+  /** 'high' : 1er banc ; 'ultra' : 2e banc (machine rapide), qui tranche entre ultra et high. */
+  stage: 'high' | 'ultra'
   onDone?: (level: QualityLevel) => void
 }
 
@@ -296,12 +366,14 @@ let activeBench: ActiveBench | null = null
 /**
  * Lance le banc court (~2,3 s à 60 fps) : le pipeline mesure le temps GPU de chaque
  * frame (timer query, sinon l'intervalle entre frames) en preset High, puis retient
- * le niveau et l'applique si le réglage est « auto ». À lancer sur l'écran titre,
- * une fois la scène chargée (premier lancement : pas de résultat en mémoire).
+ * le niveau et l'applique si le réglage est « auto ». Machine rapide (médiane ≤ 3 ms) :
+ * 2e banc de ~2,5 s en Ultra (50 images de chauffe : shaders du SMAA HIGH, rendu 2160p).
+ * À lancer sur l'écran titre, une fois la scène chargée (premier lancement : pas de résultat
+ * en mémoire).
  */
 export function startQualityBench(onDone?: (level: QualityLevel) => void): void {
   useRenderQuality.getState().setLevel('high')
-  activeBench = { bench: new QualityBench(), onDone }
+  activeBench = { bench: new QualityBench(), stage: 'high', onDone }
 }
 
 /** Le banc a-t-il déjà un résultat mémorisé ? */
@@ -309,13 +381,25 @@ export const hasQualityBench = (): boolean => useRenderQuality.getState().benchL
 
 /** @internal Appelé par NprPipeline avec la mesure d'une frame (ms). */
 export function feedQualityBench(ms: number, autoSetting: boolean): void {
-  if (!activeBench) return
-  const level = activeBench.bench.push(ms)
-  if (!level) return
+  const b = activeBench
+  if (!b) return
+  const median = b.bench.pushMs(ms)
+  if (median === null) return
   const s = useRenderQuality.getState()
+  let level: QualityLevel
+  if (b.stage === 'high') {
+    level = benchLevelFromHigh(median)
+    if (median <= BENCH_ULTRA_TRY_MS && autoSetting) {
+      s.setLevel('ultra')
+      activeBench = { bench: new QualityBench(120, 50), stage: 'ultra', onDone: b.onDone }
+      return
+    }
+  } else {
+    level = median <= BENCH_ULTRA_MAX_MS ? 'ultra' : 'high'
+  }
   s.setBenchLevel(level)
   if (autoSetting) s.setLevel(level)
-  activeBench.onDone?.(level)
+  b.onDone?.(level)
   activeBench = null
 }
 

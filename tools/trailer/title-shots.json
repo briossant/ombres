@@ -1,0 +1,20 @@
+{
+  "_doc": "Images de départ des plans : démo du titre (title-demo.mp4), manche (round.mp4 : countdown, roundPaint) et résultats (results.mp4), choisies sur planche après chaque tournage. n = nombre d'images quand le plan est court.",
+  "open": 0,
+  "paint1": 3810,
+  "paint1n": 150,
+  "paint2": 2560,
+  "group": 1085,
+  "groupn": 104,
+  "golden": 1580,
+  "sunset": 1745,
+  "dusk": 4640,
+  "final": 2043,
+  "finaln": 368,
+  "resultsPanel": 430,
+  "podium": 780,
+  "podiumUi": 90,
+  "lobby": 60,
+  "countdown": 95,
+  "roundPaint": 330
+}

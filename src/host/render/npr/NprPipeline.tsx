@@ -1,7 +1,8 @@
 // Pipeline NPR complet, à monter dans un <Canvas flat> (ART_BIBLE §7.1) :
 //   hooks « avant rendu » (palette, soleil, empreintes, territoire…)
 //   → scene.updateMatrixWorld() → height shadow map (2 cascades)
-//   → EffectComposer : GBufferPass (MRT) → InkEffect → SMAA (medium/high).
+//   → EffectComposer : GBufferPass (MRT) → InkEffect (traits antialiasés) → SMAA (selon le preset).
+// Medium : G-buffer à 0,833 × le canevas (preset.gbufferScale) ; encre et couleur reconstruites en natif.
 // Composer : multisampling 0, UnsignedByteType, pas de depth buffer (NPR §2).
 // Il prend la main sur le rendu de R3F (useFrame priorité 1).
 import { useFrame, useThree, type RootState } from '@react-three/fiber'
@@ -91,7 +92,17 @@ declare global {
     __timings?: Record<string, number>
     __nprInfo?: { calls: number; triangles: number; programs: number; casters: number }
     /** ?debug (mesure) seulement : accès des scripts d'A/B de coût GPU (polish 2, tools/polish/world/abperf.mjs). */
-    __npr?: { NPR: typeof NPR; presets: typeof QUALITY_PRESETS; scene: THREE.Scene; gl: THREE.WebGLRenderer; smaa: () => SMAAEffect | null }
+    __npr?: {
+      NPR: typeof NPR
+      presets: typeof QUALITY_PRESETS
+      scene: THREE.Scene
+      gl: THREE.WebGLRenderer
+      smaa: () => SMAAEffect | null
+      /** Effet d'encre courant (scripts de captures AVANT / APRÈS, tools/polish/aa). */
+      ink: () => InkEffect | null
+      /** G-buffer MRT (essais de la chaîne de rendu, tools/polish/aa). */
+      gbuffer: THREE.WebGLRenderTarget
+    }
   }
 }
 
@@ -130,7 +141,7 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
   const passes = useRef<Passes | null>(null)
   useEffect(() => {
     composer.removeAllPasses()
-    const gpass = new GBufferPass(scene, camera, gbuffer)
+    const gpass = new GBufferPass(scene, camera, gbuffer, preset.gbufferScale ?? 1)
     const inkEffect = new InkEffect(gbuffer, camera, preset)
     const ink = new EffectPass(camera, inkEffect)
     composer.addPass(gpass)
@@ -168,8 +179,8 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
   // Mesures GPU (debug seulement)
   const timer = useMemo(() => (measure ? new GpuTimer(gl.getContext() as WebGL2RenderingContext) : null), [gl, measure])
   useEffect(() => {
-    if (measure || DEBUG_RENDER) window.__npr = { NPR, presets: QUALITY_PRESETS, scene, gl, smaa: () => passes.current?.smaa ?? null }
-  }, [measure, scene, gl])
+    if (measure || DEBUG_RENDER) window.__npr = { NPR, presets: QUALITY_PRESETS, scene, gl, smaa: () => passes.current?.smaa ?? null, ink: () => passes.current?.inkEffect ?? null, gbuffer }
+  }, [measure, scene, gl, gbuffer])
   // Mesure d'une frame entière (hors debug) : banc de qualité automatique au titre, et
   // surveillance des manches (heure dorée → Grande Ombre) lue entre deux manches
   const benchTimer = useMemo(() => new GpuTimer(gl.getContext() as WebGL2RenderingContext, 1), [gl])
@@ -199,13 +210,14 @@ export function NprPipeline({ quality, measure = false, inkDebug = 0, onTimings 
   useFrame((state, delta) => {
     const cpuStart = timer ? performance.now() : 0
     gl.info.reset()
-    for (const h of hooks) h.fn.current(state, delta)
-
-    // uniforms dépendant de la résolution et du temps
-    const h = gl.domElement.height
+    // uniforms dépendant de la résolution (celle du G-buffer, où dessinent les matériaux : plus petite que le
+    // canevas en Medium) et du temps ; avant les hooks (écrans des oiseaux, tours…)
+    const h = gbuffer.height
     NPR.uPx.value = h / 1080
-    NPR.uResolution.value.set(gl.domElement.width, h)
+    NPR.uResolution.value.set(gbuffer.width, h)
     NPR.uTime.value = state.clock.elapsedTime
+    passes.current?.inkEffect.setGBufferSize(gbuffer.width, h)
+    for (const hk of hooks) hk.fn.current(state, delta)
 
     // flash « planche »
     if (flashRequested) {

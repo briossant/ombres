@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SimState, TowerDef } from '../../sim/types.ts'
 import { gameView } from '../view.ts'
 import { BirdFootprints } from './npr/footprints.ts'
+import { NPR } from './npr/uniforms.ts'
 import { useNprFrame } from './npr/NprPipeline.tsx'
 import { QUALITY_PRESETS, type QualityLevel } from './quality.ts'
 import { updateBirdScreen } from './world/birdScreen.ts'
@@ -65,7 +66,7 @@ export function World({ quality }: WorldProps) {
       }
     }
     frame.current = applyWorldFrame(gameView, worldView, state.camera)
-    updateBirdScreen(gameView, state.camera, state.gl.domElement.width, state.gl.domElement.height)
+    updateBirdScreen(gameView, state.camera, NPR.uResolution.value.x, NPR.uResolution.value.y)
     updateCountdownSketch(gameView)
     if (sim) footprints.updateFromSim(sim, gameView.prevBirds, gameView.alpha)
     else footprints.update([], 0, 1, 0)

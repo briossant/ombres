@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 
-// Deux points d'entrée : l'écran PC (index.html) et la manette téléphone (play.html).
-// Le bundle téléphone n'embarque ni three.js ni le moteur de rendu.
+// Trois points d'entrée : l'écran PC (index.html), la manette téléphone (play.html) et la page
+// d'accueil des téléphones (m.html, servie à /m). Ni la manette ni l'accueil n'embarquent three.js.
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         host: resolve(import.meta.dirname, 'index.html'),
         play: resolve(import.meta.dirname, 'play.html'),
+        landing: resolve(import.meta.dirname, 'm.html'),
       },
     },
   },

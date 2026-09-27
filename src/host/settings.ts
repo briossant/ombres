@@ -4,7 +4,7 @@ import { create } from 'zustand'
 import type { Lang } from '../shared/protocol.ts'
 import { detectLang, setLang } from '../shared/i18n.ts'
 
-export type QualityPreset = 'auto' | 'low' | 'medium' | 'high'
+export type QualityPreset = 'auto' | 'low' | 'medium' | 'high' | 'ultra'
 export type NarratorMode = 'voice' | 'text' | 'off' // voix + sous-titres / sous-titres seuls / rien
 export type HintsMode = 'auto' | 'always' | 'never'
 

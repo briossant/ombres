@@ -28,10 +28,10 @@ import { RibbonBatch, SpriteBatch, StrokeBatch, type SpriteSpec } from './batche
 import { SHAPE } from './glsl.ts'
 import { PathBuffer } from './path.ts'
 
-export type FxQuality = 'low' | 'medium' | 'high'
+export type FxQuality = 'low' | 'medium' | 'high' | 'ultra'
 
 /** Plafond de particules par preset (ART_BIBLE §7.4). */
-export const FX_CAPS: Record<FxQuality, number> = { low: 300, medium: 800, high: 1500 }
+export const FX_CAPS: Record<FxQuality, number> = { low: 300, medium: 800, high: 1500, ultra: 1500 }
 
 // Réglages cosmétiques (les grandeurs de jeu viennent de RULES).
 const TRAIL_LEN = 20 // m (ART_BIBLE §6.7)

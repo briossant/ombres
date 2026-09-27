@@ -1,6 +1,8 @@
 // <WorldCanvas> : le Canvas R3F du jeu, réglé pour le pipeline NPR (ART_BIBLE §7.3) :
-// `flat` (pas de tone mapping), pas d'AA natif ni de stencil, dpr plafonné par le
-// preset (720p / 900p / 1080p), FOV 40°, near 1 / far 9 000 m, profondeur standard
+// `flat` (pas de tone mapping), pas d'AA natif (MSAA incompatible avec la passe MRT : les
+// traits sont antialiasés par l'InkEffect, puis SMAA selon le preset) ni de stencil, dpr
+// plafonné par le preset (Low 720p, Medium et High 1080p natif, Ultra jusqu'à 2160p et
+// suréchantillonné sur un écran 1080p), FOV 40°, near 1 / far 9 000 m, profondeur standard
 // (l'encre suppose une profondeur perspective, jamais logarithmique ni inversée).
 // La caméra de jeu est ajoutée par l'intégration (enfant avec makeDefault).
 import { Canvas } from '@react-three/fiber'
@@ -60,7 +62,7 @@ export function WorldCanvas({ children, quality, measure = DEBUG_RENDER, inkDebu
   const level = quality ?? storeLevel
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const { height, deviceDpr } = useCanvasMetrics(canvasRef)
-  // dpr plafonné par le preset (720p / 900p / 1080p, jamais plus même en 4K)
+  // dpr plafonné par le preset (720p / 1080p / 1080p ; Ultra : natif jusqu'en 2160p, SSAA 4× sur un écran 1080p)
   const dpr = presetDpr(QUALITY_PRESETS[level], height, deviceDpr)
   return (
     <>

@@ -18,3 +18,7 @@ assets-staging/**
 deploy/public/
 deploy/server.mjs
 .secrets/
+
+# Bande-annonce : vidéos lourdes et fichiers de travail (reproductibles : tools/trailer/)
+marketing/*.mp4
+marketing/work/

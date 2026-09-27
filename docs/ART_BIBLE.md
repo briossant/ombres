@@ -617,9 +617,10 @@ CPU (sim 30 Hz interpolée -> transforms)       ─ palette.update(paletteElev) 
 2. GBufferPass (MRT)                           opaques NPR : sol (aplats, territoire, ombres, rides, crêtes, cailloux)
    gColor sRGB8 | gNormalId RGBA8 | depth F32  -> tours -> oiseaux + coques -> cavaliers/props -> CIEL (renderOrder 1000)
                                                -> transparents (micro-ombres, cailloux, FX, rubans ; gNormalId = 0)   2,5-3,5 ms
-3. EffectPass(InkEffect)                       contours (1/z, normales > 40°, IDs) + fondu brume + tremblé monde
-                                               + grain papier 4 % + vignette ≤ 5 % + flash « planche »                1,3-1,7 ms
-4. EffectPass(SMAA)   (medium/high)                                                                                  2,3-2,8 ms
+3. EffectPass(InkEffect)                       contours (1/z, normales > 40°, IDs) ANTIALIASÉS (couverture sous-pixel)
+                                               + fondu brume + tremblé monde + grain papier 4 % + vignette ≤ 5 %
+                                               + flash « planche »                                                     1,7-2,1 ms
+4. EffectPass(SMAA)   (Low : low, High : medium, Ultra : high ; pas en Medium)                                   1,5-2,1 ms
 5. HUD DOM/CSS par-dessus le canvas (glyphes SVG, cases BD)                                                          ~0 GPU
 ```
 
@@ -637,7 +638,7 @@ CPU (sim 30 Hz interpolée -> transforms)       ─ palette.update(paletteElev) 
 | Ciel, soleil, strates, cumulus, étoiles | matériau du dôme, dessiné en dernier | analytique |
 | Contours d'encre | post (`InkEffect`) | la seule vue globale |
 | Grain papier, vignette, flash « planche » | post (même effet) | pas de passe en plus |
-| AA | post (SMAA) | FXAA floute les hachures |
+| AA | post : traits antialiasés dans l'`InkEffect`, puis SMAA selon le preset | FXAA floute les hachures ; MSAA exclu (MRT) |
 | HUD, étiquettes, glyphes hors monde | DOM | jamais encrés par le post |
 
 ### 7.3 Paramètres par défaut (1080p, preset High)
@@ -647,7 +648,7 @@ CPU (sim 30 Hz interpolée -> transforms)       ─ palette.update(paletteElev) 
 | Silhouette `uThick` | 1,5 (≈ 2 px) ; oiseau : + coque de 1,2 px, soit ≈ 2,5 px | R2, NPR §4.1-4.2 |
 | Seuils de contour | `uDepthK` 0,025 · `uNormalK` 0,23 (pli > 40°) | NPR |
 | Plage d'épaisseur | `uThickRange` (120 m, 900 m) : épaisseur × 1 → 0,5 | R2 |
-| Tremblé | 0,7 px, bruit monde (1/37, 1/53) ; boil à 8 fps sur l'écran titre seulement | R5 |
+| Tremblé | 0,7 : pression du trait ± 28 %, bruit monde (1/37, 1/53) ; boil à 8 fps sur l'écran titre seulement (correcteur AA : plus de décalage latéral de 0,7 px, qui faisait des marches d'un pixel entier) | R5 |
 | Papier | multiply 4 %, texture de bruit 256², statique | R21 |
 | Vignette | ≤ 5 % (`1 − 0,1·r²`) | R22 |
 | Terminateur objets | N·L = 0,05, AA `fwidth` | R6 |
@@ -664,26 +665,37 @@ CPU (sim 30 Hz interpolée -> transforms)       ─ palette.update(paletteElev) 
 
 ### 7.4 Presets qualité
 
-| | **Low** | **Medium** | **High** |
-|---|---|---|---|
-| Rendu (dpr plafonné) | 720p | 900p | 1080p (jamais plus, même en 4K) |
-| AA | aucun | SMAA medium | SMAA high |
-| Height shadow map | 1024² | 2048² | 2048² + cascade lointaine au coucher |
-| Hachures, pointillé, granulation du lavis | non / non / non | oui | oui |
-| Liseré de lavis, encre fraîche, transitions de territoire | oui | oui | oui |
-| Empreintes + liserés d'ombre, fil d'ombre | **oui** (gameplay) | oui | oui |
-| Motifs et glyphes du mode daltonien | **oui** (accessibilité) | oui | oui |
-| Cailloux (micro-ombres) | 800 (sans ombre) | 1 500 | 2 200 |
-| Rides de vent, crêtes | crêtes seules | oui | oui |
-| Tremblé / papier | non / non | oui / oui | oui / oui |
-| `uThick` | 1,0 | 1,25 | 1,5 |
-| Coques des oiseaux | oui | oui | oui |
-| Cumulus | 1 | 3 | 4 |
-| Segments du sol | 128² | 200² | 200² |
-| FX (plafond de particules) | 300 | 800 | 1 500 |
-| Budget GPU cible (Vega 6) | ≤ 5 ms | ≤ 8 ms | ≤ 10 ms |
+| | **Low** | **Medium** | **High** | **Ultra** |
+|---|---|---|---|---|
+| Rendu (dpr plafonné) | 720p | écran (≤ 1080p) ; G-buffer 900p, encre et couleur (Catmull-Rom) reconstruites à la définition de l'écran | 1080p | natif jusqu'en 2160p (4K, HiDPI) ; écran 1080p : rendu 2160p réduit par le compositeur (SSAA 4×) |
+| AA | traits d'encre antialiasés + SMAA low | traits d'encre antialiasés (pas de SMAA) | traits d'encre antialiasés + SMAA medium | traits d'encre antialiasés + SMAA high |
+| Height shadow map | 1024² | 2048² | 2048² + cascade lointaine au coucher | 2048² + cascade lointaine au coucher |
+| Hachures, pointillé, granulation du lavis | non / non / non | oui | oui | oui |
+| Liseré de lavis, encre fraîche, transitions de territoire | oui | oui | oui | oui |
+| Empreintes + liserés d'ombre, fil d'ombre | **oui** (gameplay) | oui | oui | oui |
+| Motifs et glyphes du mode daltonien | **oui** (accessibilité) | oui | oui | oui |
+| Cailloux (micro-ombres) | 800 (sans ombre) | 1 500 | 1 500 | 2 200 |
+| Rides de vent, crêtes | crêtes seules | oui | oui | oui |
+| Tremblé / papier | non / non | oui / oui | oui / oui | oui / oui |
+| `uThick` | 1,0 | 1,25 | 1,5 | 1,5 |
+| Coques des oiseaux | oui | oui | oui | oui |
+| Cumulus | 1 | 3 | 4 | 4 |
+| Segments du sol | 128² | 200² | 200² | 200² |
+| FX (plafond de particules) | 300 | 800 | 1 500 | 1 500 |
+| Budget GPU cible (Vega 6) | ≤ 6 ms | ≤ 8,5 ms | ≤ 10 ms | ≤ 10 ms (sur le GPU qui l'a choisi) |
 
-Bascule automatique : `PerformanceMonitor`, qui descend d'un cran si la frame moyenne dépasse 15 ms sur 2 s, **seulement entre deux manches**. Le preset par défaut est détecté au premier lancement par un banc de 2 s sur l'écran titre.
+Correcteur antialiasing (2026-09-27, `docs/polish/fix-antialiasing.md`) : les traits d'encre sont antialiasés
+dans l'`InkEffect` (frontière lissée sur le 3×3, couverture sous-pixel d'un trait de largeur continue) ; Medium
+n'est plus un canevas 900p agrandi par le navigateur (le 1080p natif coûtait 1,3 à 1,5 × : G-buffer 900p et
+reconstruction nette à la définition de l'écran, +0,3 à +0,45 ms) ; Ultra ajouté. Le SMAA coûte 1,5 ms (LOW) à
+2,1 ms (HIGH) en 1080p sur Vega 6 et n'ajoute que peu une fois les traits lissés : il est retiré de Medium
+(budget), gardé ailleurs. Le MSAA natif reste exclu (passe MRT : WebGL 2 ne lit pas les échantillons, la
+résolution moyennerait les ID).
+
+Bascule automatique : `QualityMonitor` (temps GPU des images de manche, p90 > budget × 1,1 → un cran plus bas),
+**seulement entre deux manches**. Le preset par défaut est choisi au premier lancement par un banc de 2 s sur
+l'écran titre, en High : médiane ≤ 8 ms → High, ≤ 11 ms → Medium, sinon Low ; ≤ 3 ms → 2e banc en Ultra,
+retenu s'il tient 8,5 ms.
 
 ### 7.5 Budget de performance
 

@@ -159,3 +159,12 @@ Fichiers servis par l'agent audio (`tools/audio-build.py`). Modifications commun
 | `public/audio/music/credits_tritachyon_dust.ogg` | https://opengameart.org/content/soundscape-dust-ambient-guitar (« Soundscape – Dust – Ambient Guitar ») | Tri-Tachyon | CC-BY 4.0 | OUI |
 
 Générés par le code (aucun fichier) : vent procédural, grain de sable, « tsk », « clac », synthèse et réverbération de la partition générative (WebAudio natif, code du projet).
+
+## landing (lancement public)
+
+| Fichier servi | Source | Auteur | Licence | Attribution requise |
+|---|---|---|---|---|
+| `og.jpg` (aperçu de lien 1200 × 630) | capture du jeu à l'heure dorée (tools/launch/og-capture.mjs) + logotype et accroche composés par tools/launch/og-compose.mjs, polices Julius Sans One et Patrick Hand SC (section ui) | Claude (Anthropic) | propre au projet | — |
+| `media/screens/{2-salon,3-heure-doree,4-grande-ombre,7-manette}.webp` | `docs/screenshots/*.jpg` réduites à 720 px (WebP) pour la page d'accueil mobile `/m` | Claude (Anthropic) | propre au projet | — |
+
+La page `/m` (m.html) réutilise les polices de `public/fonts/` (OFL 1.1, section ui) ; son logotype est le dessin de `src/host/ui/Logo.tsx` figé en SVG (tools/launch/logo-svg.mjs).

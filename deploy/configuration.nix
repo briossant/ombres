@@ -1,7 +1,7 @@
 # Machine Magic Deploy d'Ombres : un seul service Node (fichiers statiques + relais WebSocket), port 80.
 #
 # Le proxy de Magic Deploy limite une requête à ~1 Mio : on ne soumet ici que ce fichier
-# et le serveur (server.mjs, bundle esbuild). Le site (build Vite, ~20 Mo) est stocké dans
+# et le serveur (server.mjs, bundle esbuild). Le site (build Vite, ~25 Mo) est stocké dans
 # le volume persistant /var/lib/ombres et téléversé par `node tools/deploy-upload.mjs <url>`,
 # authentifié par le secret UPLOAD_TOKEN (voir server/deploy.ts). Préparation : `pnpm deploy:prepare`.
 { pkgs, ... }:

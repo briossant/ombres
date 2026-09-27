@@ -2,7 +2,7 @@
 
 Rendu « ligne claire / Moebius » : tout le dessin se fait dans les **matériaux**
 (deux tons, ombres portées, hachures, brume), puis **une seule** passe d'encre en
-post (contours) et SMAA. Références : `docs/ART_BIBLE.md` §2, §5, §7 ;
+post (contours, antialiasés dans le shader) et SMAA selon le preset. Références : `docs/ART_BIBLE.md` §2, §5, §7 ;
 `docs/research/npr-techniques.md`. Propriétaire : agent **world**.
 
 ```ts
@@ -22,9 +22,11 @@ NprPipeline (priorité 1, prend la main sur le rendu de R3F) :
   3. height shadow map : scène des casters, 3 cascades (proche ±(max(a,b)+90) m en 2048²,
      lointaine ±1 100 m en 1024² quand le soleil est bas, « focus » ±90 m devant une caméra
      basse pour les plans de mise en scène) — zones réglées par le monde (`shadowAreas`)
-  4. GBufferPass (MRT : couleur sRGB8 | normale de vue + ID RGBA8 | profondeur F32)
-  5. InkEffect (contours 1/z + normales + IDs, brume, tremblé monde, papier, vignette, flash)
-  6. SMAA (medium / high)
+  4. GBufferPass (MRT : couleur sRGB8 | normale de vue + ID RGBA8 | profondeur F32) ; en Medium, à
+     0,833 × le canevas (`gbufferScale`) : l'encre reconstruit traits et couleur à la définition de l'écran
+  5. InkEffect (contours 1/z + normales + IDs, antialiasés : frontière lissée sur le 3×3 et
+     couverture sous-pixel d'un trait de largeur continue ; brume, tremblé monde, papier, vignette, flash)
+  6. SMAA (Low : LOW, Medium : aucun, High : MEDIUM, Ultra : HIGH ; voir quality.ts)
 ```
 
 Tout est monté par `<WorldCanvas>` (`src/host/render/WorldCanvas.tsx`) : vous
@@ -182,7 +184,7 @@ uNoise, uQuality, uSunDir…), `night`, `shadow`, `fog`, `mrt`, `tint`
 Uniforms partagés utiles (`NPR.*`) : couleurs de palette (`uInk`, `uCastShadow`,
 `uSandLit`, `uGroundFlat`, `uBirdLit`, `uBirdShade`, `uHaze`, `uSkyHorizon`…),
 `uWarm`, `uPaletteElev`, `uSunDir` (vers le soleil, repère three), `uShadowDir`,
-`uPx` (hauteur/1080 : multiplier tous les px de la bible), `uTime`,
+`uPx` (hauteur du G-buffer / 1080 : multiplier tous les px de la bible), `uTime`,
 `uOwnerCol[13]` (couleur d'identité linéaire par code propriétaire = slot + 1),
 `uOwnerText[13]`, `uQuality` (hachures, granulation, rides, tremblé), `uNoise`.
 

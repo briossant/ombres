@@ -36,8 +36,9 @@ import { WorldCanvas } from './render/WorldCanvas.tsx'
   - `nightAll` : `null` = auto (1 en phases night/over) ;
   - `illuminateTerritory(winnerSlot, gameView.realTime)` : vague d'illumination (0,8 s) + ré-impression du gagnant ;
   - `exactBorders = true` pendant le décompte (warp des bords ramené à 0,5 cellule) ; `hideStorm`.
-- **Qualité** (`src/host/render/quality.ts`) : `useRenderQuality.getState().setLevel('low'|'medium'|'high')`
-  change le preset **à chaud** (dpr 720/900/1080p, SMAA, résolution d'ombre, hachures, cailloux, nuages…) ;
+- **Qualité** (`src/host/render/quality.ts`) : `useRenderQuality.getState().setLevel('low'|'medium'|'high'|'ultra')`
+  change le preset **à chaud** (dpr 720p / 1080p / 1080p / natif ≤ 2160p, SMAA, résolution d'ombre, hachures,
+  cailloux, nuages… ; correcteur AA, voir la section en fin de fichier) ;
   `applyQualitySetting(getSettings().quality)` à chaque changement du réglage ; **`startQualityBench()`** sur l'écran
   titre si `!hasQualityBench()` (banc de ~2,3 s en High, mémorisé dans localStorage, appliqué si réglage « auto ») ;
   **`qualityMonitor.shouldDowngrade(level)`** à interroger **entre deux manches** seulement.
@@ -295,3 +296,61 @@ Détail, preuves, mesures : `docs/polish/fix2-world.md`. Changements d'API et é
   varying `vCut` ; fragment : `sdoor = max(sdoor, vCut.y × smoothstep(z − 2, z, y))`. Le reste de la dissolution
   (cercle par fragment sur les fûts et bulbes, proximité 30-38 m) est inchangé. Coupée au podium (`uDissolve`).
 - Test : `towerCut.test.ts` (oiseau caché par le chapeau, oiseau devant ou loin, caméra proche).
+
+## Correcteur antialiasing (2026-09-27 ; détail, preuves, mesures : docs/polish/fix-antialiasing.md)
+
+- **Traits d'encre antialiasés** (`npr/InkEffect.ts`) : plus aucune décision binaire. Détection pour tous les
+  pixels comme avant (1/z à k = 1 ou 2 pas sur les axes, normale + ID des 4 voisins) ; près d'un bord seulement
+  (branches), 3×3 complet : masque des voisins « de l'autre côté » (silhouette côté objet proche, côté fond,
+  plis / ID), frontière lissée par filtre boîte + gradient (`edgeFit` : un escalier du tampon devient une
+  frontière qui glisse d'une marche à l'autre), puis COUVERTURE du pixel par un trait de largeur continue
+  (`band`, rampe de 1 px aux deux bords ; sous 1 px : trait d'un pixel en opacité W, sinon pointillés de phase) ;
+  le pixel de fond voisin reçoit la part qui déborde (`spill`, brume et épaisseur de l'objet le plus proche).
+  Plis / ID : chaque objet pose sa bande de max(s, 1) px (2 px entre deux objets, 1 px contre le sol, comme
+  avant). Coût : +0,4 ms en High 1080p à 12 oiseaux (A/B entrelacé). `inkDebug = 5` : pixels du 3×3 complet.
+- **Tremblé R5 réinterprété** : variation de PRESSION du trait (± 28 % à 0,7, bruit monde inchangé) au lieu
+  d'un décalage latéral de la lecture (qui, arrondi au texel, faisait des marches d'un pixel entier et des
+  traits cassés en pointillés qui scintillaient).
+- **Presets** (`quality.ts`) : Low 720p + SMAA LOW ; Medium : canevas à la définition de l'écran (≤ 1080p),
+  **G-buffer 900p** (`gbufferScale` 0,833), encre et couleur reconstruites en natif, sans SMAA (budget 8 →
+  8,5 ms : p90 7,0-8,7 ms au calme sur une manche) ; High 1080p + SMAA MEDIUM ; **Ultra** (nouveau) : dpr natif jusqu'en 2160p, `supersample: 2`
+  (écran 1080p : rendu 2160p réduit par le compositeur = SSAA 4×), SMAA HIGH, 2 200 cailloux. `presetDpr`
+  accepte `supersample`. Banc : 2e passe en Ultra si le titre en High coûte ≤ 3 ms (`BENCH_ULTRA_TRY_MS`),
+  retenu ≤ 8,5 ms ; High ≤ 8 ms de titre (8,5 avant : High coûte ~0,6 ms de plus), Medium ≤ 11 ms. Clé du
+  banc passée en `v2` (le banc repasse une fois).
+  Réglage « Qualité » : option Ultra (FR / EN). Oiseaux et FX : `ultra` = détail `high`.
+- **G-buffer plus petit que le canevas** (`gbufferScale`, Medium) : `GBufferPass(scene, camera, rt, scale)` ;
+  `NPR.uPx` / `uResolution` = taille du G-buffer (les matériaux y dessinent ; `updateBirdScreen` aussi) ;
+  l'InkEffect compile la variante `INK_SCALED` (texel lu, distance au bord ramenée au centre du pixel d'écran,
+  couleur en Catmull-Rom 5 lectures) et reçoit `setGBufferSize` à chaque image ; couleur du G-buffer en
+  filtrage linéaire (normale + ID et profondeur : `texelFetch`). Le 1080p natif coûtait 1,3 à 1,5 × (p90
+  11,4 ms au climax à 4 oiseaux) : la surveillance l'aurait fait descendre en Low.
+- `NprPipeline` : `NPR.uPx` / `uResolution` pris sur la taille du G-buffer et posés AVANT les hooks
+  (`updateBirdScreen` les lit) ; `window.__npr.ink()` (debug) = effet d'encre courant.
+- Écarté après mesure : Medium en 1080p natif (coût, ci-dessus) ; SMAA en Medium (+1,1 ms pour un gain à peine
+  visible) ; MSAA × 4 sur la passe MRT (WebGL 2 ne lit pas les échantillons, ID moyennés à la résolution).
+- Outils : `tools/polish/aa/` — `shots.mjs` (image figée, variantes avant / après, référence SSAA 4×
+  `__aa.ssaa(q)`, glissement sous-pixel de la caméra `--pan`, cibles de recadrage automatiques),
+  `crops.mjs` (`--auto --sheet`), `metric.mjs` (écart à la référence SSAA sur les bords), `abink.mjs`
+  (A/B de coût entrelacé : `__before(q)` / `__after(q)`, variantes du shader d'encre), `legacy-ink.glsl`.
+
+## Vérificateur antialiasing (2026-09-27 ; détail et preuves : docs/polish/verify-antialiasing.md)
+
+- **Ultra : traits trop fins, corrigé** (`INK_WIDE`, compilée seulement si `targetHeight` > 1080). À 2160p
+  (s = 2), un trait de silhouette fait 2,2 à 3,8 px et une bande de pli / ID 1,4 à 2,6 px ; la détection
+  s'arrêtait à 2 pas (silhouettes) et 1 pas (plis / ID) : Ultra dessinait 25 à 36 % moins d'encre que High sur la
+  même image. Maintenant : détection à `ceil(W max)` pas (≤ 4), anneaux intermédiaires 2-3 pour les pixels
+  j ≥ 1 (le pixel du bord garde sa couverture lissée), anneau à 2 pas pour les plis / ID des objets. Coût :
+  +0,11 ms à 3840×2160 sur Vega (35 ms). Low / Medium / High : shader identique (test
+  `npr/InkEffect.test.ts`).
+- **Medium : repli à 2 pas** (`INK_SCALED`) : distance ramenée au centre du pixel d'écran (normale de l'anneau)
+  au lieu de 1,8 px pour tous les pixels d'écran du 2e texel. Effet faible (épaisseur plus régulière,
+  +1,5 % d'encre), coût +0,01 ms.
+- Essayés et retirés : borne anti-ringing du Catmull-Rom (aucun effet visible : les points clairs sur les cordes
+  sont des battements 900p → 1080p, pas du ringing) ; couleur du fond au-delà de la frontière lissée
+  (−2,7 % d'écart à la référence SSAA sur les bords de l'oiseau, invisible à l'œil, +0,08 ms).
+- Reste en Medium : dents de 1,2 px sur les silhouettes en biais en gros plan (la couleur suit l'escalier du
+  G-buffer 900p) et points clairs qui scintillent sur les traits très fins (cordes, montants). High est net.
+- Outils : `tools/polish/aa/verify-shots.mjs` (vraie partie, titre → podium, rafale en vol, n'importe quel
+  preset, 1080p / 4K), `verify-sheets.mjs` (planches de recadrages). `tools/polish/tech/common.mjs` :
+  `presetSettings(…, bench)` écrit la clé `ombres.qualityBench.v2` (v1 depuis le correcteur : le banc repassait).

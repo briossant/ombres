@@ -56,6 +56,8 @@ const MIME: Record<string, string> = {
   '.ogg': 'audio/ogg',
   '.wav': 'audio/wav',
   '.woff2': 'font/woff2',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
 }
@@ -73,6 +75,7 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse): Promise<v
   }
   if (path === '/' || path === '') path = '/index.html'
   else if (path === '/play' || path === '/play/') path = '/play.html'
+  else if (path === '/m' || path === '/m/') path = '/m.html' // accueil des téléphones (index.html y redirige)
   const file = normalize(join(DIST, path))
   // Strictement sous DIST (pas dans un dossier voisin comme <DIST>.old ou <DIST>.parts).
   if (file !== DIST && !file.startsWith(DIST + sep)) {
@@ -162,6 +165,7 @@ if (PROD) {
   })
   handler = (req, res) => {
     if (req.url === '/play' || req.url?.startsWith('/play?')) req.url = req.url.replace('/play', '/play.html')
+    else if (req.url === '/m' || req.url?.startsWith('/m?') || req.url === '/m/') req.url = req.url.replace(/^\/m\/?/, '/m.html')
     vite.middlewares(req, res)
   }
 }

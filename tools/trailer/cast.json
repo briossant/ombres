@@ -1,0 +1,16 @@
+{
+  "_doc": "Distribution de la bande-annonce : 4 joueurs « téléphone » (vrais téléphones émulés au salon, pilotés par des bots pendant la manche) + 2 bots. Lu par tools/trailer/seeds.ts et tools/trailer/session.mjs.",
+  "room": "DUNE",
+  "length": "normal",
+  "humans": [
+    { "slot": 0, "name": "Léa", "color": 1, "device": "iPhone 15 Pro", "brain": { "personality": "falcon", "level": 2 } },
+    { "slot": 1, "name": "Sam", "color": 3, "device": "Pixel 7", "brain": { "personality": "magpie", "level": 2 } },
+    { "slot": 2, "name": "Noor", "color": 0, "device": "iPhone 15 Pro", "brain": { "personality": "nomad", "level": 2 } },
+    { "slot": 3, "name": "Kenji", "color": 2, "device": "Pixel 7", "brain": { "personality": "falcon", "level": 1 } }
+  ],
+  "bots": [
+    { "personality": "ploughman", "level": 1 },
+    { "personality": "lookout", "level": 1 }
+  ],
+  "brainSeedSalt": 50
+}

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ombres: a party game where your phone is the controller</title>
+    <meta name="description" content="Your shadow paints the desert while the sun goes down. A party game for 1–12 players: the big screen runs the game, your phones are the controllers. Free, in the browser." />
+    <meta name="theme-color" content="#f7f0e3" />
+    <link rel="canonical" href="https://ombres.deploy.breizhware.com" />
+    <!-- Aperçu de lien (Open Graph + carte X) : mêmes balises que index.html -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ombres" />
+    <meta property="og:title" content="Ombres" />
+    <meta property="og:description" content="Your shadow paints the desert while the sun goes down. A party game for 1–12 players: the big screen runs the game, your phones are the controllers. Free, in the browser." />
+    <meta property="og:url" content="https://ombres.deploy.breizhware.com" />
+    <meta property="og:image" content="https://ombres.deploy.breizhware.com/og.jpg" />
+    <meta property="og:image:secure_url" content="https://ombres.deploy.breizhware.com/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Ombres logo over a desert arena at golden hour: territories painted in blue, yellow and coral, long tower shadows." />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <!-- Bande-annonce pour les aperçus qui lisent la vidéo (Discord…) : public/media/trailer-720.mp4 (H.264 + AAC). -->
+    <meta property="og:video" content="https://ombres.deploy.breizhware.com/media/trailer-720.mp4" />
+    <meta property="og:video:secure_url" content="https://ombres.deploy.breizhware.com/media/trailer-720.mp4" />
+    <meta property="og:video:type" content="video/mp4" />
+    <meta property="og:video:width" content="1280" />
+    <meta property="og:video:height" content="720" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ombres" />
+    <meta name="twitter:description" content="Your shadow paints the desert as the sun sets. 1–12 players, phones as controllers, free in the browser." />
+    <meta name="twitter:image" content="https://ombres.deploy.breizhware.com/og.jpg" />
+    <meta name="twitter:image:alt" content="The Ombres logo over a desert arena at golden hour: territories painted in blue, yellow and coral, long tower shadows." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f7f0e3'/%3E%3Cellipse cx='19' cy='24' rx='11' ry='4' fill='%23a18ea1'/%3E%3Ccircle cx='13' cy='13' r='8' fill='%23fff2c3' stroke='%232b1d23' stroke-width='2.2'/%3E%3C/svg%3E" />
+    <link rel="preload" href="/fonts/julius-sans-one-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/patrick-hand-sc-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <!-- Page d'accueil des téléphones (index.html y redirige les téléphones) : légère, sans three.js ni le jeu.
+         Les textes viennent de src/shared/strings/landing.ts (FR/EN) ; src/landing/main.ts les pose. -->
+    <div class="page">
+      <header class="head">
+        <h1 class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-70 -42 1028 340" role="img" aria-label="Ombres"><defs><clipPath id="mlogo-g"><path d="M-64 196L944 196L944 282L-64 282Z"/></clipPath></defs><path d="M-64 -36L944 -36L944 282L-64 282Z" transform="translate(8 8)" fill="rgb(161 142 161 / .6)"/><path d="M-64 -36L944 -36L944 282L-64 282Z" fill="#F7F0E3"/><path d="M-64 196L944 196L944 282L-64 282Z" fill="#EFD5AE"/><circle cx="-30" cy="42" r="15" fill="#FFF2C3" stroke="#2B1D23" stroke-width="2.4"/><g clip-path="url(#mlogo-g)"><g transform="matrix(1 0 -0.8836 -0.8257 173.19 357.84)"><text x="0" y="196" font-family="'Julius Sans One'" font-size="168" textLength="880" lengthAdjust="spacing" fill="#9c88a0" stroke="#9c88a0" stroke-width="22" stroke-linejoin="round">OMBRES</text></g><path d="M176 257.92q5 -6 11 0z" fill="#C9A98E" stroke="#2B1D23" stroke-width="1.6"/><path d="M730.4 245.88q4 -5 9 0z" fill="#C9A98E" stroke="#2B1D23" stroke-width="1.5"/></g><path d="M-68 196.8L947 195.4" stroke="#2B1D23" stroke-width="3" stroke-linecap="round" fill="none"/><g stroke="#2B1D23" stroke-width="3" stroke-linecap="round" fill="none"><path d="M-70 -35.5L949 -36.5"/><path d="M944.5 -41L943.5 286"/><path d="M948 282.5L-69 281.6"/><path d="M-64.4 287L-63.5 -40"/></g><g class="logo-letters"><text x="0" y="196" font-family="'Julius Sans One'" font-size="168" textLength="880" lengthAdjust="spacing" fill="#2B1D23" stroke="#2B1D23" stroke-width="23" stroke-linejoin="round">OMBRES</text><text x="0" y="196" font-family="'Julius Sans One'" font-size="168" textLength="880" lengthAdjust="spacing" fill="#F7F0E3" stroke="#F7F0E3" stroke-width="16" stroke-linejoin="round">OMBRES</text><text x="0" y="196" font-family="'Julius Sans One'" font-size="168" textLength="880" lengthAdjust="spacing" fill="none" stroke="#2B1D23" stroke-width="1.2" opacity=".3">OMBRES</text></g></svg></h1>
+        <p class="pitch recitatif" data-t="landing.pitch"></p>
+      </header>
+
+      <section class="media" id="media">
+        <figure class="hero case case--title" id="hero">
+          <!-- src et poster posés par le script une fois la bande-annonce trouvée (sinon : carrousel des captures) -->
+          <video id="trailer" data-t-aria="landing.media.trailer" muted loop playsinline preload="none" width="1280" height="720"></video>
+          <div class="hero__ctl">
+            <button type="button" class="icon-btn" id="btn-play" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M8 5.5v13l10.5-6.5z" /><path class="i-pause" d="M8 5.5v13M16 5.5v13" /></svg>
+            </button>
+            <button type="button" class="icon-btn icon-btn--sound" id="btn-sound" aria-pressed="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path class="i-on" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" /><path class="i-off" d="M16 9.5l5 5M21 9.5l-5 5" /></svg>
+              <span class="icon-btn__label" data-t="landing.media.soundOn"></span>
+            </button>
+          </div>
+        </figure>
+      </section>
+
+      <p class="intro" data-t="landing.intro"></p>
+
+      <ul class="facts">
+        <li data-t="landing.fact.players"></li>
+        <li data-t="landing.fact.length"></li>
+        <li data-t="landing.fact.bots"></li>
+        <li data-t="landing.fact.free"></li>
+      </ul>
+
+      <section class="case case--title big" id="big" aria-labelledby="big-title">
+        <h2 class="cap" id="big-title" data-t="landing.big.title"></h2>
+        <p class="big__body" id="big-body"></p>
+        <p class="note" data-t="landing.big.note"></p>
+        <div class="actions">
+          <button type="button" class="btn btn--primary" id="btn-copy" data-t="landing.big.copy"></button>
+          <button type="button" class="btn" id="btn-share" data-t="landing.big.share" hidden></button>
+          <a class="btn btn--primary" id="btn-desk" href="/?desktop=1" data-t="landing.desk.play" hidden></a>
+        </div>
+        <p class="live" id="copy-status" role="status" aria-live="polite"></p>
+        <div class="here">
+          <p class="note" data-t="landing.here.note"></p>
+          <a class="btn" id="btn-here" href="/?desktop=1&amp;here=1" data-t="landing.here.open"></a>
+        </div>
+      </section>
+
+      <section class="case code" aria-labelledby="code-title">
+        <h2 class="cap" id="code-title" data-t="landing.code.title"></h2>
+        <p data-t="landing.code.body"></p>
+        <form class="code__form" id="code-form" action="/play" method="get">
+          <input class="code__input" id="code-input" name="r" placeholder="ABCD" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" maxlength="6" data-t-aria="landing.code.label" />
+          <button type="submit" class="btn btn--ink" id="code-go" data-t="landing.code.join" disabled></button>
+        </form>
+      </section>
+
+      <section class="strip" id="strip" aria-labelledby="strip-title">
+        <h2 class="strip__title" id="strip-title" data-t="landing.strip.title"></h2>
+        <ol class="strip__list" id="strip-list">
+          <li class="panel"><img src="/media/screens/2-salon.webp" width="720" height="405" alt="" loading="lazy" decoding="async" /><p class="panel__cap" data-t="landing.strip.1"></p></li>
+          <li class="panel"><img src="/media/screens/7-manette.webp" width="720" height="429" alt="" loading="lazy" decoding="async" /><p class="panel__cap" data-t="landing.strip.2"></p></li>
+          <li class="panel"><img src="/media/screens/3-heure-doree.webp" width="720" height="405" alt="" loading="lazy" decoding="async" /><p class="panel__cap" data-t="landing.strip.3"></p></li>
+          <li class="panel"><img src="/media/screens/4-grande-ombre.webp" width="720" height="405" alt="" loading="lazy" decoding="async" /><p class="panel__cap" data-t="landing.strip.4"></p></li>
+        </ol>
+        <div class="dots" id="strip-dots"></div>
+      </section>
+
+      <footer class="foot">
+        <p class="credits" data-t="landing.credits"></p>
+        <p class="links">
+          <a href="https://github.com/briossant/ombres" rel="noopener" data-t="landing.github"></a>
+          <button type="button" class="linkish" id="btn-lang" data-t="landing.otherLang"></button>
+        </p>
+      </footer>
+    </div>
+    <noscript><p class="noscript">Ombres: open ombres.deploy.breizhware.com on a computer or a TV. Your phone will be the controller.</p></noscript>
+    <script type="module" src="/src/landing/main.ts"></script>
+  </body>
+</html>

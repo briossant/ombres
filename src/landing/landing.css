@@ -1,0 +1,615 @@
+/* Page d'accueil des téléphones (/m) : papier, encre, cases de BD (ART_BIBLE §8). */
+
+@font-face {
+  font-family: 'Julius Sans One';
+  font-style: normal;
+  font-weight: 400;
+  /* bloc court : le logotype ne s'affiche jamais en police de secours (fichier préchargé) */
+  font-display: block;
+  src: url(/fonts/julius-sans-one-400-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Patrick Hand SC';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/patrick-hand-sc-400-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Patrick Hand SC';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/patrick-hand-sc-400-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --paper: #f7f0e3;
+  --paper-2: #efe4cf;
+  --sand: #efd5ae;
+  --ink: #2b1d23;
+  --ink-80: rgb(43 29 35 / 0.8);
+  --ink-35: rgb(43 29 35 / 0.35);
+  --ink-15: rgb(43 29 35 / 0.15);
+  --drop: rgb(161 142 161 / 0.6);
+  --sun: #fff2c3;
+  --radius: 3px;
+  --f-title: 'Julius Sans One', 'Trebuchet MS', sans-serif;
+  --f-ui: 'Patrick Hand SC', 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+  --gut-l: max(16px, env(safe-area-inset-left));
+  --gut-r: max(16px, env(safe-area-inset-right));
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font: 19px/1.32 var(--f-ui);
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+h1,
+h2,
+p,
+ol,
+ul,
+figure {
+  margin: 0;
+}
+a {
+  color: inherit;
+}
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+/* Les textes sont posés par le script : on ne montre pas de cases vides en attendant
+   (au pire, tout apparaît après 2,5 s). */
+.page > :not(.head) {
+  visibility: hidden;
+  animation: failsafe 0s 2.5s forwards;
+}
+.is-ready .page > * {
+  visibility: visible;
+  animation: none;
+}
+@keyframes failsafe {
+  to {
+    visibility: visible;
+  }
+}
+
+/* ─── Mise en page ───────────────────────────────────────────────────────── */
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'head' 'media' 'intro' 'facts' 'big' 'code' 'strip' 'foot';
+  row-gap: 22px;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: max(14px, env(safe-area-inset-top)) var(--gut-r) 0 var(--gut-l);
+}
+.head {
+  grid-area: head;
+}
+.media {
+  grid-area: media;
+  min-width: 0;
+}
+.intro {
+  grid-area: intro;
+}
+.facts {
+  grid-area: facts;
+}
+.big {
+  grid-area: big;
+}
+.code {
+  grid-area: code;
+}
+.strip {
+  grid-area: strip;
+  min-width: 0;
+}
+.foot {
+  grid-area: foot;
+}
+
+/* Téléphone en paysage : logo et accroche à gauche, bande-annonce à droite. */
+@media (orientation: landscape) and (min-width: 560px) {
+  .page {
+    max-width: 62rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-areas: 'head media' 'intro media' 'facts media' 'big code' 'strip strip' 'foot foot';
+    column-gap: 26px;
+    row-gap: 18px;
+    align-items: start;
+  }
+  .media {
+    align-self: center;
+  }
+  .code {
+    align-self: stretch;
+    align-content: start;
+  }
+  .strip__list > .panel {
+    flex-basis: 46%;
+  }
+  .strip--carousel .strip__list > .panel {
+    flex-basis: 100%;
+  }
+}
+
+/* ─── Cases de BD ────────────────────────────────────────────────────────── */
+.case {
+  position: relative;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 5px 5px 0 var(--drop);
+}
+.case--title {
+  border-width: 3px;
+  box-shadow: 7px 7px 0 var(--drop);
+}
+.recitatif {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 4px 4px 0 var(--drop);
+  padding: 0.3em 0.75em 0.25em;
+}
+/* En-tête de case, en onglet à cheval sur le bord (comme les cases du jeu). */
+.cap {
+  position: absolute;
+  left: 14px;
+  top: 0;
+  transform: translateY(-58%);
+  max-width: calc(100% - 28px);
+  padding: 4px 12px 3px;
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  font: 400 15px/1.2 var(--f-title);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ─── En-tête : logotype + accroche ─────────────────────────────────────── */
+.logo {
+  display: block;
+  width: min(100%, 30rem);
+  line-height: 0;
+}
+.logo svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.pitch {
+  display: inline-block;
+  position: relative;
+  margin: -4px 0 0 18px;
+  max-width: calc(100% - 26px);
+  font-size: 20px;
+  line-height: 1.22;
+}
+
+/* ─── Bande-annonce ──────────────────────────────────────────────────────── */
+.hero {
+  overflow: hidden;
+  background: var(--paper-2);
+}
+.hero video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--paper-2);
+}
+.hero__ctl {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 8px;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 9px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: 3px 3px 0 rgb(43 29 35 / 0.28);
+  font-size: 17px;
+  cursor: pointer;
+  transition:
+    transform 120ms,
+    box-shadow 120ms;
+}
+.icon-btn[hidden] {
+  display: none;
+}
+.icon-btn svg {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-btn .i-play,
+.icon-btn svg > path:first-child {
+  fill: var(--ink);
+}
+#btn-play .i-pause,
+#btn-play.is-playing .i-play {
+  display: none;
+}
+#btn-play.is-playing .i-pause {
+  display: inline;
+  fill: none;
+  stroke-width: 3;
+}
+.icon-btn--sound {
+  background: var(--sun);
+}
+.icon-btn--sound .i-on,
+.icon-btn--sound.is-on .i-off,
+.icon-btn--sound.is-on .icon-btn__label {
+  display: none;
+}
+.icon-btn--sound.is-on {
+  background: var(--paper);
+}
+.icon-btn--sound.is-on .i-on {
+  display: inline;
+}
+
+/* ─── Texte d'intro, faits ───────────────────────────────────────────────── */
+.intro {
+  font-size: 20px;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+.facts li {
+  padding: 5px 11px 4px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  font-size: 17px;
+  line-height: 1.2;
+}
+.facts li:first-child {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ─── Case « grand écran » ───────────────────────────────────────────────── */
+.big,
+.code {
+  padding: 26px 16px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+.big {
+  background: var(--sun);
+}
+.big__body {
+  font-size: 21px;
+  line-height: 1.28;
+}
+.url {
+  font-weight: 400;
+  padding: 0 0.15em;
+  background: var(--paper);
+  border-bottom: 2px solid var(--ink);
+}
+.note {
+  font-size: 16px;
+  color: var(--ink-80);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.actions .btn {
+  flex: 1 1 9rem;
+}
+.live:empty {
+  display: none;
+}
+.live {
+  font-size: 16px;
+}
+
+/* ─── Boutons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 18px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: 4px 4px 0 var(--drop);
+  font-size: 21px;
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 120ms,
+    box-shadow 120ms,
+    background-color 120ms;
+}
+.btn[hidden] {
+  display: none;
+}
+.btn--primary {
+  border-width: 3px;
+  background: var(--paper);
+  font-size: 22px;
+  box-shadow: 5px 5px 0 var(--ink-35);
+}
+.btn--primary.is-done {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn--ink {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn:disabled {
+  background: transparent;
+  color: var(--ink-35);
+  border-color: var(--ink-35);
+  box-shadow: none;
+  cursor: default;
+}
+.btn:not(:disabled):active,
+.icon-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent;
+  transition-duration: 80ms;
+}
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.btn:focus-visible,
+.icon-btn:focus-visible {
+  background: var(--sun);
+  color: var(--ink);
+}
+
+/* ─── Code de salle ──────────────────────────────────────────────────────── */
+.code__form {
+  display: flex;
+  gap: 10px;
+}
+.code__input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 60px;
+  padding: 0 0 0 0.35em;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  box-shadow: inset 3px 3px 0 var(--ink-15);
+  font: 400 30px/1 var(--f-title);
+  letter-spacing: 0.35em;
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+}
+.code__input:focus {
+  background: var(--sun);
+}
+.code__input::placeholder {
+  color: var(--ink-15);
+}
+.code__form .btn {
+  flex: 0 0 auto;
+  min-height: 60px;
+}
+
+/* ─── Bande de cases (et carrousel quand la bande-annonce manque) ───────── */
+.strip__title {
+  font: 400 17px/1.2 var(--f-title);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.strip__list {
+  display: flex;
+  gap: 14px;
+  margin: 0 calc(-1 * var(--gut-r)) 0 calc(-1 * var(--gut-l));
+  padding: 2px var(--gut-r) 10px var(--gut-l);
+  scroll-padding: 0 var(--gut-r) 0 var(--gut-l);
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.strip__list::-webkit-scrollbar {
+  display: none;
+}
+.panel {
+  flex: 0 0 84%;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 5px 5px 0 var(--drop);
+  overflow: hidden;
+}
+.panel img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+.panel__cap {
+  padding: 8px 12px 10px;
+  font-size: 17px;
+  line-height: 1.25;
+}
+/* Carrousel : une case à la fois, en tête de page, bordure épaisse comme la bande-annonce. */
+.strip--carousel .strip__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.strip--carousel .strip__list {
+  margin: 0;
+  padding: 0 7px 9px 0;
+  scroll-padding: 0;
+  gap: 16px;
+}
+.strip--carousel .panel {
+  flex-basis: calc(100% - 7px);
+  border-width: 3px;
+  box-shadow: 7px 7px 0 var(--drop);
+}
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+.dot {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.dot::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+}
+.dot[aria-current='true']::before {
+  background: var(--ink);
+}
+
+/* ─── Pied : une bande de désert, comme sous les lettres du logo ─────────── */
+.foot {
+  margin: 12px calc(-1 * var(--gut-r)) 0 calc(-1 * var(--gut-l));
+  padding: 18px var(--gut-r) max(22px, env(safe-area-inset-bottom)) var(--gut-l);
+  background: var(--sand);
+  border-top: 3px solid var(--ink);
+  display: grid;
+  gap: 12px;
+}
+.credits {
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--ink-80);
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 17px;
+}
+.links a,
+.linkish {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.linkish {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.noscript {
+  margin: 16px;
+  font-size: 20px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .is-ready .page > :not(.head) {
+    animation: rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .is-ready .media {
+    animation-delay: 40ms;
+  }
+  .is-ready .big {
+    animation-delay: 80ms;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+}
+
+/* « Ouvrir le jeu ici quand même » : ce téléphone ou cette tablette sert d'écran. Choix secondaire,
+   séparé du geste principal (copier le lien vers un ordinateur) par un filet pointillé. */
+.here {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 2px dashed var(--ink-35);
+  display: grid;
+  gap: 10px;
+}
+.here .btn {
+  justify-self: start;
+}

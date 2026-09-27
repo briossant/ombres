@@ -17,6 +17,10 @@ export function createGBuffer(width = 1, height = 1): THREE.WebGLRenderTarget {
   })
   rt.textures[0]!.colorSpace = THREE.SRGBColorSpace // pas de banding dans les sombres
   rt.textures[0]!.name = 'gbuffer.color'
+  // filtrage linéaire de la couleur : reconstruction Catmull-Rom de l'encre quand le G-buffer est plus petit que
+  // le canevas (Medium) ; normale + ID et profondeur restent lues au texel près (texelFetch)
+  rt.textures[0]!.minFilter = THREE.LinearFilter
+  rt.textures[0]!.magFilter = THREE.LinearFilter
   rt.textures[1]!.name = 'gbuffer.normalId' // données brutes (NoColorSpace)
   return rt
 }
@@ -24,12 +28,14 @@ export function createGBuffer(width = 1, height = 1): THREE.WebGLRenderTarget {
 /**
  * Passe géométrique : rend la scène dans le G-buffer. N'écrit pas dans les
  * buffers du composer (needsSwap = false) : l'InkEffect lit directement la cible.
+ * `scale` (< 1 en Medium) : G-buffer plus petit que le canevas, l'InkEffect reconstruit à la taille de l'écran.
  */
 export class GBufferPass extends Pass {
   constructor(
     scene: THREE.Scene,
     camera: THREE.Camera,
     readonly target: THREE.WebGLRenderTarget,
+    readonly scale = 1,
   ) {
     super('GBufferPass', scene, camera)
     this.needsSwap = false
@@ -48,7 +54,7 @@ export class GBufferPass extends Pass {
   }
 
   override setSize(width: number, height: number): void {
-    this.target.setSize(width, height)
+    this.target.setSize(Math.max(1, Math.round(width * this.scale)), Math.max(1, Math.round(height * this.scale)))
   }
 
   setScene(scene: THREE.Scene, camera: THREE.Camera): void {

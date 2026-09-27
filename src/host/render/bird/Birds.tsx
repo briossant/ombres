@@ -8,7 +8,7 @@ import type { BirdMode } from './animator.ts'
 import { BirdsController } from './controller.ts'
 import type { BirdDetail } from './geometry.ts'
 
-export type BirdsQuality = 'low' | 'medium' | 'high'
+export type BirdsQuality = 'low' | 'medium' | 'high' | 'ultra'
 
 export interface BirdsProps {
   /** Preset de qualité (résolution des maillages, hachures). Défaut : 'high'. */
@@ -27,7 +27,7 @@ export interface BirdsProps {
   onController?: (c: BirdsController) => void
 }
 
-const DETAIL: Record<BirdsQuality, BirdDetail> = { low: 'low', medium: 'medium', high: 'high' } // maillage des gros plans ; « far » au loin
+const DETAIL: Record<BirdsQuality, BirdDetail> = { low: 'low', medium: 'medium', high: 'high', ultra: 'high' } // maillage des gros plans ; « far » au loin
 
 export function Birds({
   quality = 'high',

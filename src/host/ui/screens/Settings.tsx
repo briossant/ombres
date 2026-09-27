@@ -60,7 +60,7 @@ export function Settings() {
                   icon="quality"
                   label={t('host.settings.quality')}
                   value={s.quality}
-                  options={(['auto', 'low', 'medium', 'high'] as const).map(q => ({ value: q, label: t(`host.settings.quality.${q}`) }))}
+                  options={(['auto', 'low', 'medium', 'high', 'ultra'] as const).map(q => ({ value: q, label: t(`host.settings.quality.${q}`) }))}
                   onChange={v => s.set('quality', v)}
                 />
                 <Segmented<boolean> icon="fullscreen" label={t('host.settings.fullscreen')} value={fs} options={yesNo} onChange={v => v !== fs && uiActions.toggleFullscreen()} />

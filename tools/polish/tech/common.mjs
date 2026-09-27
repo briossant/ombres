@@ -248,7 +248,7 @@ export async function presetSettings(page, patch, bench) {
         const k = 'ombres.settings.v1'
         const s = JSON.parse(localStorage.getItem(k) ?? '{}')
         localStorage.setItem(k, JSON.stringify({ ...s, ...p }))
-        if (bench) localStorage.setItem('ombres.qualityBench.v1', bench)
+        if (bench) localStorage.setItem('ombres.qualityBench.v2', bench) // v2 : clé du banc depuis le correcteur AA (quality.ts)
       } catch {}
     },
     [patch, bench ?? null],

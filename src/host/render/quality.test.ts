@@ -1,6 +1,6 @@
 // Qualité automatique : banc avec marge, surveillance GPU des manches, repli sur les intervalles d'image.
 import { describe, expect, it } from 'vitest'
-import { MONITOR_MIN_GPU_SAMPLES, presetDpr, QUALITY_PRESETS, QualityBench, QualityMonitor } from './quality.ts'
+import { benchLevelFromHigh, BENCH_ULTRA_TRY_MS, feedQualityBench, MONITOR_MIN_GPU_SAMPLES, presetDpr, QUALITY_PRESETS, QualityBench, QualityMonitor, startQualityBench, useRenderQuality } from './quality.ts'
 
 const feed = (m: QualityMonitor, f: (i: number) => number, n = 120) => {
   for (let i = 0; i < n; i++) m.push(f(i))
@@ -79,10 +79,18 @@ describe('QualityMonitor (temps GPU des manches)', () => {
     feed(m, () => 49.7, 120)
     expect(m.shouldDowngrade('high')).toBeNull()
   })
-  it('Medium au-delà de 8,8 ms au p90 : on descend en Low', () => {
+  it('Medium au-delà de 9,35 ms au p90 (budget 8,5 ms) : on descend en Low ; 8,7 ms (climax mesuré) : on garde', () => {
     const m = new QualityMonitor()
-    feedGpu(m, () => 9.2, 400)
+    feedGpu(m, () => 9.6, 400)
     expect(m.shouldDowngrade('medium')).toBe('low')
+    const ok = new QualityMonitor()
+    feedGpu(ok, () => 8.7, 400)
+    expect(ok.shouldDowngrade('medium')).toBeNull()
+  })
+  it('Ultra trop cher pour la machine : on descend en High', () => {
+    const m = new QualityMonitor()
+    feedGpu(m, () => 12, 400)
+    expect(m.shouldDowngrade('ultra')).toBe('high')
   })
   it('shouldDowngrade clôt la manche : la suivante repart de zéro', () => {
     const m = new QualityMonitor()
@@ -107,11 +115,40 @@ describe('QualityBench', () => {
     for (let i = 0; i < 45 && !r; i++) r = b.push(ms)
     return r
   }
-  it('High seulement avec de la marge (médiane ≤ 8,5 ms)', () => {
-    expect(run(8.2)).toBe('high')
+  it('High seulement avec de la marge (médiane ≤ 8 ms) ; Medium jusqu’à 11 ms', () => {
+    expect(run(7.9)).toBe('high')
+    expect(run(8.2)).toBe('medium')
     expect(run(9.8)).toBe('medium')
-    expect(run(11.5)).toBe('medium')
-    expect(run(13)).toBe('low')
+    expect(run(10.9)).toBe('medium')
+    expect(run(11.5)).toBe('low')
+    expect(benchLevelFromHigh(2)).toBe('high')
+  })
+})
+
+describe('banc en deux temps (Ultra)', () => {
+  const feed = (ms: number, n: number, auto = true) => {
+    for (let i = 0; i < n; i++) feedQualityBench(ms, auto)
+  }
+  it('machine rapide : 2e banc en Ultra, retenu s’il tient 8,5 ms', () => {
+    startQualityBench()
+    feed(2.5, 140)
+    expect(useRenderQuality.getState().level).toBe('ultra')
+    feed(7.9, 170)
+    expect(useRenderQuality.getState().benchLevel).toBe('ultra')
+    expect(useRenderQuality.getState().level).toBe('ultra')
+  })
+  it('machine rapide, mais Ultra trop cher : High', () => {
+    startQualityBench()
+    feed(BENCH_ULTRA_TRY_MS, 140)
+    feed(11, 170)
+    expect(useRenderQuality.getState().benchLevel).toBe('high')
+    expect(useRenderQuality.getState().level).toBe('high')
+  })
+  it('machine moyenne : pas de 2e banc', () => {
+    startQualityBench()
+    feed(9.5, 140)
+    expect(useRenderQuality.getState().benchLevel).toBe('medium')
+    expect(useRenderQuality.getState().level).toBe('medium')
   })
 })
 
@@ -121,5 +158,13 @@ describe('presetDpr', () => {
     expect(presetDpr(QUALITY_PRESETS.high, 2160, 1)).toBeCloseTo(0.5)
     expect(presetDpr(QUALITY_PRESETS.high, 1080, 2)).toBe(1)
     expect(presetDpr(QUALITY_PRESETS.medium, 720, 1)).toBe(1)
+    // Medium en natif (correcteur AA : plus de canevas 900p agrandi)
+    expect(presetDpr(QUALITY_PRESETS.medium, 1080, 1)).toBe(1)
+  })
+  it('Ultra : natif jusqu’en 2160p (4K, HiDPI), suréchantillonné ×2 sur un écran 1080p', () => {
+    expect(presetDpr(QUALITY_PRESETS.ultra, 2160, 1)).toBe(1)
+    expect(presetDpr(QUALITY_PRESETS.ultra, 1080, 2)).toBe(2)
+    expect(presetDpr(QUALITY_PRESETS.ultra, 1080, 1)).toBe(2)
+    expect(presetDpr(QUALITY_PRESETS.ultra, 1440, 1)).toBeCloseTo(1.5)
   })
 })

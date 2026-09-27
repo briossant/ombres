@@ -57,3 +57,7 @@ Chaque décision : ce qui a été tranché, et pourquoi, en une ou deux lignes. 
 - **D36 — Narrateur français régénéré avec Qwen3-TTS 1.7B (Apache-2.0) sur GPU Kaggle.** Banc de 20 systèmes (Kyutai 1.6B, Qwen3, CosyVoice3, VoxCPM2, Chatterbox…) mesurés par Whisper large-v3, UTMOS22/UTMOSv2/DNSMOS et similarité de locuteur : en français, Qwen3 avec une voix de synthèse conçue par description (aucune personne réelle clonée), accélérée de 20 %, est la plus intelligible (erreur 0,007 contre 0,032) et la mieux notée. L'anglais reste sur Pocket TTS, déjà intelligible à 100 %. Pas de Gemini : aucune clé disponible.
 - **D37 — Qualité automatique** : un banc de 2 s sur l'écran titre choisit le preset (Medium sur la machine de dev, iGPU Vega) ; High tient 60 i/s à 12 oiseaux avec ~9,2-9,5 ms GPU au 90e centile ; rétrogradation seulement entre deux manches.
 - **D38 — Crédits** : « Conçu et réalisé par Claude (Anthropic), sous la supervision de Brieuc Crosson ».
+
+## Publication
+
+- **D39 — Licence non commerciale : PolyForm Noncommercial 1.0.0** (titulaire : Brieuc Crosson), dépôt public en source disponible ; les assets tiers gardent leur licence (musiques CC-BY 4.0 / CC0, sons CC0, polices OFL 1.1, voix Pocket TTS CC-BY 4.0 et Qwen3-TTS Apache-2.0 : `docs/CREDITS-sources.md`). *Pourquoi* : le jeu reste libre d'accès, d'étude et de partage, mais personne ne peut le vendre ou l'exploiter commercialement sans accord ; licence rédigée par des juristes pour du logiciel, qui laisse au titulaire la possibilité d'accorder des licences commerciales.

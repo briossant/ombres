@@ -2,10 +2,59 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Téléphone (pointeur grossier + côté court < 600 px) → page d'accueil légère /m, avant tout
+      // chargement du jeu. Tablettes et PC gardent le jeu. ?desktop=1 force le jeu (retenu pour
+      // l'onglet ; avec here=1, retenu sur l'appareil) ; ?debug n'est jamais redirigé. Même règle que isPhone() dans src/landing/logic.ts.
+      ;(function () {
+        var q = location.search
+        var keep = false
+        try {
+          if (/[?&]desktop=1(&|$)/.test(q)) sessionStorage.setItem('ombres.desktop', '1')
+          // « Ouvrir le jeu ici quand même » (page /m) : ce téléphone ou cette tablette sert d'écran,
+          // choix retenu sur l'appareil (revenir à l'accueil : ouvrir /m).
+          if (/[?&]here=1(&|$)/.test(q)) localStorage.setItem('ombres.desktop', '1')
+          keep = sessionStorage.getItem('ombres.desktop') === '1' || localStorage.getItem('ombres.desktop') === '1'
+        } catch (e) {
+          keep = /[?&]desktop=1(&|$)/.test(q)
+        }
+        if (keep || /[?&]debug/.test(q)) return
+        try {
+          if (Math.min(screen.width, screen.height) < 600 && matchMedia('(pointer: coarse)').matches) location.replace('/m' + q + location.hash)
+        } catch (e) {}
+      })()
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f0e3" />
     <meta name="description" content="Ombres — party game local : ton ombre peint le désert. À la nuit, le plus grand territoire gagne." />
     <title>Ombres</title>
+    <link rel="canonical" href="https://ombres.deploy.breizhware.com" />
+    <!-- Aperçu de lien (Open Graph + carte X), en anglais pour le lancement. Image : tools/launch/og-compose.mjs.
+         Mêmes balises dans m.html (accueil des téléphones). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ombres" />
+    <meta property="og:title" content="Ombres" />
+    <meta property="og:description" content="Your shadow paints the desert while the sun goes down. A party game for 1–12 players: the big screen runs the game, your phones are the controllers. Free, in the browser." />
+    <meta property="og:url" content="https://ombres.deploy.breizhware.com" />
+    <meta property="og:image" content="https://ombres.deploy.breizhware.com/og.jpg" />
+    <meta property="og:image:secure_url" content="https://ombres.deploy.breizhware.com/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Ombres logo over a desert arena at golden hour: territories painted in blue, yellow and coral, long tower shadows." />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <!-- Bande-annonce pour les aperçus qui lisent la vidéo (Discord…) : public/media/trailer-720.mp4 (H.264 + AAC). -->
+    <meta property="og:video" content="https://ombres.deploy.breizhware.com/media/trailer-720.mp4" />
+    <meta property="og:video:secure_url" content="https://ombres.deploy.breizhware.com/media/trailer-720.mp4" />
+    <meta property="og:video:type" content="video/mp4" />
+    <meta property="og:video:width" content="1280" />
+    <meta property="og:video:height" content="720" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ombres" />
+    <meta name="twitter:description" content="Your shadow paints the desert as the sun sets. 1–12 players, phones as controllers, free in the browser." />
+    <meta name="twitter:image" content="https://ombres.deploy.breizhware.com/og.jpg" />
+    <meta name="twitter:image:alt" content="The Ombres logo over a desert arena at golden hour: territories painted in blue, yellow and coral, long tower shadows." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f7f0e3'/%3E%3Cellipse cx='19' cy='24' rx='11' ry='4' fill='%23a18ea1'/%3E%3Ccircle cx='13' cy='13' r='8' fill='%23fff2c3' stroke='%232b1d23' stroke-width='2.2'/%3E%3C/svg%3E" />
     <style>
       html,
