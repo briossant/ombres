@@ -1,30 +1,31 @@
 #!/usr/bin/env bash
 # Rapatrie les prises retenues par les kernels de tri et construit le paquet prêt à intégrer
 # (même arborescence que public/audio/narrator/ : fr/ Qwen3, en/ copie du lot Pocket actuel, manifest.json du jeu).
-#   gen/finalize.sh <travail> <paquet> <N tranches>
+#   gen/finalize.sh <travail> <paquet> <kernel de tri>...   (ex. ombres-tts-gen-select-{0..4} ombres-tts-gen-select-fix-0 ;
+#   pour une même réplique, le dernier kernel cité l'emporte : les reprises viennent après le lot)
 # Rien n'est écrit dans public/ ni dans tools/tts/ : ré-encodage local (loudnorm −16 LUFS, MP3 24 kHz ABR 48k,
 # présence +2 dB) depuis le cache, puis vérification Whisper small P + N + C des MP3 finaux.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
-W="$1"; PKG="$2"; N="$3"
+W="$1"; PKG="$2"; shift 2; SEL=("$@")
 export KAGGLE_API_TOKEN="$(cat ~/.kaggle/access_token)"
 mkdir -p "$W/sel" "$W/cache" "$PKG"
-for ((i = 0; i < N; i++)); do
-  [ -f "$W/sel/$i/select.zip" ] || timeout 600 uvx --from kaggle kaggle kernels output "ftgplwa/ombres-tts-gen-select-$i" \
-    -p "$W/sel/$i" --file-pattern '.*\.(zip|json|log)$' > /dev/null
+for k in "${SEL[@]}"; do
+  [ -f "$W/sel/$k/select.zip" ] || timeout 600 uvx --from kaggle kaggle kernels output "ftgplwa/$k" \
+    -p "$W/sel/$k" --file-pattern '.*\.(zip|json|log)$' > /dev/null
 done
 python3 "$HERE/prepare.py" "$W" > /dev/null   # voices.qwen3.json (identique au dataset)
 PY="$ROOT/tools/tts/.venv/bin/python"
-LD_LIBRARY_PATH="${NIX_LD_LIBRARY_PATH:-}" "$PY" - "$W" "$N" <<'PY'
+LD_LIBRARY_PATH="${NIX_LD_LIBRARY_PATH:-}" "$PY" - "$W" "${SEL[@]}" <<'PY'
 import json, sys, zipfile, glob, os
-w, n = sys.argv[1], int(sys.argv[2])
+w, sel = sys.argv[1], sys.argv[2:]
 order = [l["id"] for l in json.load(open(f"{w}/lines.fr-qwen3.json"))]
 final = {}
-for i in range(n):
-    for l in json.load(open(f"{w}/sel/{i}/final_lines.json")):
+for k in sel:
+    for l in json.load(open(f"{w}/sel/{k}/final_lines.json")):
         final[l["id"]] = l
-    with zipfile.ZipFile(f"{w}/sel/{i}/select.zip") as z:
+    with zipfile.ZipFile(f"{w}/sel/{k}/select.zip") as z:
         for name in z.namelist():
             if name.startswith("cache/"):
                 z.extract(name, w)
@@ -45,16 +46,5 @@ RUN="export LD_LIBRARY_PATH=\${NIX_LD_LIBRARY_PATH:-}; export OMP_NUM_THREADS=4;
 nix-shell -p ffmpeg --run "$RUN --lite-manifest $W/manifest.fr.json" 2>&1 | tee "$W/encode.log" | grep -v "^♻" | tail -5
 nix-shell -p ffmpeg --run "$RUN --verify" 2>&1 | tee "$W/verify.log" | tail -8
 # Manifest du jeu : entrées FR remplacées, entrées EN et fichiers en/ repris du lot actuel.
-python3 - "$W" "$PKG" "$ROOT/public/audio/narrator" <<'PY'
-import json, sys, shutil, os
-w, pkg, pub = sys.argv[1:]
-cur = json.load(open(f"{pub}/manifest.json"))
-fr = {e["id"]: e for e in json.load(open(f"{w}/manifest.fr.json"))["lines"]}
-lines = [fr[e["id"]] if e["lang"] == "fr" else e for e in cur["lines"]]
-assert len(fr) == sum(e["lang"] == "fr" for e in cur["lines"]), "FR incomplet"
-shutil.copytree(f"{pub}/en", f"{pkg}/en", dirs_exist_ok=True)
-doc = {**cur, "total_duration_s": round(sum(e["duration_s"] for e in lines), 2), "lines": lines}
-text = json.dumps(doc, ensure_ascii=False, separators=(",", ":"))
-open(f"{pkg}/manifest.json", "w").write(text.replace('},{"id"', '},\n{"id"') + "\n")
-print("manifest :", len(lines), "entrées,", doc["total_duration_s"], "s")
-PY
+python3 "$HERE/assemble.py" "$W" "$PKG"
+# Refus locaux éventuels (ré-encodage local ≠ encodage Kaggle) : voir local_rounds.py.

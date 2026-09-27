@@ -35,16 +35,27 @@ Le lot complet passe par `tools/tts/gen.py` lui-même : mêmes règles que le lo
 | `gen/qwen3_engine.py` | énumère les synthèses que gen.py demandera (graines `base + 101·k`) ; `ReplayEngine`, le moteur `qwen3` de gen.py, relit les prises brutes |
 | `gen/kernels/synth/synth.py` | kernel GPU (2 × T4) : prises brutes par lots de 24, float32, clone de `qwen3_design.wav` → `takes.tar` |
 | `gen/kernels/select/select.py` | kernels CPU (sans quota) : gen.py trie les prises (UTMOS22, Whisper small P/N/C, mots-clés, ≤ 3 s parlées), par tours pour les seules répliques refusées → `select.zip` (prises retenues en FLAC 24 bits = cache de gen.py) |
-| `gen/push.sh` | `dataset [create]`, `synth`, `select N`, `smoke` / `smoke-select` (essai à blanc CPU) |
+| `gen/push.sh` | `dataset [create]`, `synth`, `select N`, `smoke` / `smoke-select` (essai à blanc CPU) ; `OMBRES_SUFFIX=-fix` : kernels à part pour une reprise |
 | `gen/finalize.sh` | en local : rapatrie les prises retenues, ré-encode (gen.py en mode cache, `run_gen.py`), `--verify` P + N + C, assemble le paquet (fr/ neuf, en/ et entrées EN du lot actuel) |
+| `gen/assemble.py` | manifest du jeu du paquet (entrées FR neuves, entrées EN et `en/` du lot actuel) |
+| `gen/kernels/extract/extract.py`, `gen/local_rounds.py` | re-tri local : le kernel CPU `ombres-tts-gen-extract` sort les prises brutes de quelques répliques, `local_rounds.py` rejoue le choix de gen.py sur la machine de dev (tri à 2,9 s, `--verify` à 3,0 s après chaque tour). Sert quand la vérification locale refuse une prise acceptée sur Kaggle (encodage ffmpeg 4.4 ≠ local). |
 | `gen/check_package.py` | contrôle d'un paquet : fichiers, décodage complet, durées = manifest, sonie et crête |
+| `results/gen_fr_lines.json`, `results/gen_fr_manifest.json` | lot FR retenu : entrée de gen.py (graine et preset par réplique) et manifest complet (UTMOS, Whisper P/N/C, durée parlée, hash) |
 
 ```bash
 export OMBRES_BUILD=/tmp/ombres-tts-gen            # dossier de travail (hors dépôt)
 tools/tts-kaggle/gen/push.sh dataset create         # ftgplwa/ombres-tts-gen-data
 tools/tts-kaggle/gen/push.sh synth OMBRES_BASES=1000,2000 OMBRES_TAKES=4 OMBRES_BATCH=24
 tools/tts-kaggle/gen/push.sh select 5               # après la fin de ombres-tts-gen-synth
-tools/tts-kaggle/gen/finalize.sh /tmp/ombres-fin /tmp/ombres-paquet 5
+# reprise d'une réplique refusée : retouche dans gen/overrides.json, puis
+tools/tts-kaggle/gen/push.sh dataset && OMBRES_SUFFIX=-fix tools/tts-kaggle/gen/push.sh synth OMBRES_ONLY=leaderChange4.3 OMBRES_BATCH=8
+OMBRES_SUFFIX=-fix tools/tts-kaggle/gen/push.sh select 1 OMBRES_ONLY=leaderChange4.3
+tools/tts-kaggle/gen/finalize.sh /tmp/ombres-fin /tmp/ombres-paquet ombres-tts-gen-select-{0..4} ombres-tts-gen-select-fix-0
+# refus de la vérification locale : prises brutes de ces répliques, puis re-tri local
+tools/tts-kaggle/gen/push.sh extract id1,id2 && uvx --from kaggle kaggle kernels output ftgplwa/ombres-tts-gen-extract -p /tmp/x
+tar -xf /tmp/x/subset.tar -C /tmp/ombres-fin/subset
+nix-shell -p ffmpeg --run "python3 tools/tts-kaggle/gen/local_rounds.py /tmp/ombres-fin /tmp/ombres-paquet id1,id2"
+python3 tools/tts-kaggle/gen/assemble.py /tmp/ombres-fin /tmp/ombres-paquet
 nix-shell -p ffmpeg --run "python3 tools/tts-kaggle/gen/check_package.py /tmp/ombres-paquet fr"
 ```
 

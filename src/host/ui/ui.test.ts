@@ -5,7 +5,7 @@ import { Emitter } from '../bus.ts'
 import type { SimEvent } from '../../sim/types.ts'
 import { RULES } from '../../sim/rules.ts'
 import { fmtPct, ordinal, sentenceLines, titleStat } from './format.ts'
-import { groupCredits, localizeCreditLine, normalizeLicense, parseCredits } from './credits.ts'
+import { CREDIT_GROUPS, groupCredits, localizeCreditLine, normalizeLicense, parseCredits } from './credits.ts'
 import { GLYPH_INNER, GLYPH_KEYS, glyphKeyForColor } from './glyphShapes.ts'
 import { PLAYER_COLORS } from '../../shared/players.ts'
 import { connectHudEvents, HINT_MAX_BUBBLES, pushToast, resetHud, showBanner, showHint, showSubtitle, useHud } from './viewModel.ts'
@@ -70,6 +70,12 @@ describe('crédits', () => {
     expect(g.find(x => x.kind === 'sfx')?.lines).toEqual([{ main: 'anebulafont', sub: 'CC0 1.0' }])
     expect(g.find(x => x.kind === 'voice')?.lines[0]).toEqual({ main: 'Voix synthétisée avec Pocket TTS de Kyutai (CC BY 4.0)', sub: 'CC BY 4.0' })
     expect(localizeCreditLine(g.find(x => x.kind === 'voice')!.lines[0]!, 'en').main).toBe(t('host.credits.voice.tts', undefined, 'en'))
+  })
+  it('les vrais crédits nomment les deux voix du narrateur (FR : Qwen3-TTS, EN : Pocket TTS)', () => {
+    const voice = CREDIT_GROUPS.find(x => x.kind === 'voice')!.lines.map(l => localizeCreditLine(l, 'en').main)
+    expect(voice).toContain(t('host.credits.voice.tts', undefined, 'en'))
+    expect(voice).toContain(t('host.credits.voice.ttsFr', undefined, 'en'))
+    expect(voice).toContain(t('host.credits.voice.designed', undefined, 'en'))
   })
   it('licences uniformes, échantillons regroupés par instrument', () => {
     expect(normalizeLicense('poids du modèle CC-BY 4.0')).toBe('CC BY 4.0')

@@ -66,6 +66,8 @@ from pathlib import Path  # noqa: E402
 lines = gen.load_lines(Path(find("lines.fr-qwen3.json")))
 i, n = (int(x) for x in SHARD.split("/"))
 mine = [ln for k, ln in enumerate(lines) if k % n == i]
+if os.environ.get("OMBRES_ONLY"):  # reprise de quelques répliques (après retouche de leur graphie)
+    mine = [ln for ln in lines if ln["id"] in os.environ["OMBRES_ONLY"].split(",")]
 if int(os.environ.get("OMBRES_LIMIT", "0")):  # essai à blanc sur quelques répliques
     mine = mine[: int(os.environ["OMBRES_LIMIT"])]
 todo = {ln["id"] for ln in mine}

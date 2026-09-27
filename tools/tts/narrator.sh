@@ -19,6 +19,17 @@
 # Les prises retenues sont en cache (tools/tts/out/cache) : changer l'encodage ne re-synthétise rien.
 # La machine est partagée : tout tourne avec `nice -n 10`.
 set -euo pipefail
+# Depuis la génération sur GPU Kaggle, les voix FRANÇAISES viennent de Qwen3-TTS (tools/tts-kaggle,
+# docs/research/tts-kaggle.md §12) ; ce script (Pocket TTS) ne sert plus qu'à l'anglais. Sans garde-fou,
+# un lancement sans --lang en réécrirait le français (fichiers ou durées du manifest).
+case " $* " in
+  *" --lang en "*) ;;
+  *) if [ -z "${OMBRES_POCKET_FR:-}" ]; then
+       echo "narrator.sh : les voix FR sont générées par Qwen3-TTS (tools/tts-kaggle). Relance avec --lang en," >&2
+       echo "ou OMBRES_POCKET_FR=1 pour revenir volontairement à Pocket en français." >&2
+       exit 2
+     fi ;;
+esac
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 cd "$ROOT"

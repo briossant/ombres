@@ -160,6 +160,8 @@ export const CREDIT_GROUPS: CreditGroup[] = groupCredits(parseCredits(creditsMd)
  */
 export function localizeCreditLine(line: { main: string; sub: string }, lang = getLang()): { main: string; sub: string } {
   if (/Pocket TTS/i.test(line.main)) return { main: t('host.credits.voice.tts', undefined, lang), sub: line.sub }
+  if (/Qwen3-TTS d/i.test(line.main)) return { main: t('host.credits.voice.ttsFr', undefined, lang), sub: line.sub }
+  if (/VoiceDesign/i.test(line.main)) return { main: t('host.credits.voice.designed', undefined, lang), sub: line.sub }
   const origin = line.main.match(/^Voix d[’']origine\s*:\s*(.+)$/i)
   if (origin) return { main: t('host.credits.voice.origin', { name: origin[1]! }, lang), sub: line.sub }
   return line
@@ -171,8 +173,8 @@ export const TECH_CREDITS: readonly string[] = [
   'React · React Three Fiber · drei',
   'postprocessing · pmndrs',
   'zustand',
-  'Tone.js',
   'Vite · TypeScript',
   'ws · qrcode',
   'Kyutai Pocket TTS (CC BY 4.0)',
+  'Qwen3-TTS, Alibaba Qwen (Apache 2.0)',
 ]

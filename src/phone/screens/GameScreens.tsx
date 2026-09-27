@@ -1,7 +1,7 @@
 // Écrans de partie : salon jouable, cartes avant la manche, manette, entre les manches,
 // fin de partie, arrivée en cours de partie.
 import type { ReactNode } from 'react'
-import type { PhoneView } from '../../shared/messages.ts'
+import type { PhoneStatus, PhoneView } from '../../shared/messages.ts'
 import { hasKey } from '../../shared/i18n.ts'
 import { colorName } from '../../shared/players.ts'
 import { sendAction, sendReady } from '../link.ts'
@@ -180,23 +180,41 @@ export function IntroScreen({ view }: { view: V }) {
 
 // ─── Manette ───────────────────────────────────────────────────────────────
 
+type PlayStateKind = 'stunned' | 'night' | 'hidden' | 'immune'
+
+/**
+ * État de jeu : UN récitatif, le plus important d'abord. Décroché (ni commandes ni peinture) > dans la nuit
+ * (ne peint pas) > caché (ne peint presque rien) > intouchable (peint, mais personne ne peut le piquer).
+ * La nuit et l'ombre des tours s'excluent (simulation.ts) ; les trois derniers disent aussi « ni verrouillable
+ * ni touchable » : en montrer un seul ne perd rien, et le récitatif tient au-dessus de COUP D'AILE.
+ */
+function playStateOf(status: PhoneStatus | null): PlayStateKind | null {
+  if (!status) return null
+  if (status.stun > 0) return 'stunned'
+  if (status.night) return 'night'
+  if (status.hidden) return 'hidden'
+  if (status.immune) return 'immune'
+  return null
+}
+
 export function PlayScreen({ view }: { view: V }) {
   const t = useT()
   const status = usePhone(s => s.status)
-  const stunned = (status?.stun ?? 0) > 0
+  const state = playStateOf(status)
   return (
     <Shell view={view} band={<PlayBandInfo />}>
-      <PlayInfoPanel />
-      <Controller disabled={stunned} />
-      <div className="play-state">
-        {stunned && <div className="recitatif recitatif--ink">{t('phone.play.stunned')}</div>}
-        {!stunned && status?.hidden && (
-          <div className="recitatif">
-            <IconEyeOff size={22} /> {t('phone.play.hidden')}
-          </div>
-        )}
-        {status?.night && <div className="recitatif recitatif--ink">{t('phone.play.night')}</div>}
-        {!stunned && status?.immune && <div className="recitatif">{t('phone.play.immune')}</div>}
+      <Controller disabled={state === 'stunned'} />
+      {/* Paysage : l'état pend sous le bandeau, à droite. Portrait : sous le panneau du rang. */}
+      <div className="play-top">
+        <PlayInfoPanel />
+        <div className="play-state" role="status">
+          {state && (
+            <div key={state} className={`recitatif play-state__tag play-state__tag--${state}`}>
+              {state === 'hidden' && <IconEyeOff size={22} />}
+              {t(`phone.play.${state}`)}
+            </div>
+          )}
+        </div>
       </div>
     </Shell>
   )

@@ -13,6 +13,7 @@ B="${OMBRES_BUILD:-/tmp/ombres-tts-gen}"
 export KAGGLE_API_TOKEN="$(cat ~/.kaggle/access_token)"
 K="uvx --from kaggle kaggle"
 USER=ftgplwa
+SFX="${OMBRES_SUFFIX:-}"   # ex. « -fix » : kernels ombres-tts-gen-synth-fix / -select-fix-<i> pour une reprise
 
 kernel() {  # kernel <slug> <script source> <gpu:true|false> <kernel_sources json> [VAR=val ...]
   local slug=$1 src=$2 gpu=$3 ks=$4; shift 4
@@ -37,13 +38,16 @@ case "${1:-}" in
     echo '{"title": "ombres-tts-gen-data", "id": "'$USER'/ombres-tts-gen-data", "licenses": [{"name": "CC0-1.0"}]}' > "$D/dataset-metadata.json"
     if [ "${2:-}" = create ]; then $K datasets create -p "$D"; else $K datasets version -p "$D" -m "maj lot"; fi ;;
   synth)
-    shift; kernel ombres-tts-gen-synth "$HERE/kernels/synth/synth.py" true '[]' "$@" ;;
+    shift; kernel "ombres-tts-gen-synth$SFX" "$HERE/kernels/synth/synth.py" true '[]' "$@" ;;
   select)
     n=$2; shift 2
     for ((i = 0; i < n; i++)); do
-      kernel "ombres-tts-gen-select-$i" "$HERE/kernels/select/select.py" false "[\"$USER/ombres-tts-gen-synth\"]" \
+      kernel "ombres-tts-gen-select$SFX-$i" "$HERE/kernels/select/select.py" false "[\"$USER/ombres-tts-gen-synth$SFX\"]" \
         "OMBRES_SHARD=$i/$n" "$@"
     done ;;
+  extract)   # extract <ids> : prises brutes de quelques répliques, pour un re-tri local (local_rounds.py)
+    kernel ombres-tts-gen-extract "$HERE/kernels/extract/extract.py" false \
+      "[\"$USER/ombres-tts-gen-synth\", \"$USER/ombres-tts-gen-synth-fix\"]" "OMBRES_ONLY=$2" ;;
   smoke)
     kernel ombres-tts-gen-smoke-synth "$HERE/kernels/synth/synth.py" false '[]' OMBRES_LIMIT=3 OMBRES_TAKES=2 \
       OMBRES_BASES=1000 OMBRES_BATCH=6 ;;

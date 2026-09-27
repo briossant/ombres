@@ -45,7 +45,7 @@
 - Un joueur qui se déconnecte est remplacé par un bot (même couleur, même territoire) qui lui rend la main à son retour. Rafraîchir le PC ne casse pas la partie (même salle, même écran, même manche).
 - HUD : cadran solaire (le temps se lit dans le soleil), bande de sable triée avec couronne, repères des joueurs hors écran, étiquettes, bannières de phase, sous-titres du narrateur, indications contextuelles.
 - Game feel : ralentis de touche, tremblement, traînées, bouffées de sable, étoiles d'impact, plumes, flash « planche », caméra qui cadre oiseaux et ombres et dramatise le piqué et la Grande Ombre.
-- Narrateur : 722 répliques pré-générées en FR et EN (TTS local), qui désignent les joueurs par leur couleur, rares et hiérarchisées ; sous-titres toujours disponibles.
+- Narrateur : 722 répliques pré-générées (français : Qwen3-TTS sur GPU Kaggle ; anglais : Pocket TTS en local), qui désignent les joueurs par leur couleur, rares et hiérarchisées ; sous-titres toujours disponibles.
 - Musique générative pilotée par la course du soleil, pistes par écran, ambiance de vent, bruitage de chaque action et de l'interface.
 - Podium, titres de fin de partie (attribués par z-score), statistiques, revanche ; pause ; crédits.
 
@@ -110,7 +110,7 @@ node tools/e2e/deploy/remote-smoke.mjs https://<machine>…             # PC + t
 | `DECISIONS.md` | journal des décisions (ce qui a été tranché, et pourquoi) |
 | `docs/GDD.md` | game design complet, chiffré et validé par simulation |
 | `docs/ART_BIBLE.md` | bible artistique et technique de rendu (palettes, 12 couleurs validées, pipeline) |
-| `docs/research/` | recherches : style Moebius, NPR temps réel, assets et licences, TTS, stack et déploiement, trois propositions de game design, équilibrage |
+| `docs/research/` | recherches : style Moebius, NPR temps réel, assets et licences, TTS (local puis GPU Kaggle), stack et déploiement, trois propositions de game design, équilibrage |
 | `docs/agent-notes/` | notes de chaque module (API, décisions, limites) |
 | `docs/polish/` | critiques, ordres de travail et vérifications des deux vagues de polish |
 | `docs/CREDITS-sources.md`, `assets-staging/LICENSES.md` | provenance et licence de chaque asset |
@@ -118,7 +118,7 @@ node tools/e2e/deploy/remote-smoke.mjs https://<machine>…             # PC + t
 ## Crédits et licences
 
 Code, textes, direction artistique et game design : conçus et réalisés par Claude (Anthropic), sous la supervision de Brieuc Crosson.
-Musiques : Alexandr Zhelanov (« Futuristic ambient 1 », CC-BY 4.0), Tri-Tachyon (« Dust », CC-BY 4.0), cynicmusic et isaiah658 (CC0). Bruitages : Freesound (CC0) et Kenney (CC0). Voix du narrateur synthétisée avec **Pocket TTS de Kyutai (CC BY 4.0)**, voix d'origine Bill Boerst (LibriVox, CC0). Polices : Julius Sans One, Patrick Hand SC, Averia Sans Libre (SIL OFL 1.1). Oiseaux, cavaliers, tours, ciel et sol sont générés procéduralement. Liste complète, fichier par fichier : `docs/CREDITS-sources.md` et l'écran Crédits du jeu.
+Musiques : Alexandr Zhelanov (« Futuristic ambient 1 », CC-BY 4.0), Tri-Tachyon (« Dust », CC-BY 4.0), cynicmusic et isaiah658 (CC0). Bruitages : Freesound (CC0) et Kenney (CC0). Voix du narrateur : en français, **Qwen3-TTS d'Alibaba (Apache 2.0)**, voix de synthèse conçue avec Qwen3-TTS VoiceDesign ; en anglais, **Pocket TTS de Kyutai (CC BY 4.0)**, voix d'origine Bill Boerst (LibriVox, CC0). Polices : Julius Sans One, Patrick Hand SC, Averia Sans Libre (SIL OFL 1.1). Oiseaux, cavaliers, tours, ciel et sol sont générés procéduralement. Liste complète, fichier par fichier : `docs/CREDITS-sources.md` et l'écran Crédits du jeu.
 
 ## Limites connues
 

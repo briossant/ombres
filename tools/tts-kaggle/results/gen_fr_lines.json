@@ -1,0 +1,4570 @@
+[
+{
+"id": "matchOpen",
+"lang": "fr",
+"text": "Midi. Le sable n’est encore à personne.",
+"say": "Midi. Le sable n'est encore à personne.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundOpen1",
+"lang": "fr",
+"text": "Le sable a tout oublié. Pas vous.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundOpen2",
+"lang": "fr",
+"text": "Encore midi. Le vent a fait le ménage.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundOpen3",
+"lang": "fr",
+"text": "Le désert est neuf. Vos ombres, non.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRound",
+"lang": "fr",
+"text": "Le dernier soleil vaut double. Il le sait.",
+"asr_bed_snr": 8,
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.0",
+"lang": "fr",
+"text": "Corail ouvre les hostilités.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.1",
+"lang": "fr",
+"text": "Lagon ouvre les hostilités.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.2",
+"lang": "fr",
+"text": "Indigo ouvre les hostilités.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.3",
+"lang": "fr",
+"text": "Safran ouvre les hostilités.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.4",
+"lang": "fr",
+"text": "Azur ouvre les hostilités.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.5",
+"lang": "fr",
+"text": "Carmin ouvre les hostilités.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.6",
+"lang": "fr",
+"text": "Prune ouvre les hostilités.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.7",
+"lang": "fr",
+"text": "Anis ouvre les hostilités.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.8",
+"lang": "fr",
+"text": "Sarcelle ouvre les hostilités.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.9",
+"lang": "fr",
+"text": "Rose ouvre les hostilités.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.10",
+"lang": "fr",
+"text": "Lilas ouvre les hostilités.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstHit.11",
+"lang": "fr",
+"text": "Jade ouvre les hostilités.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.0",
+"lang": "fr",
+"text": "Corail tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.1",
+"lang": "fr",
+"text": "Lagon tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.2",
+"lang": "fr",
+"text": "Indigo tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.3",
+"lang": "fr",
+"text": "Safran tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.4",
+"lang": "fr",
+"text": "Azur tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.5",
+"lang": "fr",
+"text": "Carmin tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 2000
+},
+{
+"id": "hitHunter.6",
+"lang": "fr",
+"text": "Prune tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.7",
+"lang": "fr",
+"text": "Anis tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.8",
+"lang": "fr",
+"text": "Sarcelle tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.9",
+"lang": "fr",
+"text": "Rose tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.10",
+"lang": "fr",
+"text": "Lilas tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitHunter.11",
+"lang": "fr",
+"text": "Jade tombe du ciel. Quelqu’un a mal.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade tombe du ciel. Quelqu'un a mal.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.0",
+"lang": "fr",
+"text": "Corail en voit de toutes les couleurs.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.1",
+"lang": "fr",
+"text": "Lagon en voit de toutes les couleurs.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.2",
+"lang": "fr",
+"text": "Indigo en voit de toutes les couleurs.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.3",
+"lang": "fr",
+"text": "Safran en voit de toutes les couleurs.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.4",
+"lang": "fr",
+"text": "Azur en voit de toutes les couleurs.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.5",
+"lang": "fr",
+"text": "Carmin en voit de toutes les couleurs.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.6",
+"lang": "fr",
+"text": "Prune en voit de toutes les couleurs.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.7",
+"lang": "fr",
+"text": "Anis en voit de toutes les couleurs.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.8",
+"lang": "fr",
+"text": "Sarcelle en voit de toutes les couleurs.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.9",
+"lang": "fr",
+"text": "Rose en voit de toutes les couleurs.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.10",
+"lang": "fr",
+"text": "Lilas en voit de toutes les couleurs.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hitVictim.11",
+"lang": "fr",
+"text": "Jade en voit de toutes les couleurs.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.0",
+"lang": "fr",
+"text": "Deux d’un coup. Corail a de l’appétit.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Corail a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.1",
+"lang": "fr",
+"text": "Deux d’un coup. Lagon a de l’appétit.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Lagon a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.2",
+"lang": "fr",
+"text": "Deux d’un coup. Indigo a de l’appétit.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Indigo a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.3",
+"lang": "fr",
+"text": "Deux d’un coup. Safran a de l’appétit.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Safran a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.4",
+"lang": "fr",
+"text": "Deux d’un coup. Azur a de l’appétit.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Azur a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.5",
+"lang": "fr",
+"text": "Deux d’un coup. Carmin a de l’appétit.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Carmin a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.6",
+"lang": "fr",
+"text": "Deux d’un coup. Prune a de l’appétit.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Prune a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.7",
+"lang": "fr",
+"text": "Deux d’un coup. Anis a de l’appétit.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Anis a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.8",
+"lang": "fr",
+"text": "Deux d’un coup. Sarcelle a de l’appétit.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Sarcelle a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.9",
+"lang": "fr",
+"text": "Deux d’un coup. Rose a de l’appétit.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Rose a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.10",
+"lang": "fr",
+"text": "Deux d’un coup. Lilas a de l’appétit.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Lilas a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "doubleHit.11",
+"lang": "fr",
+"text": "Deux d’un coup. Jade a de l’appétit.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Deux d'un coup. Jade a de l'appétit.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.0",
+"lang": "fr",
+"text": "Corail chasse encore. Surveillez le ciel.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.1",
+"lang": "fr",
+"text": "Lagon chasse encore. Surveillez le ciel.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.2",
+"lang": "fr",
+"text": "Indigo chasse encore. Surveillez le ciel.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.3",
+"lang": "fr",
+"text": "Safran chasse encore. Surveillez le ciel.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.4",
+"lang": "fr",
+"text": "Azur chasse encore. Surveillez le ciel.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.5",
+"lang": "fr",
+"text": "Carmin chasse encore. Surveillez le ciel.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.6",
+"lang": "fr",
+"text": "Prune chasse encore. Surveillez le ciel.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.7",
+"lang": "fr",
+"text": "Anis chasse encore. Surveillez le ciel.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.8",
+"lang": "fr",
+"text": "Sarcelle chasse encore. Surveillez le ciel.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.9",
+"lang": "fr",
+"text": "Rose chasse encore. Surveillez le ciel.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.10",
+"lang": "fr",
+"text": "Lilas chasse encore. Surveillez le ciel.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "huntStreak.11",
+"lang": "fr",
+"text": "Jade chasse encore. Surveillez le ciel.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.0",
+"lang": "fr",
+"text": "Corail esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.1",
+"lang": "fr",
+"text": "Lagon esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 2000
+},
+{
+"id": "dodge.2",
+"lang": "fr",
+"text": "Indigo esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.3",
+"lang": "fr",
+"text": "Safran esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.4",
+"lang": "fr",
+"text": "Azur esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.5",
+"lang": "fr",
+"text": "Carmin esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.6",
+"lang": "fr",
+"text": "Prune esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.7",
+"lang": "fr",
+"text": "Anis esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.8",
+"lang": "fr",
+"text": "Sarcelle esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.9",
+"lang": "fr",
+"text": "Rose esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 2000
+},
+{
+"id": "dodge.10",
+"lang": "fr",
+"text": "Lilas esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "dodge.11",
+"lang": "fr",
+"text": "Jade esquive. Le chasseur n’attrape que du vent.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade esquive. Le chasseur n'attrape que du vent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.0",
+"lang": "fr",
+"text": "Corail finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.1",
+"lang": "fr",
+"text": "Lagon finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.2",
+"lang": "fr",
+"text": "Indigo finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.3",
+"lang": "fr",
+"text": "Safran finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.4",
+"lang": "fr",
+"text": "Azur finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.5",
+"lang": "fr",
+"text": "Carmin finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.6",
+"lang": "fr",
+"text": "Prune finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.7",
+"lang": "fr",
+"text": "Anis finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.8",
+"lang": "fr",
+"text": "Sarcelle finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.9",
+"lang": "fr",
+"text": "Rose finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.10",
+"lang": "fr",
+"text": "Lilas finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "miss.11",
+"lang": "fr",
+"text": "Jade finit dans le sable. On n’a rien vu.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade finit dans le sable. On n'a rien vu.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.0",
+"lang": "fr",
+"text": "La couronne est à Corail. Elle se voit de loin.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.1",
+"lang": "fr",
+"text": "La couronne est à Lagon. Elle se voit de loin.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.2",
+"lang": "fr",
+"text": "La couronne est à Indigo. Elle se voit de loin.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.3",
+"lang": "fr",
+"text": "La couronne est à Safran. Elle se voit de loin.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.4",
+"lang": "fr",
+"text": "La couronne est à Azur. Elle se voit de loin.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.5",
+"lang": "fr",
+"text": "La couronne est à Carmin. Elle se voit de loin.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.6",
+"lang": "fr",
+"text": "La couronne est à Prune. Elle se voit de loin.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 2000
+},
+{
+"id": "firstCrown.7",
+"lang": "fr",
+"text": "La couronne est à Anis. Elle se voit de loin.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.8",
+"lang": "fr",
+"text": "La couronne est à Sarcelle. Elle se voit de loin.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.9",
+"lang": "fr",
+"text": "La couronne est à Rose. Elle se voit de loin.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.10",
+"lang": "fr",
+"text": "La couronne est à Lilas. Elle se voit de loin.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "firstCrown.11",
+"lang": "fr",
+"text": "La couronne est à Jade. Elle se voit de loin.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.0",
+"lang": "fr",
+"text": "Corail prend la tête. Le désert oublie vite.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.1",
+"lang": "fr",
+"text": "Lagon prend la tête. Le désert oublie vite.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.2",
+"lang": "fr",
+"text": "Indigo prend la tête. Le désert oublie vite.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.3",
+"lang": "fr",
+"text": "Safran prend la tête. Le désert oublie vite.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.4",
+"lang": "fr",
+"text": "Azur prend la tête. Le désert oublie vite.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.5",
+"lang": "fr",
+"text": "Carmin prend la tête. Le désert oublie vite.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.6",
+"lang": "fr",
+"text": "Prune prend la tête. Le désert oublie vite.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.7",
+"lang": "fr",
+"text": "Anis prend la tête. Le désert oublie vite.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.8",
+"lang": "fr",
+"text": "Sarcelle prend la tête. Le désert oublie vite.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.9",
+"lang": "fr",
+"text": "Rose prend la tête. Le désert oublie vite.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.10",
+"lang": "fr",
+"text": "Lilas prend la tête. Le désert oublie vite.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange1.11",
+"lang": "fr",
+"text": "Jade prend la tête. Le désert oublie vite.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.0",
+"lang": "fr",
+"text": "Corail passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.1",
+"lang": "fr",
+"text": "Lagon passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.2",
+"lang": "fr",
+"text": "Indigo passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.3",
+"lang": "fr",
+"text": "Safran passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.4",
+"lang": "fr",
+"text": "Azur passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.5",
+"lang": "fr",
+"text": "Carmin passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.6",
+"lang": "fr",
+"text": "Prune passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.7",
+"lang": "fr",
+"text": "Anis passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.8",
+"lang": "fr",
+"text": "Sarcelle passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.9",
+"lang": "fr",
+"text": "Rose passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.10",
+"lang": "fr",
+"text": "Lilas passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange2.11",
+"lang": "fr",
+"text": "Jade passe devant. Le soleil s’en doutait.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade passe devant. Le soleil s'en doutait.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.0",
+"lang": "fr",
+"text": "Le désert passe à Corail. Pour l’instant.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Corail. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.1",
+"lang": "fr",
+"text": "Le désert passe à Lagon. Pour l’instant.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Lagon. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.2",
+"lang": "fr",
+"text": "Le désert passe à Indigo. Pour l’instant.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Indigo. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.3",
+"lang": "fr",
+"text": "Le désert passe à Safran. Pour l’instant.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Safran. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.4",
+"lang": "fr",
+"text": "Le désert passe à Azur. Pour l’instant.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Azur. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.5",
+"lang": "fr",
+"text": "Le désert passe à Carmin. Pour l’instant.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Carmin. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.6",
+"lang": "fr",
+"text": "Le désert passe à Prune. Pour l’instant.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Prune. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.7",
+"lang": "fr",
+"text": "Le désert passe à Anis. Pour l’instant.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Anis. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.8",
+"lang": "fr",
+"text": "Le désert passe à Sarcelle. Pour l’instant.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Sarcelle. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.9",
+"lang": "fr",
+"text": "Le désert passe à Rose. Pour l’instant.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Rose. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.10",
+"lang": "fr",
+"text": "Le désert passe à Lilas. Pour l’instant.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Lilas. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange3.11",
+"lang": "fr",
+"text": "Le désert passe à Jade. Pour l’instant.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert passe à Jade. Pour l'instant.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.0",
+"lang": "fr",
+"text": "Corail mène la danse. Les dunes suivent.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.1",
+"lang": "fr",
+"text": "Lagon mène la danse. Les dunes suivent.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.2",
+"lang": "fr",
+"text": "Indigo mène la danse. Les dunes suivent.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.3",
+"lang": "fr",
+"text": "Safran mène la danse. Les dunes suivent.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran, mène la danse. Les dunes suivent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.4",
+"lang": "fr",
+"text": "Azur mène la danse. Les dunes suivent.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.5",
+"lang": "fr",
+"text": "Carmin mène la danse. Les dunes suivent.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.6",
+"lang": "fr",
+"text": "Prune mène la danse. Les dunes suivent.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.7",
+"lang": "fr",
+"text": "Anis mène la danse. Les dunes suivent.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.8",
+"lang": "fr",
+"text": "Sarcelle mène la danse. Les dunes suivent.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.9",
+"lang": "fr",
+"text": "Rose mène la danse. Les dunes suivent.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.10",
+"lang": "fr",
+"text": "Lilas mène la danse. Les dunes suivent.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "leaderChange4.11",
+"lang": "fr",
+"text": "Jade mène la danse. Les dunes suivent.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.0",
+"lang": "fr",
+"text": "Même les rois tombent. Corail vous le dira.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.1",
+"lang": "fr",
+"text": "Même les rois tombent. Lagon vous le dira.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.2",
+"lang": "fr",
+"text": "Même les rois tombent. Indigo vous le dira.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.3",
+"lang": "fr",
+"text": "Même les rois tombent. Safran vous le dira.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 2000
+},
+{
+"id": "crownDown.4",
+"lang": "fr",
+"text": "Même les rois tombent. Azur vous le dira.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.5",
+"lang": "fr",
+"text": "Même les rois tombent. Carmin vous le dira.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.6",
+"lang": "fr",
+"text": "Même les rois tombent. Prune vous le dira.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.7",
+"lang": "fr",
+"text": "Même les rois tombent. Anis vous le dira.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.8",
+"lang": "fr",
+"text": "Même les rois tombent. Sarcelle vous le dira.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.9",
+"lang": "fr",
+"text": "Même les rois tombent. Rose vous le dira.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.10",
+"lang": "fr",
+"text": "Même les rois tombent. Lilas vous le dira.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "crownDown.11",
+"lang": "fr",
+"text": "Même les rois tombent. Jade vous le dira.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.0",
+"lang": "fr",
+"text": "Corail vient d’avaler un morceau de désert.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.1",
+"lang": "fr",
+"text": "Lagon vient d’avaler un morceau de désert.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.2",
+"lang": "fr",
+"text": "Indigo vient d’avaler un morceau de désert.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.3",
+"lang": "fr",
+"text": "Safran vient d’avaler un morceau de désert.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.4",
+"lang": "fr",
+"text": "Azur vient d’avaler un morceau de désert.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.5",
+"lang": "fr",
+"text": "Carmin vient d’avaler un morceau de désert.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.6",
+"lang": "fr",
+"text": "Prune vient d’avaler un morceau de désert.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.7",
+"lang": "fr",
+"text": "Anis vient d’avaler un morceau de désert.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.8",
+"lang": "fr",
+"text": "Sarcelle vient d’avaler un morceau de désert.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.9",
+"lang": "fr",
+"text": "Rose vient d’avaler un morceau de désert.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.10",
+"lang": "fr",
+"text": "Lilas vient d’avaler un morceau de désert.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigSteal.11",
+"lang": "fr",
+"text": "Jade vient d’avaler un morceau de désert.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade vient d'avaler un morceau de désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.0",
+"lang": "fr",
+"text": "Une ombre passe, et Corail perd du terrain.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.1",
+"lang": "fr",
+"text": "Une ombre passe, et Lagon perd du terrain.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.2",
+"lang": "fr",
+"text": "Une ombre passe, et Indigo perd du terrain.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 2000
+},
+{
+"id": "bigStealVictim.3",
+"lang": "fr",
+"text": "Une ombre passe, et Safran perd du terrain.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.4",
+"lang": "fr",
+"text": "Une ombre passe, et Azur perd du terrain.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.5",
+"lang": "fr",
+"text": "Une ombre passe, et Carmin perd du terrain.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.6",
+"lang": "fr",
+"text": "Une ombre passe, et Prune perd du terrain.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.7",
+"lang": "fr",
+"text": "Une ombre passe, et Anis perd du terrain.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.8",
+"lang": "fr",
+"text": "Une ombre passe, et Sarcelle perd du terrain.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.9",
+"lang": "fr",
+"text": "Une ombre passe, et Rose perd du terrain.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.10",
+"lang": "fr",
+"text": "Une ombre passe, et Lilas perd du terrain.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "bigStealVictim.11",
+"lang": "fr",
+"text": "Une ombre passe, et Jade perd du terrain.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.0",
+"lang": "fr",
+"text": "Toute une traînée passe à Corail, sans discuter.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.1",
+"lang": "fr",
+"text": "Toute une traînée passe à Lagon, sans discuter.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.2",
+"lang": "fr",
+"text": "Toute une traînée passe à Indigo, sans discuter.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.3",
+"lang": "fr",
+"text": "Toute une traînée passe à Safran, sans discuter.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.4",
+"lang": "fr",
+"text": "Toute une traînée passe à Azur, sans discuter.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.5",
+"lang": "fr",
+"text": "Toute une traînée passe à Carmin, sans discuter.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.6",
+"lang": "fr",
+"text": "Toute une traînée passe à Prune, sans discuter.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.7",
+"lang": "fr",
+"text": "Toute une traînée passe à Anis, sans discuter.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.8",
+"lang": "fr",
+"text": "Toute une traînée passe à Sarcelle, sans discuter.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.9",
+"lang": "fr",
+"text": "Toute une traînée passe à Rose, sans discuter.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.10",
+"lang": "fr",
+"text": "Toute une traînée passe à Lilas, sans discuter.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "trailSteal.11",
+"lang": "fr",
+"text": "Toute une traînée passe à Jade, sans discuter.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hugeSweep",
+"lang": "fr",
+"text": "Une ombre, et tout le désert change d’avis.",
+"say": "Une ombre, et tout le désert change d'avis.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.0",
+"lang": "fr",
+"text": "Corail s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.1",
+"lang": "fr",
+"text": "Lagon s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.2",
+"lang": "fr",
+"text": "Indigo s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.3",
+"lang": "fr",
+"text": "Safran s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.4",
+"lang": "fr",
+"text": "Azur s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.5",
+"lang": "fr",
+"text": "Carmin s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.6",
+"lang": "fr",
+"text": "Prune s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.7",
+"lang": "fr",
+"text": "Anis s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.8",
+"lang": "fr",
+"text": "Sarcelle s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.9",
+"lang": "fr",
+"text": "Rose s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.10",
+"lang": "fr",
+"text": "Lilas s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "runaway.11",
+"lang": "fr",
+"text": "Jade s’installe. Quelqu’un va réagir ?",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade s'installe. Quelqu'un va réagir ?",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.0",
+"lang": "fr",
+"text": "Corail reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.1",
+"lang": "fr",
+"text": "Lagon reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.2",
+"lang": "fr",
+"text": "Indigo reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.3",
+"lang": "fr",
+"text": "Safran reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.4",
+"lang": "fr",
+"text": "Azur reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.5",
+"lang": "fr",
+"text": "Carmin reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.6",
+"lang": "fr",
+"text": "Prune reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.7",
+"lang": "fr",
+"text": "Anis reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.8",
+"lang": "fr",
+"text": "Sarcelle reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.9",
+"lang": "fr",
+"text": "Rose reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.10",
+"lang": "fr",
+"text": "Lilas reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "hiddenLong.11",
+"lang": "fr",
+"text": "Jade reste à l’abri. C’est plus prudent.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade reste à l'abri. C'est plus prudent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.0",
+"lang": "fr",
+"text": "Corail défie la tempête. Mauvaise idée.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.1",
+"lang": "fr",
+"text": "Lagon défie la tempête. Mauvaise idée.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.2",
+"lang": "fr",
+"text": "Indigo défie la tempête. Mauvaise idée.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.3",
+"lang": "fr",
+"text": "Safran défie la tempête. Mauvaise idée.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.4",
+"lang": "fr",
+"text": "Azur défie la tempête. Mauvaise idée.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.5",
+"lang": "fr",
+"text": "Carmin défie la tempête. Mauvaise idée.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.6",
+"lang": "fr",
+"text": "Prune défie la tempête. Mauvaise idée.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.7",
+"lang": "fr",
+"text": "Anis défie la tempête. Mauvaise idée.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.8",
+"lang": "fr",
+"text": "Sarcelle défie la tempête. Mauvaise idée.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.9",
+"lang": "fr",
+"text": "Rose défie la tempête. Mauvaise idée.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.10",
+"lang": "fr",
+"text": "Lilas défie la tempête. Mauvaise idée.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "storm.11",
+"lang": "fr",
+"text": "Jade défie la tempête. Mauvaise idée.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.0",
+"lang": "fr",
+"text": "Corail admire la vue. Une stratégie.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.1",
+"lang": "fr",
+"text": "Lagon admire la vue. Une stratégie.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.2",
+"lang": "fr",
+"text": "Indigo admire la vue. Une stratégie.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.3",
+"lang": "fr",
+"text": "Safran admire la vue. Une stratégie.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.4",
+"lang": "fr",
+"text": "Azur admire la vue. Une stratégie.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.5",
+"lang": "fr",
+"text": "Carmin admire la vue. Une stratégie.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.6",
+"lang": "fr",
+"text": "Prune admire la vue. Une stratégie.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.7",
+"lang": "fr",
+"text": "Anis admire la vue. Une stratégie.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.8",
+"lang": "fr",
+"text": "Sarcelle admire la vue. Une stratégie.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.9",
+"lang": "fr",
+"text": "Rose admire la vue. Une stratégie.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.10",
+"lang": "fr",
+"text": "Lilas admire la vue. Une stratégie.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "idle.11",
+"lang": "fr",
+"text": "Jade admire la vue. Une stratégie.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "golden1",
+"lang": "fr",
+"text": "C’est l’heure dorée. Les ombres voient grand.",
+"keywords": [
+"l’heure dorée"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "C'est l'heure dorée. Les ombres voient grand.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "golden2",
+"lang": "fr",
+"text": "Le soleil descend. Vos ombres grandissent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "golden3",
+"lang": "fr",
+"text": "Le soleil fatigue. Les ombres, jamais.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "sunset1",
+"lang": "fr",
+"text": "Les ombres s’étirent. Visez avec elles.",
+"say": "Les ombres s'étirent. Visez avec elles.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "sunset2",
+"lang": "fr",
+"text": "Le couchant. Les ombres traversent le désert.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "sunset3",
+"lang": "fr",
+"text": "Le soleil baisse. Les ombres s’allongent.",
+"say": "Le soleil baisse. Les ombres s'allongent.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "greatShadow1",
+"lang": "fr",
+"text": "La nuit tombe de la falaise. Elle glace tout.",
+"keywords": [
+"glace"
+],
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "greatShadow2",
+"lang": "fr",
+"text": "La nuit avance. Elle ne rend rien.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "greatShadow3",
+"lang": "fr",
+"text": "La falaise lâche son ombre. Dépêchez-vous.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "tenSeconds1",
+"lang": "fr",
+"text": "Dix secondes. Ensuite, plus rien ne bouge.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "tenSeconds2",
+"lang": "fr",
+"text": "Dix secondes. Le désert retient son souffle.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "tenSeconds3",
+"lang": "fr",
+"text": "Dix secondes. Tout peut encore basculer.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "photoFinish1",
+"lang": "fr",
+"text": "Très serré. Tout se joue au dernier rayon.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "photoFinish2",
+"lang": "fr",
+"text": "Coude à coude. La nuit départagera.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "tie",
+"lang": "fr",
+"text": "Égalité. Le désert refuse de choisir.",
+"asr_bed_snr": 8,
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.0",
+"lang": "fr",
+"text": "Corail a tout pris. Le désert s’incline.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Corail a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.1",
+"lang": "fr",
+"text": "Lagon a tout pris. Le désert s’incline.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lagon a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.2",
+"lang": "fr",
+"text": "Indigo a tout pris. Le désert s’incline.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Indigo a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.3",
+"lang": "fr",
+"text": "Safran a tout pris. Le désert s’incline.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Safran a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.4",
+"lang": "fr",
+"text": "Azur a tout pris. Le désert s’incline.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Azur a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.5",
+"lang": "fr",
+"text": "Carmin a tout pris. Le désert s’incline.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Carmin a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.6",
+"lang": "fr",
+"text": "Prune a tout pris. Le désert s’incline.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Prune a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.7",
+"lang": "fr",
+"text": "Anis a tout pris. Le désert s’incline.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Anis a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.8",
+"lang": "fr",
+"text": "Sarcelle a tout pris. Le désert s’incline.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Sarcelle a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.9",
+"lang": "fr",
+"text": "Rose a tout pris. Le désert s’incline.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Rose a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.10",
+"lang": "fr",
+"text": "Lilas a tout pris. Le désert s’incline.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Lilas a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "landslide.11",
+"lang": "fr",
+"text": "Jade a tout pris. Le désert s’incline.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Jade a tout pris. Le désert s'incline.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "closeFinish1",
+"lang": "fr",
+"text": "Une poignée d’écart. Les dunes en parleront.",
+"asr_bed_snr": 8,
+"say": "Une poignée d'écart. Les dunes en parleront.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "closeFinish2",
+"lang": "fr",
+"text": "Un grain de sable a tout décidé.",
+"asr_bed_snr": 8,
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.0",
+"lang": "fr",
+"text": "Corail a volé la dernière lumière.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.1",
+"lang": "fr",
+"text": "Lagon a volé la dernière lumière.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.2",
+"lang": "fr",
+"text": "Indigo a volé la dernière lumière.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.3",
+"lang": "fr",
+"text": "Safran a volé la dernière lumière.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.4",
+"lang": "fr",
+"text": "Azur a volé la dernière lumière.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.5",
+"lang": "fr",
+"text": "Carmin a volé la dernière lumière.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.6",
+"lang": "fr",
+"text": "Prune a volé la dernière lumière.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.7",
+"lang": "fr",
+"text": "Anis a volé la dernière lumière.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.8",
+"lang": "fr",
+"text": "Sarcelle a volé la dernière lumière.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.9",
+"lang": "fr",
+"text": "Rose a volé la dernière lumière.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.10",
+"lang": "fr",
+"text": "Lilas a volé la dernière lumière.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "lastRay.11",
+"lang": "fr",
+"text": "Jade a volé la dernière lumière.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.0",
+"lang": "fr",
+"text": "Corail revient de loin. Un classique.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.1",
+"lang": "fr",
+"text": "Lagon revient de loin. Un classique.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.2",
+"lang": "fr",
+"text": "Indigo revient de loin. Un classique.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.3",
+"lang": "fr",
+"text": "Safran revient de loin. Un classique.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.4",
+"lang": "fr",
+"text": "Azur revient de loin. Un classique.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.5",
+"lang": "fr",
+"text": "Carmin revient de loin. Un classique.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.6",
+"lang": "fr",
+"text": "Prune revient de loin. Un classique.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.7",
+"lang": "fr",
+"text": "Anis revient de loin. Un classique.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.8",
+"lang": "fr",
+"text": "Sarcelle revient de loin. Un classique.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.9",
+"lang": "fr",
+"text": "Rose revient de loin. Un classique.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.10",
+"lang": "fr",
+"text": "Lilas revient de loin. Un classique.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "comeback.11",
+"lang": "fr",
+"text": "Jade revient de loin. Un classique.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.0",
+"lang": "fr",
+"text": "Corail menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.1",
+"lang": "fr",
+"text": "Lagon menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.2",
+"lang": "fr",
+"text": "Indigo menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.3",
+"lang": "fr",
+"text": "Safran menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.4",
+"lang": "fr",
+"text": "Azur menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 2000
+},
+{
+"id": "mirage.5",
+"lang": "fr",
+"text": "Carmin menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.6",
+"lang": "fr",
+"text": "Prune menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.7",
+"lang": "fr",
+"text": "Anis menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.8",
+"lang": "fr",
+"text": "Sarcelle menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.9",
+"lang": "fr",
+"text": "Rose menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.10",
+"lang": "fr",
+"text": "Lilas menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "mirage.11",
+"lang": "fr",
+"text": "Jade menait au couchant. Méfiez-vous des mirages.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.0",
+"lang": "fr",
+"text": "La nuit est tombée. Corail garde le désert.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.1",
+"lang": "fr",
+"text": "La nuit est tombée. Lagon garde le désert.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.2",
+"lang": "fr",
+"text": "La nuit est tombée. Indigo garde le désert.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3_t13",
+"seed": 1000
+},
+{
+"id": "roundWin1.3",
+"lang": "fr",
+"text": "La nuit est tombée. Safran garde le désert.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.4",
+"lang": "fr",
+"text": "La nuit est tombée. Azur garde le désert.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.5",
+"lang": "fr",
+"text": "La nuit est tombée. Carmin garde le désert.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.6",
+"lang": "fr",
+"text": "La nuit est tombée. Prune garde le désert.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.7",
+"lang": "fr",
+"text": "La nuit est tombée. Anis garde le désert.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.8",
+"lang": "fr",
+"text": "La nuit est tombée. Sarcelle garde le désert.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.9",
+"lang": "fr",
+"text": "La nuit est tombée. Rose garde le désert.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.10",
+"lang": "fr",
+"text": "La nuit est tombée. Lilas garde le désert.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin1.11",
+"lang": "fr",
+"text": "La nuit est tombée. Jade garde le désert.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.0",
+"lang": "fr",
+"text": "Le désert s’endort chez Corail, ce soir.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Corail, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.1",
+"lang": "fr",
+"text": "Le désert s’endort chez Lagon, ce soir.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Lagon, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.2",
+"lang": "fr",
+"text": "Le désert s’endort chez Indigo, ce soir.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Indigo, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.3",
+"lang": "fr",
+"text": "Le désert s’endort chez Safran, ce soir.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Safran, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.4",
+"lang": "fr",
+"text": "Le désert s’endort chez Azur, ce soir.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Azur, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.5",
+"lang": "fr",
+"text": "Le désert s’endort chez Carmin, ce soir.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Carmin, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.6",
+"lang": "fr",
+"text": "Le désert s’endort chez Prune, ce soir.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Prune, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.7",
+"lang": "fr",
+"text": "Le désert s’endort chez Anis, ce soir.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Anis, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.8",
+"lang": "fr",
+"text": "Le désert s’endort chez Sarcelle, ce soir.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Sarcelle, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.9",
+"lang": "fr",
+"text": "Le désert s’endort chez Rose, ce soir.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Rose, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.10",
+"lang": "fr",
+"text": "Le désert s’endort chez Lilas, ce soir.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Lilas, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin2.11",
+"lang": "fr",
+"text": "Le désert s’endort chez Jade, ce soir.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"say": "Le désert s'endort chez Jade, ce soir.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.0",
+"lang": "fr",
+"text": "Corail a le dernier mot. Et le désert.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.1",
+"lang": "fr",
+"text": "Lagon a le dernier mot. Et le désert.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.2",
+"lang": "fr",
+"text": "Indigo a le dernier mot. Et le désert.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.3",
+"lang": "fr",
+"text": "Safran a le dernier mot. Et le désert.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.4",
+"lang": "fr",
+"text": "Azur a le dernier mot. Et le désert.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.5",
+"lang": "fr",
+"text": "Carmin a le dernier mot. Et le désert.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.6",
+"lang": "fr",
+"text": "Prune a le dernier mot. Et le désert.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.7",
+"lang": "fr",
+"text": "Anis a le dernier mot. Et le désert.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.8",
+"lang": "fr",
+"text": "Sarcelle a le dernier mot. Et le désert.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.9",
+"lang": "fr",
+"text": "Rose a le dernier mot. Et le désert.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.10",
+"lang": "fr",
+"text": "Lilas a le dernier mot. Et le désert.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "roundWin3.11",
+"lang": "fr",
+"text": "Jade a le dernier mot. Et le désert.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.0",
+"lang": "fr",
+"text": "Corail, le désert retiendra cette couleur.",
+"keywords": [
+"Corail|coray|corraille|coraille|corai|coraye|korail"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.1",
+"lang": "fr",
+"text": "Lagon, le désert retiendra cette couleur.",
+"keywords": [
+"Lagon|lagons|lagond"
+],
+"keywords_np": [
+"Lagon|lagons|lagond|lagoon"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.2",
+"lang": "fr",
+"text": "Indigo, le désert retiendra cette couleur.",
+"keywords": [
+"Indigo|indigot|indigau"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.3",
+"lang": "fr",
+"text": "Safran, le désert retiendra cette couleur.",
+"keywords": [
+"Safran|saffran|safrant"
+],
+"keywords_np": [
+"Safran|saffran|safrant|saffron|safron"
+],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.4",
+"lang": "fr",
+"text": "Azur, le désert retiendra cette couleur.",
+"keywords": [
+"Azur|azure|azzur"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.5",
+"lang": "fr",
+"text": "Carmin, le désert retiendra cette couleur.",
+"keywords": [
+"Carmin|carmain|carmins|karmin"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.6",
+"lang": "fr",
+"text": "Prune, le désert retiendra cette couleur.",
+"keywords": [
+"Prune|prunes|prun"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.7",
+"lang": "fr",
+"text": "Anis, le désert retiendra cette couleur.",
+"keywords": [
+"Anis|aniss|annis|anice"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.8",
+"lang": "fr",
+"text": "Sarcelle, le désert retiendra cette couleur.",
+"keywords": [
+"Sarcelle|sarcel|sarsel|sarcell"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.9",
+"lang": "fr",
+"text": "Rose, le désert retiendra cette couleur.",
+"keywords": [
+"Rose|roses|roz"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.10",
+"lang": "fr",
+"text": "Lilas, le désert retiendra cette couleur.",
+"keywords": [
+"Lilas|lila|lilla"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchWin.11",
+"lang": "fr",
+"text": "Jade, le désert retiendra cette couleur.",
+"keywords": [
+"Jade|jades|jad"
+],
+"keywords_np": [],
+"asr_bed_snr": 8,
+"asr_prompt": "Le narrateur nomme les joueurs par leur couleur : Corail, Lagon, Indigo, Safran, Azur, Carmin, Prune, Anis, Sarcelle, Rose, Lilas, Jade.",
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "matchTie",
+"lang": "fr",
+"text": "Le désert refuse de choisir. Partagez-le.",
+"asr_bed_snr": 8,
+"voice": "narrator_qwen3",
+"seed": 1000
+},
+{
+"id": "rematch",
+"lang": "fr",
+"text": "Le soleil revient toujours. Vous aussi.",
+"asr_bed_snr": 8,
+"voice": "narrator_qwen3",
+"seed": 1000
+}
+]

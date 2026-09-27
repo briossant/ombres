@@ -1,11 +1,12 @@
 # TTS du narrateur : les gros modèles sur GPU Kaggle
 
 > Mission : vérifier si un modèle plus lourd que Pocket TTS, exécuté sur les GPU gratuits de Kaggle, donne un meilleur « conteur du désert » (voix grave et posée, calme, un peu étrange, répliques de moins de 3 s, FR et EN), sous licence libre.
-> Livrables : ce document ; les kernels et scripts reproductibles dans `tools/tts-kaggle/` ; des échantillons d'écoute (5,7 Mo, page `index.html`) dans le dossier de travail de la session, `…/scratchpad/tts-kaggle/samples/`.
+> Livrables : ce document ; les kernels et scripts reproductibles dans `tools/tts-kaggle/` ; des échantillons d'écoute (5,7 Mo, page `index.html`) dans le dossier de travail de la session, `…/scratchpad/tts-kaggle/samples/` ; phase 2 : le paquet du lot FR Qwen3, `…/scratchpad/tts-kaggle/package/` (§12).
 > Date : 26/09/2026. Suite de `docs/research/tts.md` (banc CPU d'origine). Pas de clé Gemini : l'API Gemini n'a pas été testée.
 
 ## En bref
 
+- **Phase 2 faite (27/09/2026) : le lot FR complet existe en Qwen3-TTS**, dans un paquet prêt à intégrer, hors du dépôt (détail au §12). 361 répliques sur 361 passent les trois contrôles Whisper du lot : avec l'amorce des couleurs, sans amorce, et dans le fond sonore du jeu. Toutes durent 3,0 s parlées au plus. Il a fallu 33 min de GPU Kaggle au lieu des 1 h 45 prévues, grâce à la génération par lots. **Personne n'a encore écouté** : l'écoute comparative reste à faire avant de remplacer `public/audio/narrator/fr/`.
 - **Français : passer à Qwen3-TTS 1.7B** (Alibaba, Apache-2.0), avec une voix conçue par description puis clonée, accélérée de 20 % (`atempo 1.2`).
   - 30 prises sur 30 intelligibles, contre 27 sur 30 pour Pocket brut. Pocket dit « elle fiche tout » à chaque prise ; Qwen3 dit « fige ».
   - UTMOSv2 3,47 contre 2,89 pour le lot actuel ; UTMOS22 au même niveau (4,00 contre 4,03), DNSMOS un peu meilleur (3,39 contre 3,31).
@@ -13,9 +14,9 @@
   - Avec la règle « 3 s parlées au plus » et le tri ASR du lot, chacune des 10 répliques FR garde au moins une bonne prise.
   - Aucune voix humaine n'est clonée : la référence est une sortie de VoiceDesign (`tools/tts-kaggle/data/voices/qwen3_design.wav`).
 - **Anglais : garder Pocket.** Rien ne le bat nettement une fois les prises triées : Qwen3 et Chatterbox gagnent 0,3 point d'UTMOSv2, mais UTMOS22 bouge à peine (4,43 contre 4,36) et le lot trié est déjà intelligible à 100 %. Si l'on veut le même personnage dans les deux langues, la voix conçue de Qwen3 marche aussi en anglais (UTMOSv2 3,57) mais garde un léger accent français (Whisper ne reconnaît l'anglais qu'à 68 %) : à trancher à l'oreille.
-- Coût : Qwen3-TTS tourne à 2,3 fois le temps réel sur une T4 en float32. Le lot FR complet (361 clips × 4 prises) demande environ 1 h 45 sur les 2 T4 d'un kernel, plus 25 min de tri ASR. Le quota réel du compte est de 6 h de GPU par semaine (pas 30 h) ; le banc en a consommé 1 h 56, il en reste environ 4 h jusqu'au samedi 3 octobre.
+- Coût : Qwen3-TTS tourne à 2,3 fois le temps réel sur une T4 en float32 quand il génère une prise à la fois, et à 0,3 fois le temps réel par lots de 24 (§12). Le tri se fait sur des kernels CPU, qui ne consomment pas de quota. Le quota réel du compte est de 6 h de GPU par semaine (pas 30 h) ; le banc en a consommé 1 h 56 et la génération 33 min, il en reste 3 h 31 jusqu'au samedi 3 octobre.
 - Écartés : VoxCPM2 (qualité en retrait en FR, UTMOS 3,35), Kyutai TTS 1.6B (les voix libres utilisables plafonnent à un UTMOS de 3,4, et l'embedding de la voix `frm` lui fait réciter sa phrase de référence), CosyVoice3 (répliques trop longues, accent avec une référence anglaise). Chatterbox v3 reste un bon plan B pour garder la voix `bill_boerst` en FR, mais il est lent (18 × le temps réel sur CPU).
-- Avant de régénérer : 2 minutes d'écoute de `samples/index.html`, lignes `pocket-lot` et `qwen3-design@1.2`. Les métriques ne mesurent ni le charme ni l'étrangeté.
+- Avant d'intégrer le paquet : quelques minutes d'écoute, `fr/` du paquet contre `public/audio/narrator/fr/` (et `samples/index.html` du banc). Les métriques ne mesurent ni le charme ni l'étrangeté.
 
 ---
 
@@ -216,18 +217,14 @@ Options à trancher à l'oreille :
 
 ### Génération complète (phase 2)
 
-Le plus simple est d'ajouter un moteur `qwen3` à `tools/tts/gen.py` (même interface que `PocketEngine` : `synth(text, cfg, seed)`, le prompt de clonage étant calculé une fois par voix) et de faire tourner `gen.py` lui-même dans un kernel Kaggle, avec Whisper et UTMOS sur GPU. Les réglages du lot (`narrator.sh`) s'appliquent tels quels, avec `tempo: 1.2` dans le preset.
-
-Coût mesuré sur ce banc : 8,7 s de calcul par prise FR sur une T4. Pour 361 clips × 4 prises : 3 h 30 de GPU-carte, soit 1 h 45 sur les 2 T4 d'un kernel, plus environ 25 min de tri. Le quota restant cette semaine (≈ 4 h) suffit pour une passe complète et une reprise des refus ; le quota se renouvelle le samedi 3 octobre à 02:00 (heure de Paris). En float16, la T4 irait probablement deux fois plus vite, à vérifier sur 10 répliques avant le lot.
-
-Les textes « glace » et « Carmain » peuvent alors revenir à « fige » et « Carmin » ; les autres réécritures de `director.md` §5 visaient les défauts de Pocket et restent valides pour le sens.
+Faite : voir le §12. Les graphies prononcées propres à Pocket (« Carmain », « Rôse », « Corail, chasse encore ») sont abandonnées, puisque Qwen3 dit ces mots correctement. Le texte affiché « Elle glace tout » pourrait redevenir « Elle fige tout », mais c'est un texte du jeu (`src/shared/strings/narrator.ts`) : le paquet le garde tel quel. Les autres réécritures de `director.md` §5 visaient les défauts de Pocket et restent valides pour le sens.
 
 ## 9. Licences et crédits
 
 | élément | licence | crédit à afficher |
 |---|---|---|
-| Qwen3-TTS 12 Hz 1.7B Base et VoiceDesign (poids et code) | Apache-2.0 | « Voix française synthétisée avec Qwen3-TTS (Alibaba Qwen, Apache 2.0) » |
-| Voix conçue `qwen3_design.wav` | sortie du modèle ; aucune voix réelle | aucune obligation ; on peut préciser « voix de synthèse conçue avec Qwen3-TTS VoiceDesign » |
+| Qwen3-TTS 12 Hz 1.7B Base, Tokenizer 12 Hz et 1.7B VoiceDesign (poids et code `qwen-tts`) | Apache-2.0 (cartes Hugging Face relues le 27/09/2026) | « Voix française du narrateur synthétisée avec Qwen3-TTS d'Alibaba (Apache 2.0) » |
+| Voix conçue `qwen3_design.wav` | sortie du modèle ; aucune voix réelle | aucune obligation ; on peut préciser « Voix d'origine : voix de synthèse conçue avec Qwen3-TTS VoiceDesign » |
 | Pocket TTS (EN, inchangé) | CC-BY-4.0 | « Synthèse vocale : Pocket TTS, Kyutai (CC BY 4.0) » ; voix d'origine « Bill Boerst, LibriVox » (CC0, facultatif) |
 | si `frm` est retenue | CC-BY-4.0 | « CML-TTS dataset (CC BY 4.0), locuteur 4193 » |
 | si Chatterbox est retenu | MIT ; chaque sortie porte le watermark PerTh | « Chatterbox, Resemble AI (MIT) » |
@@ -254,3 +251,82 @@ $K kernels push -p tools/tts-kaggle/kernels/eval            # GPU ; OMBRES_TEMPO
 ```
 
 Kernels de ce banc (privés, compte `ftgplwa`) : `ombres-tts-pocket`, `-qwen3`, `-voxcpm2`, `-chatterbox`, `-kyutai16`, `-cosyvoice3` (génération), `-eval-g1`, `-eval-g2`, `-eval-g3` (mesures GPU, fusionnées par `evaluate.py --merge`). Les kernels `-eval-a*` et `-eval-c*` sont des évaluations CPU de secours, redondantes ; `-probe` et `-prep` ont servi à tester l'accès GPU.
+
+## 12. Génération du lot FR (phase 2, 27/09/2026)
+
+Les 361 répliques FR du lot ont été régénérées avec la voix conçue de Qwen3-TTS : 28 modèles × 12 couleurs, plus 25 répliques neutres. Le résultat est un **paquet hors dépôt** (`/tmp/claude-1001/-home-bcr-session-vibe-2026-09-05/5edd7b3f-1d22-4bd7-beef-3301f2b3bcd4/scratchpad/tts-kaggle/package/`, 13 Mo) qui reprend l'arborescence de `public/audio/narrator/` : `fr/` est neuf, `en/` et les entrées EN du manifest sont copiés sans changement depuis le lot Pocket actuel, et `manifest.json` suit le format du jeu. Rien n'a été écrit dans `public/`, dans `tools/tts/` ni dans le code du jeu. Le code est dans `tools/tts-kaggle/gen/` (voir le README). Le lot retenu est archivé dans `tools/tts-kaggle/results/gen_fr_lines.json`, qui donne la graine et le preset de chaque réplique, et dans `gen_fr_manifest.json`, le manifest complet avec UTMOS, transcriptions P/N/C et durées parlées.
+
+### 12.1 Chaîne
+
+1. **Prises brutes sur GPU.** Le kernel `ombres-tts-gen-synth` tourne sur 2 × T4 en float32 et clone `qwen3_design.wav`. Il produit deux séries de 4 prises par réplique (graines 1000 + 101·k, puis 2000 + 101·k), soit 2 888 prises, générées par lots de 24 répliques de longueur voisine. Chaque T4 tourne à 0,31-0,34 fois le temps réel, contre 2,3 fois quand le banc générait une prise à la fois. La session a duré 31 min en tout, dont 25 s d'installation et 2 min de chargement du modèle. Aucune prise n'a atteint la limite de 90 trames (7,2 s) ; la plus longue fait 5,3 s brute.
+2. **Tri sur CPU.** Cinq kernels `ombres-tts-gen-select-0…4` tournent sans quota, 17 à 23 min chacun. C'est `tools/tts/gen.py` lui-même qui trie, avec un moteur `qwen3` qui relit les prises brutes au lieu de synthétiser. Les réglages sont ceux de `narrator.sh` :
+   - rognage des bords, pauses internes ramenées à 420 ms, atempo 1,2 ;
+   - UTMOS22 pour ordonner les 4 prises ;
+   - encodage comme le lot : MP3 24 kHz ABR 48 kb/s, présence +2 dB au-dessus de 3 kHz, −16 LUFS ;
+   - Whisper small sur le MP3 encodé, dans trois conditions : P (avec l'amorce des 12 couleurs), N (sans amorce) et C (dans le fond sonore réel du jeu, à +6 LU, ou +8 LU aux résultats) ;
+   - nom de couleur exigé en mot-clé, prise refusée au-delà de 3,0 s parlées.
+   La réplique garde la première prise qui passe tout, dans l'ordre de gen.py : prises plausibles et de moins de 3 s d'abord, puis UTMOS décroissant. Les répliques refusées passent aux tours suivants : 4 nouvelles prises (graines 2000), puis atempo 1,3 sur les deux séries.
+3. **En local** (`finalize.sh`). Seules les prises retenues sont rapatriées : FLAC 24 bits, 51 Mo en tout, cache de gen.py compris. gen.py les ré-encode depuis son cache (loudnorm, MP3, présence), puis `--verify` repasse P, N et C sur chaque MP3 final avec le Whisper small de `tools/tts/.venv`.
+
+### 12.2 Échecs traités
+
+Sur Kaggle :
+
+- 356 répliques sur 361 passent dès les 4 premières prises.
+- Quatre répliques passent avec 4 nouvelles prises :
+  - `firstCrown.6` : Whisper entend « La couronne est aprue » dans le fond du jeu ;
+  - `dodge.1` et `dodge.9` : prises trop longues, ou avalées par le fond ;
+  - `mirage.4` : les 4 premières prises font entre 3,15 et 3,25 s.
+- `roundWin1.2` (« La nuit est tombée. Indigo garde le désert. ») : les 8 prises dépassent 3 s, la réplique passe avec l'atempo 1,3. C'est la seule du lot accélérée à 1,3.
+- `leaderChange4.3` : sans amorce, Whisper entend « sa frère emmène la danse » au lieu de « Safran mène la danse », dans les 8 prises. J'ai ajouté une virgule dans la seule graphie prononcée : « Safran, mène la danse. Les dunes suivent. » (`gen/overrides.json`). Le sous-titre ne change pas. 8 nouvelles prises (2 min de GPU) ont suffi : la première passe.
+
+En local, la vérification a refusé 14 prises acceptées sur Kaggle :
+
+- 4 pour 0,01 à 0,07 s de trop : la durée parlée mesurée sur le MP3 décodé dépasse celle de la prise avant encodage ;
+- 10 à cause d'un basculement de Whisper small dans le fond du jeu ou sans amorce, par exemple « Saphran » pour « Safran » ou « Indigo perte » pour « Indigo perd du terrain ».
+
+La cause est connue (`director.md` §5) : Whisper small bascule sur les prises limites au moindre changement d'encodage, et Kaggle encode avec ffmpeg 4.4, la machine de dev avec une version plus récente. Le kernel `ombres-tts-gen-extract` a sorti les 112 prises brutes de ces 14 répliques (9 Mo), et `local_rounds.py` a rejoué le choix de gen.py sur la machine de dev. Le tri y impose 2,9 s au plus, et chaque tour se termine par `--verify` sur le MP3 écrit. Dix répliques passent avec une autre prise de la première série, 4 avec la seconde.
+
+État final : **361/361 passent P, N et C** à la vérification locale des MP3 du paquet, et aucune ne dépasse 3,0 s parlées. Aucune n'a eu besoin d'autre chose qu'une nouvelle prise, sauf `leaderChange4.3` (virgule) et `roundWin1.2` (atempo 1,3).
+
+### 12.3 Chiffres du paquet
+
+| | Pocket, lot actuel (FR) | Qwen3, paquet (FR) |
+|---|---|---|
+| répliques | 361 | 361 |
+| vérification Whisper small des MP3 finaux | P et C : 361/361 (N non audité) | P, N et C : 361/361 |
+| CER moyen P / C (Whisper small) | 0,012 / 0,031 | 0,004 / 0,023 |
+| Whisper large-v3-turbo sans amorce, 24 répliques tirées au sort (contrôle indépendant du tri) : CER moyen, nom de couleur entendu | 0,032, 17/23 (« Prynne », « Pern », « Koray », « Purn »…) | 0,007, 23/23 |
+| durée parlée moyenne / max | 2,45 / 2,96 s | 2,59 / 3,00 s |
+| durée des fichiers : moyenne, total | 2,71 s, 977 s | 2,82 s, 1 019 s |
+| sonie (mesure loudnorm du manifest), crête vraie max | −16,6 à −16,2 LUFS, −1,5 dBTP | −16,8 à −16,2 LUFS, −1,5 dBTP |
+| poids de `fr/` | 6,18 Mo | 6,55 Mo |
+| UTMOS22 moyen de la prise retenue | 4,07 | 4,03, non comparable d'une voix à l'autre en français (§4) ; le banc donnait UTMOSv2 3,47 contre 2,89 |
+| accélération | atempo 0,92 (ralenti) | atempo 1,2 (1,3 pour une réplique) |
+| prise retenue | — | 1ʳᵉ 100, 2ᵉ 94, 3ᵉ 91, 4ᵉ 76 (dans l'ordre des graines) ; graines 2000 pour 7 répliques |
+
+`check_package.py` contrôle les 722 entrées du paquet : chaque fichier existe et se décode entièrement, l'écart de durée avec le manifest est au plus de 0,5 ms, et aucun MP3 n'est hors manifest. Mesurée à part avec ffmpeg ebur128, la sonie des 361 clips FR va de −16,7 à −16,0 LUFS (moyenne −16,34), crête vraie −1,5 dBTP au plus.
+
+Graphies prononcées : les 156 « say » du lot Pocket se réduisent à des apostrophes droites, qui ne changent pas la prononciation. « Carmain » redevient « Carmin », « Rôse » redevient « Rose », et « Corail, chasse encore » perd sa virgule. Une seule retouche propre à Qwen3 s'ajoute, « Safran, mène la danse ».
+
+Coût Kaggle : 33 min de GPU en tout, 31 min pour le lot et 2 min pour la reprise ; il reste 3 h 31 de quota jusqu'au samedi 3 octobre. S'y ajoutent 7 kernels CPU (tri, reprise, extraction), qui ne consomment pas de quota. Sur la machine de dev : 51 Mo de prises retenues et 9 Mo de prises brutes rapatriés, 2 min de ré-encodage et 45 min de vérification Whisper sur CPU.
+
+### 12.4 Intégrer le paquet
+
+1. **Écouter d'abord.** Personne n'a écouté ces clips, pas plus que ceux du banc. Il faut comparer `fr/` du paquet avec `public/audio/narrator/fr/` sur une douzaine de répliques, surtout Carmin, Rose, Safran et les répliques de fin de manche.
+2. Copier `fr/` et `manifest.json` du paquet dans `public/audio/narrator/`. `en/` est une copie identique du lot actuel, faite le 27/09/2026 à 01 h 40 : si le lot EN a changé depuis, il faut garder le `en/` en place et reprendre les entrées EN de son manifest.
+3. **Ne pas relancer `tools/tts/narrator.sh` pour le FR** tant qu'il décrit Pocket : gen.py verrait des MP3 dont le hash ne correspond pas et régénérerait le FR avec Pocket. Pour le lot EN seul, utiliser `narrator.sh --lang en`. Pour régénérer une réplique FR, passer par `tools/tts-kaggle/gen/` : entrée `results/gen_fr_lines.json` et presets `voices.qwen3.json` produits par `prepare.py`.
+4. Mettre `tools/tts/narrator.manifest.json` à jour : les entrées FR sont dans `results/gen_fr_manifest.json`.
+5. Crédits : voir ci-dessous. `src/director/narrator.ts` estime la durée d'un clip sans manifest d'après Pocket ; ce n'est qu'un repli, le manifest donne les durées réelles.
+
+### 12.5 Ligne de crédit
+
+Dans l'écran de crédits, groupe « Voix du conteur », au format des lignes existantes (`host.credits.voice.tts` et `host.credits.voice.origin`) :
+
+- Voix française, nouvelle ligne : « Voix française du narrateur synthétisée avec Qwen3-TTS d'Alibaba (Apache 2.0) », puis « Voix d'origine : voix de synthèse conçue avec Qwen3-TTS VoiceDesign ». Dans l'interface anglaise : « French narrator voice synthesised with Alibaba's Qwen3-TTS (Apache 2.0) », puis « Original voice: synthetic voice designed with Qwen3-TTS VoiceDesign ».
+- Voix anglaise, ligne Pocket précisée : « Voix anglaise du narrateur synthétisée avec Pocket TTS de Kyutai (CC BY 4.0) », puis « Voix d'origine : Bill Boerst, LibriVox (CC0) ». Dans l'interface anglaise : « English narrator voice synthesised with Kyutai's Pocket TTS (CC BY 4.0) », puis « Original voice: Bill Boerst, LibriVox (CC0) ».
+- Bibliothèques (`TECH_CREDITS`) : ajouter « Qwen3-TTS, Alibaba Qwen (Apache 2.0) ».
+
+Pour `docs/CREDITS-sources.md` : `audio/narrator/fr/*.mp3` (361 clips) sont générés avec Qwen3-TTS-12Hz-1.7B-Base (https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base), avec le tokenizer Qwen3-TTS-Tokenizer-12Hz, en clonant une voix conçue par Qwen3-TTS-12Hz-1.7B-VoiceDesign (graine 22). Poids et code sont sous licence **Apache-2.0**. La voix de référence est une sortie du modèle et n'appartient à aucune personne réelle. L'Apache-2.0 n'impose rien pour les sons produits, puisqu'on ne redistribue ni les poids ni le code : le crédit est recommandé, pas obligatoire.
+
+Outils de contrôle, non distribués : faster-whisper `small` et `large-v3-turbo` (MIT), UTMOS22 via SpeechMOS (MIT).
